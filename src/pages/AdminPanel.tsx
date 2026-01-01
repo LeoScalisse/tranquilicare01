@@ -12,7 +12,8 @@ import {
   Phone, 
   Instagram,
   Eye,
-  AlertCircle
+  AlertCircle,
+  Trash2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -47,6 +48,7 @@ const AdminPanel: React.FC = () => {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
   const [selectedNGO, setSelectedNGO] = useState<NGOData | null>(null);
   const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const navigate = useNavigate();
@@ -137,6 +139,26 @@ const AdminPanel: React.FC = () => {
       toast.success(`${selectedNGO.name} foi rejeitada`);
       setShowRejectDialog(false);
       setRejectionReason('');
+      setSelectedNGO(null);
+      fetchNGOs();
+    }
+    setActionLoading(false);
+  };
+
+  const handleDelete = async () => {
+    if (!selectedNGO) return;
+
+    setActionLoading(true);
+    const { error } = await supabase
+      .from('ngos')
+      .delete()
+      .eq('id', selectedNGO.id);
+
+    if (error) {
+      toast.error('Erro ao remover ONG');
+    } else {
+      toast.success(`${selectedNGO.name} foi removida`);
+      setShowDeleteDialog(false);
       setSelectedNGO(null);
       fetchNGOs();
     }
@@ -319,29 +341,44 @@ const AdminPanel: React.FC = () => {
                   </div>
 
                   {/* Actions */}
-                  {ngo.status === 'pending' && (
-                    <div className="flex lg:flex-col gap-2 flex-shrink-0">
-                      <button
-                        onClick={() => handleApprove(ngo)}
-                        disabled={actionLoading}
-                        className="flex-1 lg:flex-none px-4 py-2 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-all flex items-center justify-center gap-2"
-                      >
-                        <CheckCircle size={18} />
-                        Aprovar
-                      </button>
+                  <div className="flex lg:flex-col gap-2 flex-shrink-0">
+                    {ngo.status === 'pending' && (
+                      <>
+                        <button
+                          onClick={() => handleApprove(ngo)}
+                          disabled={actionLoading}
+                          className="flex-1 lg:flex-none px-4 py-2 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-all flex items-center justify-center gap-2"
+                        >
+                          <CheckCircle size={18} />
+                          Aprovar
+                        </button>
+                        <button
+                          onClick={() => {
+                            setSelectedNGO(ngo);
+                            setShowRejectDialog(true);
+                          }}
+                          disabled={actionLoading}
+                          className="flex-1 lg:flex-none px-4 py-2 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-all flex items-center justify-center gap-2"
+                        >
+                          <XCircle size={18} />
+                          Rejeitar
+                        </button>
+                      </>
+                    )}
+                    {ngo.status === 'approved' && (
                       <button
                         onClick={() => {
                           setSelectedNGO(ngo);
-                          setShowRejectDialog(true);
+                          setShowDeleteDialog(true);
                         }}
                         disabled={actionLoading}
                         className="flex-1 lg:flex-none px-4 py-2 bg-red-500 text-white rounded-xl font-medium hover:bg-red-600 transition-all flex items-center justify-center gap-2"
                       >
-                        <XCircle size={18} />
-                        Rejeitar
+                        <Trash2 size={18} />
+                        Remover
                       </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
@@ -374,6 +411,31 @@ const AdminPanel: React.FC = () => {
               disabled={actionLoading || !rejectionReason.trim()}
             >
               Confirmar Rejeição
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remover ONG</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja remover <strong>{selectedNGO?.name}</strong>? Esta ação não pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleDelete}
+              disabled={actionLoading}
+            >
+              <Trash2 size={16} className="mr-2" />
+              Confirmar Remoção
             </Button>
           </DialogFooter>
         </DialogContent>
