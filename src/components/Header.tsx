@@ -2,7 +2,6 @@ import React from 'react';
 import { View } from '../types';
 import { BrandedText } from '../utils';
 import { Heart, UserPlus, ShoppingBag } from 'lucide-react';
-import logo from '@/assets/logo.png';
 
 interface HeaderProps {
   currentView: View;
@@ -24,11 +23,9 @@ const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView }) => {
           className="flex items-center gap-2 cursor-pointer group"
           onClick={() => setCurrentView(View.HOME)}
         >
-          <img 
-            src={logo} 
-            alt="TranquiliCare Logo" 
-            className="w-10 h-10 object-contain"
-          />
+          <div className="w-10 h-10 bg-brand-blue rounded-xl flex items-center justify-center text-white font-bold text-2xl shadow-md group-hover:shadow-brand-blue/30 transition-all">
+            <span className="text-brand-yellow">+</span>
+          </div>
           <h1 className="text-xl font-bold tracking-tight text-gray-800">
             <span>Tranquili</span><span className="text-brand-yellow">Care</span>
           </h1>
