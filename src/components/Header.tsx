@@ -1,7 +1,8 @@
 import React from 'react';
 import { View } from '../types';
 import { BrandedText } from '../utils';
-import { Heart, UserPlus, ShoppingBag } from 'lucide-react';
+import { Heart, UserPlus, ShoppingBag, Shield } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface HeaderProps {
   currentView: View;
@@ -9,6 +10,8 @@ interface HeaderProps {
 }
 
 const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView }) => {
+  const navigate = useNavigate();
+  
   const navItemClass = (view: View) => `
     flex items-center gap-2 px-5 py-2.5 rounded-full font-bold transition-all
     ${currentView === view 
@@ -46,6 +49,13 @@ const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView }) => {
             <UserPlus size={18} />
             <BrandedText text="Seja apoiado" />
           </button>
+          <button 
+            onClick={() => navigate('/admin/login')}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full font-bold transition-all text-gray-600 hover:bg-gray-100 hover:text-brand-blue"
+          >
+            <Shield size={18} />
+            <span>Admin</span>
+          </button>
         </nav>
 
         {/* Mobile menu button */}
@@ -78,6 +88,13 @@ const Header: React.FC<HeaderProps> = ({ currentView, setCurrentView }) => {
           >
             <UserPlus size={24} className={currentView === View.NGO_REGISTRATION ? 'fill-brand-blue' : ''} />
             <span className="text-[10px] font-bold uppercase tracking-wider">Seja apoiado</span>
+          </button>
+          <button 
+            onClick={() => navigate('/admin/login')}
+            className="flex flex-col items-center gap-1 transition-colors text-gray-400 hover:text-brand-blue"
+          >
+            <Shield size={24} />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Admin</span>
           </button>
       </div>
     </header>
