@@ -20,7 +20,7 @@ const Hero: React.FC<HeroProps> = ({
             </div>
             
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 leading-tight">
-              <BrandedText text="Cuide de quem cuida de mais pessoas" />
+              <BrandedText text="Faça + pelo mundo, de forma simples." />
             </h1>
             
             <p className="text-xl text-gray-600 max-w-lg leading-relaxed">
