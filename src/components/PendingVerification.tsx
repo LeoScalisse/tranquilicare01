@@ -1,15 +1,15 @@
 import React from 'react';
 import { Clock, CheckCircle, Mail } from 'lucide-react';
 import { BrandedText } from '../utils';
-
 interface PendingVerificationProps {
   ngoName: string;
   onBackToHome: () => void;
 }
-
-const PendingVerification: React.FC<PendingVerificationProps> = ({ ngoName, onBackToHome }) => {
-  return (
-    <div className="max-w-2xl mx-auto px-4 py-16">
+const PendingVerification: React.FC<PendingVerificationProps> = ({
+  ngoName,
+  onBackToHome
+}) => {
+  return <div className="max-w-2xl mx-auto px-4 py-16">
       <div className="bg-white rounded-[2.5rem] shadow-2xl border border-gray-100 p-8 md:p-12 text-center">
         <div className="w-24 h-24 bg-brand-yellow/20 rounded-full flex items-center justify-center mx-auto mb-6">
           <Clock size={48} className="text-brand-yellow" />
@@ -49,7 +49,7 @@ const PendingVerification: React.FC<PendingVerificationProps> = ({ ngoName, onBa
             </div>
             <div className="text-left">
               <p className="font-bold text-gray-800">Em análise</p>
-              <p className="text-sm text-gray-500">Nossa equipe está verificando suas informações</p>
+              <p className="text-sm text-gray-500">Nossa equipe está revisando suas informações com cuidado</p>
             </div>
           </div>
           
@@ -68,15 +68,10 @@ const PendingVerification: React.FC<PendingVerificationProps> = ({ ngoName, onBa
           Esse processo geralmente leva de <span className="font-bold">1 a 3 dias úteis</span>.
         </p>
 
-        <button
-          onClick={onBackToHome}
-          className="px-8 py-4 bg-brand-blue text-white rounded-2xl font-bold hover:bg-blue-600 transition-all"
-        >
+        <button onClick={onBackToHome} className="px-8 py-4 bg-brand-blue text-white rounded-2xl font-bold hover:bg-blue-600 transition-all">
           Voltar ao Início
         </button>
       </div>
-    </div>
-  );
+    </div>;
 };
-
 export default PendingVerification;
