@@ -46,6 +46,7 @@ export interface NGO {
   instagram: string;
   phone?: string;
   verified: boolean;
+  status?: 'pending' | 'approved' | 'rejected';
   posts: NGOPost[];
 }
 
@@ -54,5 +55,6 @@ export enum View {
   MARKETPLACE = 'MARKETPLACE',
   NGO_REGISTRATION = 'NGO_REGISTRATION',
   NGO_PROFILE = 'NGO_PROFILE',
-  STORIES_FEED = 'STORIES_FEED'
+  STORIES_FEED = 'STORIES_FEED',
+  PENDING_VERIFICATION = 'PENDING_VERIFICATION'
 }

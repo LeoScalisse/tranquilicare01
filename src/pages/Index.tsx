@@ -1,33 +1,68 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, NGO, NGOPost } from '../types';
+import { supabase } from '@/integrations/supabase/client';
 import Header from '../components/Header';
 import Hero from '../components/Hero';
 import Marketplace from '../components/Marketplace';
 import NGORegistration from '../components/NGORegistration';
 import NGOProfile from '../components/NGOProfile';
 import StoriesFeed from '../components/StoriesFeed';
+import PendingVerification from '../components/PendingVerification';
 
 const TranquiliCareApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.HOME);
   const [ngos, setNgos] = useState<NGO[]>([]);
-  const [currentNGO, setCurrentNGO] = useState<NGO | null>(null);
   const [viewingNGO, setViewingNGO] = useState<NGO | null>(null);
+  const [pendingNGOName, setPendingNGOName] = useState<string>('');
+  const [loading, setLoading] = useState(true);
 
-  const addNGO = (ngo: NGO) => {
-    setNgos([...ngos, ngo]);
-    setCurrentNGO(ngo);
-    setCurrentView(View.NGO_PROFILE);
+  // Fetch approved NGOs from database
+  useEffect(() => {
+    fetchApprovedNGOs();
+  }, []);
+
+  const fetchApprovedNGOs = async () => {
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('ngos')
+      .select('*')
+      .eq('status', 'approved');
+
+    if (error) {
+      console.error('Error fetching NGOs:', error);
+    } else if (data) {
+      const formattedNGOs: NGO[] = data.map(ngo => ({
+        id: ngo.id,
+        name: ngo.name,
+        description: ngo.description,
+        category: ngo.category,
+        goal: ngo.goal,
+        image: ngo.image || '',
+        email: ngo.email,
+        instagram: ngo.instagram,
+        phone: ngo.phone || undefined,
+        verified: ngo.verified || false,
+        status: ngo.status as 'pending' | 'approved' | 'rejected',
+        posts: []
+      }));
+      setNgos(formattedNGOs);
+    }
+    setLoading(false);
   };
 
-  const updateNGO = (updatedNGO: NGO) => {
-    setNgos(ngos.map(n => n.id === updatedNGO.id ? updatedNGO : n));
-    if (currentNGO?.id === updatedNGO.id) setCurrentNGO(updatedNGO);
-    if (viewingNGO?.id === updatedNGO.id) setViewingNGO(updatedNGO);
+  const handleRegisterComplete = (ngoName: string) => {
+    setPendingNGOName(ngoName);
+    setCurrentView(View.PENDING_VERIFICATION);
   };
 
   const handleSelectNGO = (ngo: NGO) => {
     setViewingNGO(ngo);
     setCurrentView(View.NGO_PROFILE);
+  };
+
+  const updateNGO = (updatedNGO: NGO) => {
+    setNgos(ngos.map(n => n.id === updatedNGO.id ? updatedNGO : n));
+    if (viewingNGO?.id === updatedNGO.id) setViewingNGO(updatedNGO);
   };
 
   const allStories: NGOPost[] = ngos.reduce((acc, ngo) => {
@@ -47,7 +82,14 @@ const TranquiliCareApp: React.FC = () => {
       case View.MARKETPLACE:
         return <Marketplace ngos={ngos} onSelectNGO={handleSelectNGO} />;
       case View.NGO_REGISTRATION:
-        return <NGORegistration onRegister={addNGO} />;
+        return <NGORegistration onRegisterComplete={handleRegisterComplete} />;
+      case View.PENDING_VERIFICATION:
+        return (
+          <PendingVerification 
+            ngoName={pendingNGOName} 
+            onBackToHome={() => setCurrentView(View.HOME)} 
+          />
+        );
       case View.STORIES_FEED:
         return (
           <StoriesFeed 
@@ -59,11 +101,10 @@ const TranquiliCareApp: React.FC = () => {
           />
         );
       case View.NGO_PROFILE:
-        const targetNGO = viewingNGO || currentNGO;
-        return targetNGO ? (
+        return viewingNGO ? (
           <NGOProfile 
-            ngo={targetNGO} 
-            isOwner={currentNGO?.id === targetNGO.id}
+            ngo={viewingNGO} 
+            isOwner={false}
             onUpdate={updateNGO} 
           />
         ) : (
