@@ -1,13 +1,14 @@
 import React, { useState, useRef } from 'react';
-import { NGO } from '../types';
+import { supabase } from '@/integrations/supabase/client';
 import { BrandedText } from '../utils';
-import { FileText, Tag, Info, Target, Image as ImageIcon, Instagram, Mail, Phone, Upload, X } from 'lucide-react';
+import { FileText, Tag, Info, Target, Image as ImageIcon, Instagram, Mail, Phone, Upload, X, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface NGORegistrationProps {
-  onRegister: (ngo: NGO) => void;
+  onRegisterComplete: (ngoName: string) => void;
 }
 
-const NGORegistration: React.FC<NGORegistrationProps> = ({ onRegister }) => {
+const NGORegistration: React.FC<NGORegistrationProps> = ({ onRegisterComplete }) => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -20,6 +21,7 @@ const NGORegistration: React.FC<NGORegistrationProps> = ({ onRegister }) => {
   });
 
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const totalSteps = 2;
 
@@ -41,15 +43,41 @@ const NGORegistration: React.FC<NGORegistrationProps> = ({ onRegister }) => {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newNGO: NGO = {
-      id: Math.random().toString(36).substr(2, 9),
-      ...formData,
-      verified: false,
-      posts: []
-    };
-    onRegister(newNGO);
+    setLoading(true);
+
+    try {
+      const { error } = await supabase
+        .from('ngos')
+        .insert({
+          name: formData.name,
+          description: formData.description,
+          category: formData.category,
+          goal: formData.goal,
+          image: formData.image,
+          email: formData.email,
+          instagram: formData.instagram,
+          phone: formData.phone || null,
+          status: 'pending',
+          verified: false
+        });
+
+      if (error) {
+        console.error('Error inserting NGO:', error);
+        toast.error('Erro ao cadastrar. Tente novamente.');
+        setLoading(false);
+        return;
+      }
+
+      toast.success('Cadastro enviado com sucesso!');
+      onRegisterComplete(formData.name);
+    } catch (err) {
+      console.error('Error:', err);
+      toast.error('Erro ao cadastrar. Tente novamente.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const isStep1Valid = formData.name && formData.description && formData.category;
@@ -244,8 +272,28 @@ const NGORegistration: React.FC<NGORegistrationProps> = ({ onRegister }) => {
               </div>
 
               <div className="flex gap-4">
-                <button type="button" onClick={() => setStep(1)} className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold">Voltar</button>
-                <button type="submit" disabled={!isStep2Valid} className="flex-[2] py-4 bg-brand-yellow text-yellow-900 rounded-2xl font-bold shadow-lg">Concluir parceria</button>
+                <button 
+                  type="button" 
+                  onClick={() => setStep(1)} 
+                  className="flex-1 py-4 bg-gray-100 text-gray-600 rounded-2xl font-bold"
+                  disabled={loading}
+                >
+                  Voltar
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={!isStep2Valid || loading} 
+                  className="flex-[2] py-4 bg-brand-yellow text-yellow-900 rounded-2xl font-bold shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 size={20} className="animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    'Concluir parceria'
+                  )}
+                </button>
               </div>
             </div>
           )}
