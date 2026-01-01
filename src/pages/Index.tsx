@@ -8,7 +8,6 @@ import NGORegistration from '../components/NGORegistration';
 import NGOProfile from '../components/NGOProfile';
 import StoriesFeed from '../components/StoriesFeed';
 import PendingVerification from '../components/PendingVerification';
-
 const TranquiliCareApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.HOME);
   const [ngos, setNgos] = useState<NGO[]>([]);
@@ -20,14 +19,12 @@ const TranquiliCareApp: React.FC = () => {
   useEffect(() => {
     fetchApprovedNGOs();
   }, []);
-
   const fetchApprovedNGOs = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('ngos')
-      .select('*')
-      .eq('status', 'approved');
-
+    const {
+      data,
+      error
+    } = await supabase.from('ngos').select('*').eq('status', 'approved');
     if (error) {
       console.error('Error fetching NGOs:', error);
     } else if (data) {
@@ -49,22 +46,18 @@ const TranquiliCareApp: React.FC = () => {
     }
     setLoading(false);
   };
-
   const handleRegisterComplete = (ngoName: string) => {
     setPendingNGOName(ngoName);
     setCurrentView(View.PENDING_VERIFICATION);
   };
-
   const handleSelectNGO = (ngo: NGO) => {
     setViewingNGO(ngo);
     setCurrentView(View.NGO_PROFILE);
   };
-
   const updateNGO = (updatedNGO: NGO) => {
     setNgos(ngos.map(n => n.id === updatedNGO.id ? updatedNGO : n));
     if (viewingNGO?.id === updatedNGO.id) setViewingNGO(updatedNGO);
   };
-
   const allStories: NGOPost[] = ngos.reduce((acc, ngo) => {
     const ngoPosts = ngo.posts.map(post => ({
       ...post,
@@ -74,7 +67,6 @@ const TranquiliCareApp: React.FC = () => {
     }));
     return [...acc, ...ngoPosts];
   }, [] as NGOPost[]).sort((a, b) => b.timestamp - a.timestamp);
-
   const renderView = () => {
     switch (currentView) {
       case View.HOME:
@@ -84,54 +76,30 @@ const TranquiliCareApp: React.FC = () => {
       case View.NGO_REGISTRATION:
         return <NGORegistration onRegisterComplete={handleRegisterComplete} />;
       case View.PENDING_VERIFICATION:
-        return (
-          <PendingVerification 
-            ngoName={pendingNGOName} 
-            onBackToHome={() => setCurrentView(View.HOME)} 
-          />
-        );
+        return <PendingVerification ngoName={pendingNGOName} onBackToHome={() => setCurrentView(View.HOME)} />;
       case View.STORIES_FEED:
-        return (
-          <StoriesFeed 
-            stories={allStories} 
-            onSelectNGO={(ngoId) => {
-              const target = ngos.find(n => n.id === ngoId);
-              if (target) handleSelectNGO(target);
-            }} 
-          />
-        );
+        return <StoriesFeed stories={allStories} onSelectNGO={ngoId => {
+          const target = ngos.find(n => n.id === ngoId);
+          if (target) handleSelectNGO(target);
+        }} />;
       case View.NGO_PROFILE:
-        return viewingNGO ? (
-          <NGOProfile 
-            ngo={viewingNGO} 
-            isOwner={false}
-            onUpdate={updateNGO} 
-          />
-        ) : (
-          <Hero setCurrentView={setCurrentView} />
-        );
+        return viewingNGO ? <NGOProfile ngo={viewingNGO} isOwner={false} onUpdate={updateNGO} /> : <Hero setCurrentView={setCurrentView} />;
       default:
         return <Hero setCurrentView={setCurrentView} />;
     }
   };
-
-  return (
-    <div className="min-h-screen bg-white text-gray-900 font-sans pb-20 md:pb-0">
+  return <div className="min-h-screen bg-white text-gray-900 font-sans pb-20 md:pb-0">
       <Header currentView={currentView} setCurrentView={setCurrentView} />
       <main className="animate-fade-in">
         {renderView()}
       </main>
       
-      {currentView !== View.STORIES_FEED && (
-        <footer className="bg-gray-50 border-t border-gray-200 py-8 md:py-12 mt-12 mb-20 md:mb-0">
+      {currentView !== View.STORIES_FEED && <footer className="bg-gray-50 border-t border-gray-200 py-8 md:py-12 mt-12 mb-20 md:mb-0">
           <div className="max-w-6xl mx-auto px-4 text-center text-gray-500 text-sm">
             <p className="mb-2 font-bold text-gray-400">TRANQUILI<span className="text-brand-yellow">CARE</span></p>
-            <p>© 2024 TranquiliCare. Conectando corações, mudando o mundo.</p>
+            <p>© 2025 TranquiliCare. Conectando corações, mudando o mundo.</p>
           </div>
-        </footer>
-      )}
-    </div>
-  );
+        </footer>}
+    </div>;
 };
-
 export default TranquiliCareApp;
