@@ -66,7 +66,8 @@ const PendingVerification: React.FC<PendingVerificationProps> = ({
         </div>
 
         <p className="text-sm text-gray-500 mb-6">
-          Esse processo geralmente leva de <span className="font-bold">1 a 3 dias úteis</span>.
+          Esse processo costuma levar até 3 dias úteis.
+Fazemos isso para garantir um ambiente seguro e confiável para todos. ​
         </p>
 
         <button onClick={onBackToHome} className="px-8 py-4 bg-brand-blue text-white rounded-2xl font-bold hover:bg-blue-600 transition-all">
