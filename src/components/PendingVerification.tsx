@@ -59,7 +59,7 @@ const PendingVerification: React.FC<PendingVerificationProps> = ({
             </div>
             <div className="text-left">
               <p className="font-bold text-gray-800">Aprovação</p>
-              <p className="text-sm text-gray-500">Você será notificado quando for aprovado</p>
+              <p className="text-sm text-gray-500">Você será avisado assim que sua organização for aprovada.</p>
             </div>
           </div>
         </div>
