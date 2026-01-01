@@ -123,7 +123,7 @@ const TranquiliCareApp: React.FC = () => {
       </main>
       
       {currentView !== View.STORIES_FEED && (
-        <footer className="bg-gray-50 border-t border-gray-200 py-12 mt-12 hidden md:block">
+        <footer className="bg-gray-50 border-t border-gray-200 py-8 md:py-12 mt-12 mb-20 md:mb-0">
           <div className="max-w-6xl mx-auto px-4 text-center text-gray-500 text-sm">
             <p className="mb-2 font-bold text-gray-400">TRANQUILI<span className="text-brand-yellow">CARE</span></p>
             <p>© 2024 TranquiliCare. Conectando corações, mudando o mundo.</p>
