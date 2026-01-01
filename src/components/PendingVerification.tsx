@@ -16,7 +16,7 @@ const PendingVerification: React.FC<PendingVerificationProps> = ({ ngoName, onBa
         </div>
         
         <h2 className="text-3xl font-bold text-gray-900 mb-4">
-          <BrandedText text="Cadastro Recebido!" />
+          <BrandedText text="Recebemos suas informações com sucesso" />
         </h2>
         
         <p className="text-xl text-gray-700 mb-6">
