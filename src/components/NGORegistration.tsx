@@ -1,14 +1,17 @@
 import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { BrandedText } from '../utils';
 import { FileText, Tag, Info, Target, Image as ImageIcon, Instagram, Mail, Phone, Upload, X, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import CreateAccountModal from './CreateAccountModal';
 
 interface NGORegistrationProps {
   onRegisterComplete: (ngoName: string) => void;
 }
 
 const NGORegistration: React.FC<NGORegistrationProps> = ({ onRegisterComplete }) => {
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -22,6 +25,8 @@ const NGORegistration: React.FC<NGORegistrationProps> = ({ onRegisterComplete })
 
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showAccountModal, setShowAccountModal] = useState(false);
+  const [pendingNgoData, setPendingNgoData] = useState<typeof formData | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const totalSteps = 2;
 
@@ -45,22 +50,30 @@ const NGORegistration: React.FC<NGORegistrationProps> = ({ onRegisterComplete })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Instead of submitting directly, show account creation modal
+    setPendingNgoData(formData);
+    setShowAccountModal(true);
+  };
+
+  const handleAccountCreated = async (userId: string) => {
+    if (!pendingNgoData) return;
     setLoading(true);
 
     try {
       const { error } = await supabase
         .from('ngos')
         .insert({
-          name: formData.name,
-          description: formData.description,
-          category: formData.category,
-          goal: formData.goal,
-          image: formData.image,
-          email: formData.email,
-          instagram: formData.instagram,
-          phone: formData.phone || null,
+          name: pendingNgoData.name,
+          description: pendingNgoData.description,
+          category: pendingNgoData.category,
+          goal: pendingNgoData.goal,
+          image: pendingNgoData.image,
+          email: pendingNgoData.email,
+          instagram: pendingNgoData.instagram,
+          phone: pendingNgoData.phone || null,
           status: 'pending',
-          verified: false
+          verified: false,
+          owner_id: userId,
         });
 
       if (error) {
@@ -71,7 +84,8 @@ const NGORegistration: React.FC<NGORegistrationProps> = ({ onRegisterComplete })
       }
 
       toast.success('Cadastro enviado com sucesso!');
-      onRegisterComplete(formData.name);
+      setShowAccountModal(false);
+      navigate('/ngo/pending');
     } catch (err) {
       console.error('Error:', err);
       toast.error('Erro ao cadastrar. Tente novamente.');
@@ -299,6 +313,13 @@ const NGORegistration: React.FC<NGORegistrationProps> = ({ onRegisterComplete })
           )}
         </form>
       </div>
+
+      <CreateAccountModal
+        open={showAccountModal}
+        onClose={() => setShowAccountModal(false)}
+        onAccountCreated={handleAccountCreated}
+        ngoName={formData.name}
+      />
     </div>
   );
 };
