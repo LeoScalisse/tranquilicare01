@@ -60,6 +60,7 @@ export type Database = {
           image: string | null
           instagram: string
           name: string
+          owner_id: string | null
           phone: string | null
           rejection_reason: string | null
           status: Database["public"]["Enums"]["ngo_status"] | null
@@ -76,6 +77,7 @@ export type Database = {
           image?: string | null
           instagram: string
           name: string
+          owner_id?: string | null
           phone?: string | null
           rejection_reason?: string | null
           status?: Database["public"]["Enums"]["ngo_status"] | null
@@ -92,6 +94,7 @@ export type Database = {
           image?: string | null
           instagram?: string
           name?: string
+          owner_id?: string | null
           phone?: string | null
           rejection_reason?: string | null
           status?: Database["public"]["Enums"]["ngo_status"] | null
