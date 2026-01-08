@@ -37,7 +37,7 @@ const NGOPending: React.FC = () => {
   const fetchNGOStatus = async (userId: string) => {
     const { data: ngo, error } = await supabase
       .from('ngos')
-      .select('id, name, status')
+      .select('id, name, status, has_seen_result')
       .eq('owner_id', userId)
       .maybeSingle();
 
@@ -50,9 +50,18 @@ const NGOPending: React.FC = () => {
       setNgoName(ngo.name);
       setNgoStatus(ngo.status as 'pending' | 'approved' | 'rejected');
       
-      if (ngo.status === 'approved') {
-        toast.success('Sua ONG foi aprovada! Redirecionando...');
-        setTimeout(() => navigate('/ngo/dashboard'), 2000);
+      // Se já foi aprovada/rejeitada e ainda não viu o resultado, marca como visto
+      if ((ngo.status === 'approved' || ngo.status === 'rejected') && !ngo.has_seen_result) {
+        await supabase
+          .from('ngos')
+          .update({ has_seen_result: true })
+          .eq('id', ngo.id);
+      }
+      
+      // Se já foi aprovada, já viu e está revisitando, redireciona pro dashboard
+      if (ngo.status === 'approved' && ngo.has_seen_result) {
+        navigate('/ngo/dashboard');
+        return;
       }
     } else {
       // User has no NGO, redirect to registration
@@ -81,9 +90,17 @@ const NGOPending: React.FC = () => {
           setNgoStatus(newStatus);
           
           if (newStatus === 'approved') {
+            // Marca como visto quando recebe aprovação em tempo real
+            if (ngoId) {
+              supabase.from('ngos').update({ has_seen_result: true }).eq('id', ngoId);
+            }
             toast.success('🎉 Sua ONG foi aprovada! Bem-vindo à TranquiliCare!');
-            setTimeout(() => navigate('/ngo/dashboard'), 2000);
+            setTimeout(() => navigate('/ngo/dashboard'), 3000);
           } else if (newStatus === 'rejected') {
+            // Marca como visto quando recebe rejeição em tempo real
+            if (ngoId) {
+              supabase.from('ngos').update({ has_seen_result: true }).eq('id', ngoId);
+            }
             toast.error('Infelizmente sua ONG não foi aprovada.');
           }
         }

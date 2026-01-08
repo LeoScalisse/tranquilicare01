@@ -34,14 +34,19 @@ const NGOAuth: React.FC = () => {
   const checkUserNGO = async (userId: string) => {
     const { data: ngo } = await supabase
       .from('ngos')
-      .select('id, status')
+      .select('id, status, has_seen_result')
       .eq('owner_id', userId)
       .maybeSingle();
 
     if (ngo) {
-      if (ngo.status === 'approved') {
+      // Se foi aprovada/rejeitada e ainda não viu o resultado, vai para pending
+      if ((ngo.status === 'approved' || ngo.status === 'rejected') && !ngo.has_seen_result) {
+        navigate('/ngo/pending');
+      } else if (ngo.status === 'approved' && ngo.has_seen_result) {
+        // Já viu o resultado e foi aprovada, vai direto pro dashboard
         navigate('/ngo/dashboard');
       } else {
+        // Ainda está pendente ou foi rejeitada e já viu
         navigate('/ngo/pending');
       }
     }

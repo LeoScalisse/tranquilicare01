@@ -110,6 +110,19 @@ const NGORegistration: React.FC<NGORegistrationProps> = ({ onRegisterComplete })
         <p className="text-gray-600">
           A Tranquili<span className="text-brand-yellow font-bold">Care</span> conecta sua organização a pessoas que acreditam no cuidado com a saúde mental.
         </p>
+        
+        {/* Link para login */}
+        <div className="mt-6 p-4 bg-blue-50 rounded-2xl border border-blue-100">
+          <p className="text-gray-600 text-sm mb-2">
+            Já cadastrou sua ONG? Acesse sua conta para verificar o status.
+          </p>
+          <button
+            onClick={() => navigate('/ngo/auth')}
+            className="px-6 py-2 bg-brand-blue text-white rounded-xl font-bold text-sm hover:bg-blue-600 transition-all"
+          >
+            Entrar na minha conta
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-[2.5rem] shadow-2xl border border-gray-100 p-8 md:p-12 relative overflow-hidden">
