@@ -7,17 +7,14 @@ import { toast } from 'sonner';
 
 const NGOAuth: React.FC = () => {
   const navigate = useNavigate();
-  const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
-        // Check if user has an NGO
         checkUserNGO(session.user.id);
       }
     });
@@ -45,8 +42,11 @@ const NGOAuth: React.FC = () => {
       } else if (ngo.status === 'approved' && ngo.has_seen_result) {
         // Já viu o resultado e foi aprovada, vai direto pro dashboard
         navigate('/ngo/dashboard');
+      } else if (ngo.status === 'rejected' && ngo.has_seen_result) {
+        // Já viu a rejeição, vai para pending para ver novamente
+        navigate('/ngo/pending');
       } else {
-        // Ainda está pendente ou foi rejeitada e já viu
+        // Ainda está pendente
         navigate('/ngo/pending');
       }
     }
@@ -57,56 +57,22 @@ const NGOAuth: React.FC = () => {
     setLoading(true);
 
     try {
-      if (isLogin) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-        if (error) {
-          if (error.message.includes('Invalid login credentials')) {
-            toast.error('E-mail ou senha incorretos');
-          } else {
-            toast.error(error.message);
-          }
-          setLoading(false);
-          return;
+      if (error) {
+        if (error.message.includes('Invalid login credentials')) {
+          toast.error('E-mail ou senha incorretos');
+        } else {
+          toast.error(error.message);
         }
-
-        toast.success('Login realizado com sucesso!');
-      } else {
-        if (password !== confirmPassword) {
-          toast.error('As senhas não coincidem');
-          setLoading(false);
-          return;
-        }
-
-        if (password.length < 6) {
-          toast.error('A senha deve ter pelo menos 6 caracteres');
-          setLoading(false);
-          return;
-        }
-
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/ngo/pending`,
-          },
-        });
-
-        if (error) {
-          if (error.message.includes('already registered')) {
-            toast.error('Este e-mail já está cadastrado');
-          } else {
-            toast.error(error.message);
-          }
-          setLoading(false);
-          return;
-        }
-
-        toast.success('Conta criada com sucesso!');
+        setLoading(false);
+        return;
       }
+
+      toast.success('Login realizado com sucesso!');
     } catch (err) {
       console.error('Auth error:', err);
       toast.error('Erro ao processar. Tente novamente.');
@@ -123,32 +89,11 @@ const NGOAuth: React.FC = () => {
             <BrandedText text="Área da ONG" />
           </h1>
           <p className="text-gray-600">
-            {isLogin ? 'Entre na sua conta para acessar o painel' : 'Crie sua conta para continuar'}
+            Entre na sua conta para acessar o painel
           </p>
         </div>
 
         <div className="bg-white rounded-3xl shadow-2xl border border-gray-100 p-8">
-          <div className="flex mb-6 bg-gray-100 rounded-xl p-1">
-            <button
-              type="button"
-              onClick={() => setIsLogin(true)}
-              className={`flex-1 py-3 rounded-lg font-bold transition-all ${
-                isLogin ? 'bg-white text-brand-blue shadow' : 'text-gray-500'
-              }`}
-            >
-              Entrar
-            </button>
-            <button
-              type="button"
-              onClick={() => setIsLogin(false)}
-              className={`flex-1 py-3 rounded-lg font-bold transition-all ${
-                !isLogin ? 'bg-white text-brand-blue shadow' : 'text-gray-500'
-              }`}
-            >
-              Criar Conta
-            </button>
-          </div>
-
           <form onSubmit={handleSubmit} className="space-y-5">
             <div className="space-y-2">
               <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
@@ -189,23 +134,6 @@ const NGOAuth: React.FC = () => {
               </div>
             </div>
 
-            {!isLogin && (
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-bold text-gray-700">
-                  <Lock size={18} className="text-brand-blue" />
-                  Confirmar Senha
-                </label>
-                <input
-                  type="password"
-                  required
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full px-4 py-4 bg-slate-50 border-2 border-transparent focus:border-brand-blue focus:bg-white rounded-xl outline-none transition-all"
-                  placeholder="••••••••"
-                />
-              </div>
-            )}
-
             <button
               type="submit"
               disabled={loading}
@@ -216,10 +144,8 @@ const NGOAuth: React.FC = () => {
                   <Loader2 size={20} className="animate-spin" />
                   Processando...
                 </>
-              ) : isLogin ? (
-                'Entrar'
               ) : (
-                'Criar Conta'
+                'Entrar'
               )}
             </button>
           </form>

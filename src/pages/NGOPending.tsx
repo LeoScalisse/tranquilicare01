@@ -12,6 +12,7 @@ const NGOPending: React.FC = () => {
   const [ngoStatus, setNgoStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
   const [ngoName, setNgoName] = useState<string>('');
   const [ngoId, setNgoId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,7 +38,7 @@ const NGOPending: React.FC = () => {
   const fetchNGOStatus = async (userId: string) => {
     const { data: ngo, error } = await supabase
       .from('ngos')
-      .select('id, name, status, has_seen_result')
+      .select('id, name, status, has_seen_result, rejection_reason')
       .eq('owner_id', userId)
       .maybeSingle();
 
@@ -49,16 +50,19 @@ const NGOPending: React.FC = () => {
       setNgoId(ngo.id);
       setNgoName(ngo.name);
       setNgoStatus(ngo.status as 'pending' | 'approved' | 'rejected');
+      setRejectionReason(ngo.rejection_reason);
       
-      // Se já foi aprovada/rejeitada e ainda não viu o resultado, marca como visto
-      if ((ngo.status === 'approved' || ngo.status === 'rejected') && !ngo.has_seen_result) {
+      // Se já foi aprovada e ainda não viu o resultado, marca como visto
+      if (ngo.status === 'approved' && !ngo.has_seen_result) {
         await supabase
           .from('ngos')
           .update({ has_seen_result: true })
           .eq('id', ngo.id);
+        // Aguarda 3 segundos e redireciona
+        setTimeout(() => navigate('/ngo/dashboard'), 3000);
       }
       
-      // Se já foi aprovada, já viu e está revisitando, redireciona pro dashboard
+      // Se já foi aprovada e já viu, redireciona pro dashboard
       if (ngo.status === 'approved' && ngo.has_seen_result) {
         navigate('/ngo/dashboard');
         return;
@@ -234,13 +238,26 @@ const NGOPending: React.FC = () => {
                 Cadastro não aprovado
               </h2>
 
-              <p className="text-gray-600 mb-8">
+              <p className="text-gray-600 mb-4">
                 Infelizmente sua ONG não atendeu aos critérios necessários.
-                Entre em contato conosco para mais informações.
+              </p>
+
+              {rejectionReason && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-8 text-left">
+                  <p className="text-sm font-bold text-red-700 mb-1">Motivo da rejeição:</p>
+                  <p className="text-red-600">{rejectionReason}</p>
+                </div>
+              )}
+
+              <p className="text-gray-500 text-sm mb-8">
+                Você pode tentar registrar novamente sua ONG com as informações corretas.
               </p>
 
               <button
-                onClick={() => navigate('/')}
+                onClick={async () => {
+                  await supabase.auth.signOut();
+                  navigate('/');
+                }}
                 className="px-8 py-4 bg-brand-blue text-white rounded-2xl font-bold hover:bg-blue-600 transition-all"
               >
                 Voltar ao Início

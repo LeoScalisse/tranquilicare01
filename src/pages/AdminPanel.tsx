@@ -124,12 +124,15 @@ const AdminPanel: React.FC = () => {
     }
 
     setActionLoading(true);
+    
+    // Primeiro, limpa o owner_id para liberar o email para novo cadastro
     const { error } = await supabase
       .from('ngos')
       .update({ 
         status: 'rejected', 
         verified: false,
-        rejection_reason: rejectionReason 
+        rejection_reason: rejectionReason,
+        owner_id: null // Libera o email para novo cadastro
       })
       .eq('id', selectedNGO.id);
 
