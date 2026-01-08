@@ -56,6 +56,7 @@ export type Database = {
           description: string
           email: string
           goal: string
+          has_seen_result: boolean | null
           id: string
           image: string | null
           instagram: string
@@ -73,6 +74,7 @@ export type Database = {
           description: string
           email: string
           goal: string
+          has_seen_result?: boolean | null
           id?: string
           image?: string | null
           instagram: string
@@ -90,6 +92,7 @@ export type Database = {
           description?: string
           email?: string
           goal?: string
+          has_seen_result?: boolean | null
           id?: string
           image?: string | null
           instagram?: string
