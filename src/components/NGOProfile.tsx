@@ -32,9 +32,11 @@ interface NGOProfileProps {
 const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showGoalModal, setShowGoalModal] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
   const [zoomedPost, setZoomedPost] = useState<NGOPost | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedPhone, setCopiedPhone] = useState(false);
   const [editedData, setEditedData] = useState(ngo);
   
   // States for new post upload simulation
@@ -113,15 +115,24 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
     }, 800);
   };
 
-  const copyToClipboard = (text: string) => {
+  const copyToClipboard = (text: string, isPhone = false) => {
     navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    if (isPhone) {
+      setCopiedPhone(true);
+      setTimeout(() => setCopiedPhone(false), 2000);
+    } else {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const getInstagramUrl = (handle: string) => {
     const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle;
     return `https://www.instagram.com/${cleanHandle}`;
+  };
+
+  const getEmailUrl = (email: string) => {
+    return `mailto:${email}`;
   };
 
   return (
@@ -270,10 +281,40 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
         </div>
       )}
 
+      {/* Goal Modal */}
+      {showGoalModal && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowGoalModal(false)}
+        >
+          <div 
+            className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl animate-scale-up"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="relative h-24 bg-gradient-to-r from-brand-yellow to-yellow-400">
+              <button onClick={() => setShowGoalModal(false)} className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/40 rounded-full text-yellow-900 transition-colors"><X size={18} /></button>
+              <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center">
+                <Target size={28} className="text-brand-yellow" />
+              </div>
+            </div>
+            <div className="pt-12 pb-8 px-6 text-center">
+              <h3 className="font-bold text-xl text-gray-800">Nossa Meta</h3>
+              <p className="text-gray-600 mt-4 leading-relaxed">{ngo.goal}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Contact Modal */}
       {showContactModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl animate-scale-up">
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowContactModal(false)}
+        >
+          <div 
+            className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl animate-scale-up"
+            onClick={e => e.stopPropagation()}
+          >
             <div className="relative h-32 bg-gradient-to-r from-brand-blue to-blue-400">
               <button onClick={() => setShowContactModal(false)} className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/40 rounded-full text-white transition-colors"><X size={18} /></button>
               <img src={ngo.image} className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover" />
@@ -287,16 +328,17 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
                   <span className="font-medium">{ngo.instagram}</span>
                   <ExternalLink size={14} className="ml-auto opacity-70" />
                 </a>
-                <button onClick={() => copyToClipboard(ngo.email)} className="flex items-center gap-3 w-full p-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
+                <a href={getEmailUrl(ngo.email)} className="flex items-center gap-3 w-full p-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
                   <Mail size={20} className="text-gray-600" />
                   <span className="font-medium text-gray-700 truncate flex-1 text-left">{ngo.email}</span>
-                  {copied ? <Check size={16} className="text-green-500" /> : <Copy size={14} className="text-gray-400" />}
-                </button>
+                  <ExternalLink size={14} className="text-gray-400" />
+                </a>
                 {ngo.phone && (
-                  <a href={`tel:${ngo.phone}`} className="flex items-center gap-3 p-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
+                  <button onClick={() => copyToClipboard(ngo.phone!, true)} className="flex items-center gap-3 w-full p-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
                     <Phone size={20} className="text-gray-600" />
                     <span className="font-medium text-gray-700">{ngo.phone}</span>
-                  </a>
+                    {copiedPhone ? <Check size={16} className="text-green-500" /> : <Copy size={14} className="text-gray-400" />}
+                  </button>
                 )}
               </div>
             </div>
@@ -343,7 +385,13 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
 
           <div className="flex gap-8 justify-center sm:justify-start text-sm">
             <div><span className="font-bold">{ngo.posts?.length || 0}</span> histórias</div>
-            <div className="text-gray-400">Cuidando com amor</div>
+            <button 
+              onClick={() => setShowGoalModal(true)}
+              className="text-brand-blue hover:text-blue-600 font-medium cursor-pointer transition-colors flex items-center gap-1"
+            >
+              <Target size={14} />
+              <span className="truncate max-w-[150px]">{ngo.goal}</span>
+            </button>
           </div>
 
           <div className="space-y-1 text-center sm:text-left">
@@ -353,10 +401,13 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
             </div>
             
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{ngo.description}</p>
-            <div className="flex items-center justify-center sm:justify-start gap-1 text-brand-blue font-bold text-sm pt-1">
-              <Target size={14} />
-              <span>Meta: {ngo.goal}</span>
-            </div>
+            <button 
+              onClick={() => setShowContactModal(true)}
+              className="flex items-center justify-center sm:justify-start gap-2 text-white bg-brand-blue hover:bg-blue-600 font-bold text-sm px-4 py-2 rounded-xl mt-2 transition-colors shadow-sm"
+            >
+              <MessageCircle size={16} />
+              <span>Contato</span>
+            </button>
           </div>
         </div>
       </div>
