@@ -4,10 +4,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { BrandedText } from '../utils';
 import { 
   User, Edit2, Save, X, Image as ImageIcon, Upload, LogOut, 
-  Instagram, Mail, Phone, Target, FileText, Plus, Trash2, Loader2
+  Instagram, Mail, Phone, Target, FileText, Plus, Trash2, Loader2, Video
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { User as SupabaseUser } from '@supabase/supabase-js';
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 interface NGOData {
   id: string;
@@ -39,9 +41,12 @@ const NGODashboard: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [editData, setEditData] = useState<NGOData | null>(null);
   const [showPostModal, setShowPostModal] = useState(false);
-  const [newPost, setNewPost] = useState({ url: '', type: 'image', caption: '' });
+  const [newPost, setNewPost] = useState({ file: null as File | null, type: 'image', caption: '' });
   const [postLoading, setPostLoading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const postFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -140,25 +145,96 @@ const NGODashboard: React.FC = () => {
     }
   };
 
+  const handlePostFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file type
+      const isImage = file.type.startsWith('image/');
+      const isVideo = file.type.startsWith('video/');
+      
+      if (!isImage && !isVideo) {
+        toast.error('Apenas imagens e vídeos são permitidos');
+        return;
+      }
+
+      // Validate file size (max 50MB)
+      if (file.size > 50 * 1024 * 1024) {
+        toast.error('O arquivo deve ter no máximo 50MB');
+        return;
+      }
+
+      setNewPost({ 
+        ...newPost, 
+        file, 
+        type: isImage ? 'image' : 'video' 
+      });
+
+      // Create preview URL
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+    }
+  };
+
   const handleAddPost = async () => {
-    if (!ngo || !newPost.url) return;
+    if (!ngo || !newPost.file) {
+      toast.error('Selecione um arquivo para enviar');
+      return;
+    }
+    
     setPostLoading(true);
+    setUploadProgress(0);
 
-    const { error } = await supabase.from('ngo_posts').insert({
-      ngo_id: ngo.id,
-      url: newPost.url,
-      type: newPost.type,
-      caption: newPost.caption || null,
-    });
+    try {
+      // Generate unique file name
+      const fileExt = newPost.file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `${ngo.id}/${fileName}`;
 
-    if (error) {
-      console.error('Error adding post:', error);
-      toast.error('Erro ao adicionar história');
-    } else {
-      toast.success('História adicionada com sucesso!');
-      setShowPostModal(false);
-      setNewPost({ url: '', type: 'image', caption: '' });
-      fetchPosts(ngo.id);
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('ngo-posts')
+        .upload(filePath, newPost.file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        toast.error('Erro ao enviar arquivo: ' + uploadError.message);
+        setPostLoading(false);
+        return;
+      }
+
+      // Get public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('ngo-posts')
+        .getPublicUrl(filePath);
+
+      const publicUrl = publicUrlData.publicUrl;
+
+      // Save post to database
+      const { error: dbError } = await supabase.from('ngo_posts').insert({
+        ngo_id: ngo.id,
+        url: publicUrl,
+        type: newPost.type,
+        caption: newPost.caption || null,
+      });
+
+      if (dbError) {
+        console.error('Database error:', dbError);
+        toast.error('Erro ao salvar história');
+        // Try to delete uploaded file
+        await supabase.storage.from('ngo-posts').remove([filePath]);
+      } else {
+        toast.success('História adicionada com sucesso!');
+        setShowPostModal(false);
+        setNewPost({ file: null, type: 'image', caption: '' });
+        setPreviewUrl(null);
+        fetchPosts(ngo.id);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Erro inesperado ao adicionar história');
     }
 
     setPostLoading(false);
@@ -166,6 +242,22 @@ const NGODashboard: React.FC = () => {
 
   const handleDeletePost = async (postId: string) => {
     if (!confirm('Tem certeza que deseja excluir esta história?')) return;
+
+    const postToDelete = posts.find(p => p.id === postId);
+    
+    // Try to delete from storage first if it's a storage URL
+    if (postToDelete && postToDelete.url.includes('ngo-posts') && ngo) {
+      try {
+        // Extract file path from URL
+        const urlParts = postToDelete.url.split('/ngo-posts/');
+        if (urlParts.length > 1) {
+          const filePath = decodeURIComponent(urlParts[1]);
+          await supabase.storage.from('ngo-posts').remove([filePath]);
+        }
+      } catch (storageError) {
+        console.warn('Could not delete file from storage:', storageError);
+      }
+    }
 
     const { error } = await supabase.from('ngo_posts').delete().eq('id', postId);
 
@@ -175,6 +267,15 @@ const NGODashboard: React.FC = () => {
     } else {
       toast.success('História excluída!');
       setPosts(posts.filter(p => p.id !== postId));
+    }
+  };
+
+  const closePostModal = () => {
+    setShowPostModal(false);
+    setNewPost({ file: null, type: 'image', caption: '' });
+    setPreviewUrl(null);
+    if (postFileInputRef.current) {
+      postFileInputRef.current.value = '';
     }
   };
 
@@ -434,43 +535,63 @@ const NGODashboard: React.FC = () => {
             <h3 className="text-xl font-bold text-gray-900 mb-6">Nova História</h3>
             
             <div className="space-y-4">
+              {/* File Upload Area */}
               <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">Tipo</label>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setNewPost({ ...newPost, type: 'image' })}
-                    className={`flex-1 py-3 rounded-xl border-2 font-medium ${
-                      newPost.type === 'image'
-                        ? 'border-brand-blue bg-blue-50 text-brand-blue'
-                        : 'border-gray-200 text-gray-500'
-                    }`}
-                  >
-                    Imagem
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNewPost({ ...newPost, type: 'video' })}
-                    className={`flex-1 py-3 rounded-xl border-2 font-medium ${
-                      newPost.type === 'video'
-                        ? 'border-brand-blue bg-blue-50 text-brand-blue'
-                        : 'border-gray-200 text-gray-500'
-                    }`}
-                  >
-                    Vídeo
-                  </button>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-700">URL da mídia</label>
+                <label className="text-sm font-bold text-gray-700">Arquivo</label>
                 <input
-                  type="url"
-                  value={newPost.url}
-                  onChange={(e) => setNewPost({ ...newPost, url: e.target.value })}
-                  placeholder="https://..."
-                  className="w-full px-4 py-3 bg-slate-50 border-2 border-transparent focus:border-brand-blue rounded-xl outline-none"
+                  type="file"
+                  ref={postFileInputRef}
+                  accept="image/*,video/*"
+                  onChange={handlePostFileChange}
+                  className="hidden"
                 />
+                
+                {!previewUrl ? (
+                  <button
+                    type="button"
+                    onClick={() => postFileInputRef.current?.click()}
+                    className="w-full py-8 border-2 border-dashed border-gray-300 rounded-xl hover:border-brand-blue hover:bg-blue-50/50 transition-all flex flex-col items-center justify-center gap-2"
+                  >
+                    <div className="w-12 h-12 bg-brand-blue/10 rounded-full flex items-center justify-center">
+                      <Upload size={24} className="text-brand-blue" />
+                    </div>
+                    <span className="text-sm text-gray-500">Clique para selecionar</span>
+                    <span className="text-xs text-gray-400">Imagem ou vídeo (máx. 50MB)</span>
+                  </button>
+                ) : (
+                  <div className="relative">
+                    {newPost.type === 'image' ? (
+                      <img 
+                        src={previewUrl} 
+                        alt="Preview" 
+                        className="w-full h-48 object-cover rounded-xl"
+                      />
+                    ) : (
+                      <video 
+                        src={previewUrl} 
+                        className="w-full h-48 object-cover rounded-xl"
+                        controls
+                      />
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPreviewUrl(null);
+                        setNewPost({ ...newPost, file: null });
+                        if (postFileInputRef.current) {
+                          postFileInputRef.current.value = '';
+                        }
+                      }}
+                      className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+                    <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/60 text-white text-xs rounded-lg flex items-center gap-1">
+                      {newPost.type === 'image' ? <ImageIcon size={12} /> : <Video size={12} />}
+                      {newPost.type === 'image' ? 'Imagem' : 'Vídeo'}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -486,18 +607,27 @@ const NGODashboard: React.FC = () => {
 
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setShowPostModal(false)}
+                onClick={closePostModal}
                 className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl font-medium"
               >
                 Cancelar
               </button>
               <button
                 onClick={handleAddPost}
-                disabled={!newPost.url || postLoading}
+                disabled={!newPost.file || postLoading}
                 className="flex-1 py-3 bg-brand-blue text-white rounded-xl font-medium disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {postLoading ? <Loader2 size={18} className="animate-spin" /> : null}
-                Publicar
+                {postLoading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Enviando...
+                  </>
+                ) : (
+                  <>
+                    <Upload size={18} />
+                    Publicar
+                  </>
+                )}
               </button>
             </div>
           </div>
