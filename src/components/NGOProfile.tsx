@@ -390,7 +390,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
               className="text-brand-blue hover:text-blue-600 font-medium cursor-pointer transition-colors flex items-center gap-1"
             >
               <Target size={14} />
-              <span className="truncate max-w-[150px]">{ngo.goal}</span>
+              <span className="truncate max-w-[150px]">Nossa meta</span>
             </button>
           </div>
 
