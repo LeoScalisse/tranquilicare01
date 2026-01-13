@@ -186,17 +186,22 @@ const NGODashboard: React.FC = () => {
   };
 
   const uploadFileWithProgress = async (file: File, filePath: string): Promise<{ error: Error | null }> => {
-    // Get the current user session token
+    // Storage REST upload requires BOTH apikey + a valid user JWT (to satisfy RLS)
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData?.session?.access_token;
-    
+
     if (!accessToken) {
       return { error: new Error('Usuário não autenticado') };
     }
 
+    const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+    if (!apiKey) {
+      return { error: new Error('Configuração ausente (publishable key)') };
+    }
+
     return new Promise((resolve) => {
       const xhr = new XMLHttpRequest();
-      
+
       xhr.upload.addEventListener('progress', (event) => {
         if (event.lengthComputable) {
           const percentComplete = Math.round((event.loaded / event.total) * 100);
@@ -208,7 +213,9 @@ const NGODashboard: React.FC = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve({ error: null });
         } else {
-          resolve({ error: new Error(`Upload failed with status ${xhr.status}`) });
+          // include response body when possible to help debugging
+          const body = xhr.responseText ? ` - ${xhr.responseText}` : '';
+          resolve({ error: new Error(`Upload failed with status ${xhr.status}${body}`) });
         }
       });
 
@@ -216,9 +223,17 @@ const NGODashboard: React.FC = () => {
         resolve({ error: new Error('Upload failed') });
       });
 
-      const url = `${SUPABASE_URL}/storage/v1/object/ngo-posts/${filePath}`;
-      xhr.open('POST', url);
+      const encodedPath = filePath
+        .split('/')
+        .map((p) => encodeURIComponent(p))
+        .join('/');
+
+      const url = `${SUPABASE_URL}/storage/v1/object/ngo-posts/${encodedPath}`;
+      // Supabase Storage expects PUT for raw binary uploads
+      xhr.open('PUT', url);
       xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
+      xhr.setRequestHeader('apikey', apiKey);
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
       xhr.setRequestHeader('x-upsert', 'false');
       xhr.send(file);
     });
