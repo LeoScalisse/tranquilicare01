@@ -8,9 +8,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { User as SupabaseUser } from '@supabase/supabase-js';
-import { Progress } from '@/components/ui/progress';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 
 interface NGOData {
   id: string;
@@ -44,7 +42,7 @@ const NGODashboard: React.FC = () => {
   const [showPostModal, setShowPostModal] = useState(false);
   const [newPost, setNewPost] = useState({ file: null as File | null, type: 'image', caption: '' });
   const [postLoading, setPostLoading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStage, setUploadStage] = useState<'idle' | 'uploading' | 'saving'>('idle');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const postFileInputRef = useRef<HTMLInputElement>(null);
@@ -185,58 +183,18 @@ const NGODashboard: React.FC = () => {
     }
   };
 
-  const uploadFileWithProgress = async (file: File, filePath: string): Promise<{ error: Error | null }> => {
-    // Storage REST upload requires BOTH apikey + a valid user JWT (to satisfy RLS)
-    const { data: sessionData } = await supabase.auth.getSession();
-    const accessToken = sessionData?.session?.access_token;
+  const uploadFileToStorage = async (file: File, filePath: string): Promise<{ error: Error | null }> => {
+    const { error } = await supabase.storage
+      .from('ngo-posts')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+      });
 
-    if (!accessToken) {
-      return { error: new Error('Usuário não autenticado') };
+    if (error) {
+      return { error: new Error(error.message) };
     }
-
-    const apiKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
-    if (!apiKey) {
-      return { error: new Error('Configuração ausente (publishable key)') };
-    }
-
-    return new Promise((resolve) => {
-      const xhr = new XMLHttpRequest();
-
-      xhr.upload.addEventListener('progress', (event) => {
-        if (event.lengthComputable) {
-          const percentComplete = Math.round((event.loaded / event.total) * 100);
-          setUploadProgress(percentComplete);
-        }
-      });
-
-      xhr.addEventListener('load', () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          resolve({ error: null });
-        } else {
-          // include response body when possible to help debugging
-          const body = xhr.responseText ? ` - ${xhr.responseText}` : '';
-          resolve({ error: new Error(`Upload failed with status ${xhr.status}${body}`) });
-        }
-      });
-
-      xhr.addEventListener('error', () => {
-        resolve({ error: new Error('Upload failed') });
-      });
-
-      const encodedPath = filePath
-        .split('/')
-        .map((p) => encodeURIComponent(p))
-        .join('/');
-
-      const url = `${SUPABASE_URL}/storage/v1/object/ngo-posts/${encodedPath}`;
-      // Supabase Storage expects PUT for raw binary uploads
-      xhr.open('PUT', url);
-      xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
-      xhr.setRequestHeader('apikey', apiKey);
-      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-      xhr.setRequestHeader('x-upsert', 'false');
-      xhr.send(file);
-    });
+    return { error: null };
   };
 
   const handleAddPost = async () => {
@@ -246,7 +204,7 @@ const NGODashboard: React.FC = () => {
     }
     
     setPostLoading(true);
-    setUploadProgress(0);
+    setUploadStage('uploading');
 
     try {
       // Generate unique file name
@@ -254,18 +212,18 @@ const NGODashboard: React.FC = () => {
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       const filePath = `${ngo.id}/${fileName}`;
 
-      // Upload to storage with progress tracking
-      const { error: uploadError } = await uploadFileWithProgress(newPost.file, filePath);
+      // Upload to storage using SDK
+      const { error: uploadError } = await uploadFileToStorage(newPost.file, filePath);
 
       if (uploadError) {
         console.error('Upload error:', uploadError);
         toast.error('Erro ao enviar arquivo: ' + uploadError.message);
         setPostLoading(false);
-        setUploadProgress(0);
+        setUploadStage('idle');
         return;
       }
 
-      setUploadProgress(100);
+      setUploadStage('saving');
 
       // Get public URL
       const { data: publicUrlData } = supabase.storage
@@ -292,7 +250,6 @@ const NGODashboard: React.FC = () => {
         setShowPostModal(false);
         setNewPost({ file: null, type: 'image', caption: '' });
         setPreviewUrl(null);
-        setUploadProgress(0);
         fetchPosts(ngo.id);
       }
     } catch (error) {
@@ -300,6 +257,7 @@ const NGODashboard: React.FC = () => {
       toast.error('Erro inesperado ao adicionar história');
     }
 
+    setUploadStage('idle');
     setPostLoading(false);
   };
 
@@ -674,17 +632,23 @@ const NGODashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Upload Progress Bar */}
+            {/* Upload Stage Indicator */}
             {postLoading && (
               <div className="mt-4 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600 font-medium">Enviando arquivo...</span>
-                  <span className="text-brand-blue font-bold">{uploadProgress}%</span>
+                <div className="flex items-center gap-3">
+                  <Loader2 size={18} className="animate-spin text-brand-blue" />
+                  <span className="text-gray-700 font-medium">
+                    {uploadStage === 'uploading' ? 'Enviando arquivo...' : 'Salvando história...'}
+                  </span>
                 </div>
-                <Progress value={uploadProgress} className="h-3" />
-                {uploadProgress === 100 && (
-                  <p className="text-xs text-green-600 font-medium">Upload completo! Salvando...</p>
-                )}
+                <div className="flex gap-2">
+                  <div className={`h-2 flex-1 rounded-full transition-colors ${uploadStage === 'uploading' || uploadStage === 'saving' ? 'bg-brand-blue' : 'bg-gray-200'}`} />
+                  <div className={`h-2 flex-1 rounded-full transition-colors ${uploadStage === 'saving' ? 'bg-brand-blue' : 'bg-gray-200'}`} />
+                </div>
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Enviando</span>
+                  <span>Salvando</span>
+                </div>
               </div>
             )}
 
@@ -704,7 +668,7 @@ const NGODashboard: React.FC = () => {
                 {postLoading ? (
                   <>
                     <Loader2 size={18} className="animate-spin" />
-                    {uploadProgress < 100 ? 'Enviando...' : 'Salvando...'}
+                    {uploadStage === 'uploading' ? 'Enviando...' : 'Salvando...'}
                   </>
                 ) : (
                   <>
