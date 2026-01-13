@@ -11,7 +11,6 @@ import { User as SupabaseUser } from '@supabase/supabase-js';
 import { Progress } from '@/components/ui/progress';
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 interface NGOData {
   id: string;
@@ -186,7 +185,15 @@ const NGODashboard: React.FC = () => {
     }
   };
 
-  const uploadFileWithProgress = (file: File, filePath: string): Promise<{ error: Error | null }> => {
+  const uploadFileWithProgress = async (file: File, filePath: string): Promise<{ error: Error | null }> => {
+    // Get the current user session token
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    
+    if (!accessToken) {
+      return { error: new Error('Usuário não autenticado') };
+    }
+
     return new Promise((resolve) => {
       const xhr = new XMLHttpRequest();
       
@@ -211,7 +218,7 @@ const NGODashboard: React.FC = () => {
 
       const url = `${SUPABASE_URL}/storage/v1/object/ngo-posts/${filePath}`;
       xhr.open('POST', url);
-      xhr.setRequestHeader('Authorization', `Bearer ${SUPABASE_KEY}`);
+      xhr.setRequestHeader('Authorization', `Bearer ${accessToken}`);
       xhr.setRequestHeader('x-upsert', 'false');
       xhr.send(file);
     });
