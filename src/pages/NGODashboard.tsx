@@ -571,8 +571,8 @@ const NGODashboard: React.FC = () => {
 
       {/* Add Post Modal */}
       {showPostModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-3xl p-8 w-full max-w-md">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl p-8 w-full max-w-md my-auto max-h-[90vh] overflow-y-auto">
             <h3 className="text-xl font-bold text-gray-900 mb-6">Nova História</h3>
             
             <div className="space-y-4">
@@ -602,8 +602,8 @@ const NGODashboard: React.FC = () => {
                 ) : (
                   <div className="relative flex justify-center bg-gray-100 rounded-xl overflow-hidden">
                     {newPost.type === 'image' ? (
-                      /* Aspect ratio 4:5 for images */
-                      <div className="relative w-full" style={{ aspectRatio: '4/5', maxHeight: '400px' }}>
+                      /* Aspect ratio 4:5 for images - limited height for modal */
+                      <div className="relative w-full" style={{ aspectRatio: '4/5', maxHeight: '250px' }}>
                         <img 
                           src={previewUrl} 
                           alt="Preview" 
@@ -611,8 +611,8 @@ const NGODashboard: React.FC = () => {
                         />
                       </div>
                     ) : (
-                      /* Aspect ratio 9:16 for videos */
-                      <div className="relative" style={{ aspectRatio: '9/16', maxHeight: '400px' }}>
+                      /* Aspect ratio 9:16 for videos - limited height for modal */
+                      <div className="relative" style={{ aspectRatio: '9/16', maxHeight: '250px' }}>
                         <video 
                           src={previewUrl} 
                           className="w-full h-full object-cover"
