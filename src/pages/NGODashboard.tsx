@@ -147,6 +147,10 @@ const NGODashboard: React.FC = () => {
     }
   };
 
+  // Max file sizes: 1.5GB for videos, 50MB for images
+  const MAX_VIDEO_SIZE = 1.5 * 1024 * 1024 * 1024; // 1.5 GB
+  const MAX_IMAGE_SIZE = 50 * 1024 * 1024; // 50 MB
+
   const handlePostFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -159,9 +163,14 @@ const NGODashboard: React.FC = () => {
         return;
       }
 
-      // Validate file size (max 50MB)
-      if (file.size > 50 * 1024 * 1024) {
-        toast.error('O arquivo deve ter no máximo 50MB');
+      // Validate file size based on type
+      if (isVideo && file.size > MAX_VIDEO_SIZE) {
+        toast.error('Vídeos devem ter no máximo 1,5 GB');
+        return;
+      }
+      
+      if (isImage && file.size > MAX_IMAGE_SIZE) {
+        toast.error('Imagens devem ter no máximo 50 MB');
         return;
       }
 
@@ -588,22 +597,28 @@ const NGODashboard: React.FC = () => {
                       <Upload size={24} className="text-brand-blue" />
                     </div>
                     <span className="text-sm text-gray-500">Clique para selecionar</span>
-                    <span className="text-xs text-gray-400">Imagem ou vídeo (máx. 50MB)</span>
+                    <span className="text-xs text-gray-400">Imagem (máx. 50MB) • Vídeo (máx. 1,5GB)</span>
                   </button>
                 ) : (
-                  <div className="relative">
+                  <div className="relative flex justify-center bg-gray-100 rounded-xl overflow-hidden">
                     {newPost.type === 'image' ? (
-                      <img 
-                        src={previewUrl} 
-                        alt="Preview" 
-                        className="w-full h-48 object-cover rounded-xl"
-                      />
+                      /* Aspect ratio 4:5 for images */
+                      <div className="relative w-full" style={{ aspectRatio: '4/5', maxHeight: '400px' }}>
+                        <img 
+                          src={previewUrl} 
+                          alt="Preview" 
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
                     ) : (
-                      <video 
-                        src={previewUrl} 
-                        className="w-full h-48 object-cover rounded-xl"
-                        controls
-                      />
+                      /* Aspect ratio 9:16 for videos */
+                      <div className="relative" style={{ aspectRatio: '9/16', maxHeight: '400px' }}>
+                        <video 
+                          src={previewUrl} 
+                          className="w-full h-full object-cover"
+                          controls
+                        />
+                      </div>
                     )}
                     <button
                       type="button"
