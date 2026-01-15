@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, type PanInfo } from 'framer-motion';
 import { NGOPost } from '../types';
-import { Share2, CircleCheck, UserPlus, Play, Loader2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Share2, CircleCheck, UserPlus, Play, Loader2 } from 'lucide-react';
 interface StoriesFeedProps {
   stories: NGOPost[];
   onSelectNGO: (ngoId: string) => void;
@@ -148,7 +148,7 @@ const StoriesFeed: React.FC<StoriesFeedProps> = ({
     }));
   };
   if (stories.length === 0) {
-    return <div className="h-[calc(100vh-80px)] bg-black flex flex-col items-center justify-center text-white p-8 text-center">
+    return <div className="h-full bg-black flex flex-col items-center justify-center text-white p-8 text-center">
         <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mb-6">
           <Play size={48} className="text-brand-blue" />
         </div>
@@ -159,7 +159,7 @@ const StoriesFeed: React.FC<StoriesFeedProps> = ({
       </div>;
   }
   const currentStory = stories[currentIndex];
-  return <div className="h-[calc(100vh-80px)] md:h-[calc(100vh-64px)] w-full bg-black relative overflow-hidden select-none">
+  return <div className="h-full w-full bg-black relative overflow-hidden select-none">
       {/* Subtle ambient glow */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-blue/10 blur-3xl" />
@@ -270,28 +270,7 @@ const StoriesFeed: React.FC<StoriesFeedProps> = ({
       })}
       </div>
 
-      {/* Navigation dots */}
-      <div className="absolute right-4 top-1/2 -translate-y-1/2 z-50 flex flex-col gap-2">
-        {stories.map((_, index) => {})}
-      </div>
 
-      {/* Instruction hint */}
-      <div className="pointer-events-none absolute bottom-6 left-1/2 -translate-x-1/2 z-50">
-        <div className="flex items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-xs text-white/50 backdrop-blur-sm border border-white/10">
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10">
-            <ChevronUp size={12} />
-          </span>
-          Arraste ou role
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10">
-            <ChevronDown size={12} />
-          </span>
-        </div>
-      </div>
-
-      {/* Counter */}
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 z-50">
-        
-      </div>
     </div>;
 };
 export default StoriesFeed;
