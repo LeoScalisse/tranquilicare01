@@ -39,25 +39,30 @@ const StoryItem: React.FC<{ story: NGOPost; onSelectNGO: (ngoId: string) => void
       {/* Background Media */}
       <div className="absolute inset-0 w-full h-full flex items-center justify-center">
         {story.type === 'video' ? (
-          <video 
-            ref={videoRef}
-            src={story.url} 
-            className={`w-full h-full object-cover sm:object-contain bg-black transition-opacity duration-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
-            autoPlay 
-            loop 
-            muted 
-            playsInline 
-            preload="auto"
-            onCanPlay={() => setIsLoaded(true)}
-            onLoadedData={() => setIsLoaded(true)}
-          />
+          <div className="relative w-full h-full flex items-center justify-center">
+            <video 
+              ref={videoRef}
+              src={story.url} 
+              className={`max-w-full max-h-full bg-black transition-opacity duration-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+              style={{ aspectRatio: '9/16', objectFit: 'contain' }}
+              autoPlay 
+              loop 
+              playsInline 
+              preload="auto"
+              onCanPlay={() => setIsLoaded(true)}
+              onLoadedData={() => setIsLoaded(true)}
+            />
+          </div>
         ) : (
-          <img 
-            src={story.url} 
-            className={`w-full h-full object-cover sm:object-contain bg-black transition-opacity duration-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`} 
-            alt="Story content" 
-            onLoad={() => setIsLoaded(true)}
-          />
+          <div className="relative w-full h-full flex items-center justify-center">
+            <img 
+              src={story.url} 
+              className={`max-w-full max-h-full bg-black transition-opacity duration-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+              style={{ aspectRatio: '4/5', objectFit: 'contain' }}
+              alt="Story content" 
+              onLoad={() => setIsLoaded(true)}
+            />
+          </div>
         )}
         {/* Gradient Overlay */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/80" />

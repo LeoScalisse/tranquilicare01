@@ -151,7 +151,10 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
           </button>
           
           <div 
-            className="relative w-full max-w-2xl aspect-[4/5] sm:aspect-square bg-black rounded-3xl overflow-hidden shadow-2xl animate-scale-up"
+            className={`relative w-full bg-black rounded-3xl overflow-hidden shadow-2xl animate-scale-up ${
+              zoomedPost.type === 'video' ? 'max-w-md' : 'max-w-lg'
+            }`}
+            style={{ aspectRatio: zoomedPost.type === 'video' ? '9/16' : '4/5' }}
             onClick={e => e.stopPropagation()}
           >
             {zoomedPost.type === 'video' ? (
