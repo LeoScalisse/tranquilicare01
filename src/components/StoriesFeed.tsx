@@ -148,7 +148,7 @@ const StoriesFeed: React.FC<StoriesFeedProps> = ({
     }));
   };
   if (stories.length === 0) {
-    return <div className="h-full bg-black flex flex-col items-center justify-center text-white p-8 text-center">
+    return <div className="h-[calc(100vh-80px)] md:h-[calc(100vh-64px)] bg-black flex flex-col items-center justify-center text-white p-8 text-center">
         <div className="w-24 h-24 bg-white/5 rounded-full flex items-center justify-center mb-6">
           <Play size={48} className="text-brand-blue" />
         </div>
@@ -159,7 +159,7 @@ const StoriesFeed: React.FC<StoriesFeedProps> = ({
       </div>;
   }
   const currentStory = stories[currentIndex];
-  return <div className="h-full w-full bg-black relative overflow-hidden select-none">
+  return <div className="h-[calc(100vh-80px)] md:h-[calc(100vh-64px)] w-full bg-black relative overflow-hidden select-none">
       {/* Subtle ambient glow */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute left-1/2 top-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-blue/10 blur-3xl" />
