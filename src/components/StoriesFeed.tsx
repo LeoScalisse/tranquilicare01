@@ -13,15 +13,20 @@ interface StoriesFeedProps {
   onSelectNGO: (ngoId: string) => void;
 }
 
-const StoryItem: React.FC<{ story: NGOPost; onSelectNGO: (ngoId: string) => void }> = ({ story, onSelectNGO }) => {
+const StoryItem: React.FC<{ story: NGOPost; onSelectNGO: (ngoId: string) => void; isActive: boolean }> = ({ story, onSelectNGO, isActive }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (story.type === 'video' && videoRef.current) {
-      videoRef.current.load();
+      if (isActive) {
+        videoRef.current.play().catch(() => {});
+      } else {
+        videoRef.current.pause();
+        videoRef.current.currentTime = 0;
+      }
     }
-  }, [story.url]);
+  }, [isActive, story.type]);
 
   return (
     <section className="h-full w-full relative snap-start flex items-center justify-center overflow-hidden bg-black">
@@ -45,7 +50,6 @@ const StoryItem: React.FC<{ story: NGOPost; onSelectNGO: (ngoId: string) => void
               src={story.url} 
               className={`max-w-full max-h-full bg-black transition-opacity duration-700 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
               style={{ aspectRatio: '9/16', objectFit: 'contain' }}
-              autoPlay 
               loop 
               playsInline 
               preload="auto"
@@ -122,6 +126,31 @@ const StoryItem: React.FC<{ story: NGOPost; onSelectNGO: (ngoId: string) => void
 
 const StoriesFeed: React.FC<StoriesFeedProps> = ({ stories, onSelectNGO }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const index = Number(entry.target.getAttribute('data-index'));
+            if (!isNaN(index)) {
+              setActiveIndex(index);
+            }
+          }
+        });
+      },
+      { root: container, threshold: 0.6 }
+    );
+
+    const items = container.querySelectorAll('[data-index]');
+    items.forEach((item) => observer.observe(item));
+
+    return () => observer.disconnect();
+  }, [stories]);
 
   if (stories.length === 0) {
     return (
@@ -142,8 +171,10 @@ const StoriesFeed: React.FC<StoriesFeedProps> = ({ stories, onSelectNGO }) => {
       ref={containerRef}
       className="h-[calc(100vh-80px)] md:h-[calc(100vh-64px)] w-full overflow-y-scroll no-scrollbar bg-black snap-y snap-mandatory"
     >
-      {stories.map((story) => (
-        <StoryItem key={story.id} story={story} onSelectNGO={onSelectNGO} />
+      {stories.map((story, index) => (
+        <div key={story.id} data-index={index} className="h-full w-full">
+          <StoryItem story={story} onSelectNGO={onSelectNGO} isActive={index === activeIndex} />
+        </div>
       ))}
     </div>
   );
