@@ -21,29 +21,71 @@ const TranquiliCareApp: React.FC = () => {
   }, []);
   const fetchApprovedNGOs = async () => {
     setLoading(true);
-    const {
-      data,
-      error
-    } = await supabase.from('ngos').select('*').eq('status', 'approved');
-    if (error) {
-      console.error('Error fetching NGOs:', error);
-    } else if (data) {
-      const formattedNGOs: NGO[] = data.map(ngo => ({
-        id: ngo.id,
-        name: ngo.name,
-        description: ngo.description,
-        category: ngo.category,
-        goal: ngo.goal,
-        image: ngo.image || '',
-        email: ngo.email,
-        instagram: ngo.instagram,
-        phone: ngo.phone || undefined,
-        verified: ngo.verified || false,
-        status: ngo.status as 'pending' | 'approved' | 'rejected',
-        posts: []
-      }));
-      setNgos(formattedNGOs);
+    
+    // Fetch approved NGOs
+    const { data: ngosData, error: ngosError } = await supabase
+      .from('ngos')
+      .select('*')
+      .eq('status', 'approved');
+    
+    if (ngosError) {
+      console.error('Error fetching NGOs:', ngosError);
+      setLoading(false);
+      return;
     }
+    
+    if (!ngosData || ngosData.length === 0) {
+      setNgos([]);
+      setLoading(false);
+      return;
+    }
+    
+    // Fetch all posts for approved NGOs
+    const ngoIds = ngosData.map(ngo => ngo.id);
+    const { data: postsData, error: postsError } = await supabase
+      .from('ngo_posts')
+      .select('*')
+      .in('ngo_id', ngoIds)
+      .order('created_at', { ascending: false });
+    
+    if (postsError) {
+      console.error('Error fetching posts:', postsError);
+    }
+    
+    // Group posts by ngo_id
+    const postsByNgoId: Record<string, NGOPost[]> = {};
+    if (postsData) {
+      postsData.forEach(post => {
+        if (!postsByNgoId[post.ngo_id]) {
+          postsByNgoId[post.ngo_id] = [];
+        }
+        postsByNgoId[post.ngo_id].push({
+          id: post.id,
+          url: post.url,
+          type: post.type as 'image' | 'video',
+          caption: post.caption || undefined,
+          timestamp: new Date(post.created_at).getTime()
+        });
+      });
+    }
+    
+    // Format NGOs with their posts
+    const formattedNGOs: NGO[] = ngosData.map(ngo => ({
+      id: ngo.id,
+      name: ngo.name,
+      description: ngo.description,
+      category: ngo.category,
+      goal: ngo.goal,
+      image: ngo.image || '',
+      email: ngo.email,
+      instagram: ngo.instagram,
+      phone: ngo.phone || undefined,
+      verified: ngo.verified || false,
+      status: ngo.status as 'pending' | 'approved' | 'rejected',
+      posts: postsByNgoId[ngo.id] || []
+    }));
+    
+    setNgos(formattedNGOs);
     setLoading(false);
   };
   const handleRegisterComplete = (ngoName: string) => {
