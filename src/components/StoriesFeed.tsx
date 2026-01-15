@@ -16,6 +16,7 @@ interface StoriesFeedProps {
 const StoryItem: React.FC<{ story: NGOPost; onSelectNGO: (ngoId: string) => void; isActive: boolean }> = ({ story, onSelectNGO, isActive }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [progress, setProgress] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
@@ -27,10 +28,18 @@ const StoryItem: React.FC<{ story: NGOPost; onSelectNGO: (ngoId: string) => void
         if (!isActive) {
           videoRef.current.currentTime = 0;
           setIsPaused(false);
+          setProgress(0);
         }
       }
     }
   }, [isActive, isPaused, story.type]);
+
+  const handleTimeUpdate = () => {
+    if (videoRef.current) {
+      const currentProgress = (videoRef.current.currentTime / videoRef.current.duration) * 100;
+      setProgress(currentProgress);
+    }
+  };
 
   const handleTogglePlay = () => {
     if (story.type === 'video') {
@@ -43,6 +52,18 @@ const StoryItem: React.FC<{ story: NGOPost; onSelectNGO: (ngoId: string) => void
       className="h-full w-full relative snap-start flex items-center justify-center overflow-hidden bg-black"
       onClick={handleTogglePlay}
     >
+      {/* Progress Bar */}
+      {story.type === 'video' && (
+        <div className="absolute top-0 left-0 right-0 z-40 p-3">
+          <div className="w-full h-1 bg-white/30 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-white rounded-full transition-all duration-100"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Pause Indicator */}
       {isPaused && story.type === 'video' && (
         <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
@@ -77,6 +98,7 @@ const StoryItem: React.FC<{ story: NGOPost; onSelectNGO: (ngoId: string) => void
               preload="auto"
               onCanPlay={() => setIsLoaded(true)}
               onLoadedData={() => setIsLoaded(true)}
+              onTimeUpdate={handleTimeUpdate}
             />
           </div>
         ) : (
