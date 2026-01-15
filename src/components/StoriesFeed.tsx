@@ -15,21 +15,43 @@ interface StoriesFeedProps {
 
 const StoryItem: React.FC<{ story: NGOPost; onSelectNGO: (ngoId: string) => void; isActive: boolean }> = ({ story, onSelectNGO, isActive }) => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
     if (story.type === 'video' && videoRef.current) {
-      if (isActive) {
+      if (isActive && !isPaused) {
         videoRef.current.play().catch(() => {});
       } else {
         videoRef.current.pause();
-        videoRef.current.currentTime = 0;
+        if (!isActive) {
+          videoRef.current.currentTime = 0;
+          setIsPaused(false);
+        }
       }
     }
-  }, [isActive, story.type]);
+  }, [isActive, isPaused, story.type]);
+
+  const handleTogglePlay = () => {
+    if (story.type === 'video') {
+      setIsPaused(!isPaused);
+    }
+  };
 
   return (
-    <section className="h-full w-full relative snap-start flex items-center justify-center overflow-hidden bg-black">
+    <section 
+      className="h-full w-full relative snap-start flex items-center justify-center overflow-hidden bg-black"
+      onClick={handleTogglePlay}
+    >
+      {/* Pause Indicator */}
+      {isPaused && story.type === 'video' && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
+          <div className="w-20 h-20 bg-black/50 backdrop-blur-sm rounded-full flex items-center justify-center">
+            <Play size={40} className="text-white ml-1" />
+          </div>
+        </div>
+      )}
+
       {/* Loading Overlay */}
       {!isLoaded && (
         <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-zinc-900 text-white gap-4">
