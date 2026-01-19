@@ -8,6 +8,7 @@ import NGORegistration from '../components/NGORegistration';
 import NGOProfile from '../components/NGOProfile';
 import StoriesFeed from '../components/StoriesFeed';
 import PendingVerification from '../components/PendingVerification';
+import logo from '@/assets/logo.png';
 const TranquiliCareApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.HOME);
   const [ngos, setNgos] = useState<NGO[]>([]);
@@ -138,6 +139,9 @@ const TranquiliCareApp: React.FC = () => {
       
       {currentView !== View.STORIES_FEED && <footer className="bg-gray-50 border-t border-gray-200 py-8 md:py-12 mt-12 mb-20 md:mb-0">
           <div className="max-w-6xl mx-auto px-4 text-center text-gray-500 text-sm">
+            <div className="flex justify-center mb-4">
+              <img src={logo} alt="TranquiliCare" className="w-12 h-12 rounded-xl shadow-md" />
+            </div>
             <p className="mb-2 font-bold text-gray-400">TRANQUILI<span className="text-brand-yellow">CARE</span></p>
             <p>© 2025 TranquiliCare. Conectando corações, mudando o mundo.</p>
           </div>

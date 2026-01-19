@@ -2,6 +2,7 @@ import React from 'react';
 import { View } from '../types';
 import { BrandedText } from '../utils';
 import { ArrowRight, HeartHandshake, Globe, UserPlus, Play } from 'lucide-react';
+import logo from '@/assets/logo.png';
 interface HeroProps {
   setCurrentView: (view: View) => void;
 }
@@ -13,10 +14,13 @@ const Hero: React.FC<HeroProps> = ({
       
       <div className="max-w-6xl mx-auto px-4 py-12 md:py-24 relative z-10 w-full">
         <div className="grid md:grid-cols-2 gap-12 items-center">
-          <div className="space-y-8">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-yellow/20 text-yellow-700 text-sm font-semibold">
-              <span className="w-2 h-2 rounded-full bg-brand-yellow animate-pulse"></span>
-              Cuidar faz bem
+           <div className="space-y-8">
+            <div className="flex items-center gap-4 mb-4">
+              <img src={logo} alt="TranquiliCare" className="w-16 h-16 rounded-2xl shadow-lg" />
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-brand-yellow/20 text-yellow-700 text-sm font-semibold">
+                <span className="w-2 h-2 rounded-full bg-brand-yellow animate-pulse"></span>
+                Cuidar faz bem
+              </div>
             </div>
             
             <h1 className="text-4xl md:text-6xl font-bold text-gray-900 leading-tight">
