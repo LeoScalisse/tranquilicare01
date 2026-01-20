@@ -10,13 +10,66 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// TranquiliCare product price ID for optional tips
-const PLATFORM_TIP_PRICE_ID = "price_1SrUC5LUm31fFfq0B7MaGSE0";
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+const RATE_LIMIT_MAX_REQUESTS = 10; // Max 10 requests per minute per IP
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
+// Allowed domains for return URL validation
+const ALLOWED_DOMAINS = [
+  "tranquilicare.lovable.app",
+  "id-preview--332e5c94-0af4-41b8-8939-57816c07db83.lovable.app",
+  "localhost",
+  "127.0.0.1",
+];
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[STRIPE-CREATE-DONATION] ${step}${detailsStr}`);
 };
+
+// Simple in-memory rate limiter
+function checkRateLimit(ip: string): boolean {
+  const now = Date.now();
+  const record = rateLimitMap.get(ip);
+  
+  // Clean up old entries periodically
+  if (rateLimitMap.size > 1000) {
+    for (const [key, value] of rateLimitMap.entries()) {
+      if (value.resetTime < now) {
+        rateLimitMap.delete(key);
+      }
+    }
+  }
+  
+  if (!record || record.resetTime < now) {
+    // First request or window expired
+    rateLimitMap.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  
+  if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
+    return false;
+  }
+  
+  record.count++;
+  return true;
+}
+
+// Validate return URL to prevent open redirect
+function validateReturnUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname;
+    
+    // Check if hostname matches any allowed domain
+    return ALLOWED_DOMAINS.some(domain => 
+      hostname === domain || hostname.endsWith(`.${domain}`)
+    );
+  } catch {
+    return false;
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -25,6 +78,22 @@ Deno.serve(async (req) => {
 
   try {
     logStep("Function started");
+    
+    // Rate limiting check
+    const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
+                     req.headers.get("x-real-ip") || 
+                     "unknown";
+    
+    if (!checkRateLimit(clientIp)) {
+      logStep("Rate limit exceeded", { ip: clientIp });
+      return new Response(
+        JSON.stringify({ error: "Muitas tentativas. Por favor, aguarde um momento e tente novamente." }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 429,
+        }
+      );
+    }
 
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -38,7 +107,13 @@ Deno.serve(async (req) => {
     if (!amount || amount < 100) throw new Error("Minimum donation is R$1,00");
     if (!returnUrl) throw new Error("Missing returnUrl");
     
-    logStep("Request params", { ngoId, amount, returnUrl, ngoName, platformTipAmount });
+    // Validate return URL to prevent open redirect attacks
+    if (!validateReturnUrl(returnUrl)) {
+      logStep("Invalid return URL", { returnUrl });
+      throw new Error("Invalid return URL");
+    }
+    
+    logStep("Request params", { ngoId, amount, returnUrl: returnUrl.substring(0, 50), ngoName, platformTipAmount });
 
     // Get NGO's Stripe account
     const { data: stripeAccount, error: accountError } = await supabaseAdmin

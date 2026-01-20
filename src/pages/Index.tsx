@@ -23,11 +23,11 @@ const TranquiliCareApp: React.FC = () => {
   const fetchApprovedNGOs = async () => {
     setLoading(true);
     
-    // Fetch approved NGOs
+    // Fetch approved NGOs using the public view for security
+    // The view excludes sensitive fields like owner_id, email, phone
     const { data: ngosData, error: ngosError } = await supabase
-      .from('ngos')
-      .select('*')
-      .eq('status', 'approved');
+      .from('ngos_public')
+      .select('*');
     
     if (ngosError) {
       console.error('Error fetching NGOs:', ngosError);
@@ -70,7 +70,7 @@ const TranquiliCareApp: React.FC = () => {
       });
     }
     
-    // Format NGOs with their posts
+    // Format NGOs with their posts (note: email/phone not available from public view)
     const formattedNGOs: NGO[] = ngosData.map(ngo => ({
       id: ngo.id,
       name: ngo.name,
@@ -78,9 +78,9 @@ const TranquiliCareApp: React.FC = () => {
       category: ngo.category,
       goal: ngo.goal,
       image: ngo.image || '',
-      email: ngo.email,
+      email: '', // Not exposed in public view - fetched separately when viewing profile
       instagram: ngo.instagram,
-      phone: ngo.phone || undefined,
+      phone: undefined, // Not exposed in public view
       verified: ngo.verified || false,
       status: ngo.status as 'pending' | 'approved' | 'rejected',
       posts: postsByNgoId[ngo.id] || []
@@ -93,8 +93,26 @@ const TranquiliCareApp: React.FC = () => {
     setPendingNGOName(ngoName);
     setCurrentView(View.PENDING_VERIFICATION);
   };
-  const handleSelectNGO = (ngo: NGO) => {
-    setViewingNGO(ngo);
+  const handleSelectNGO = async (ngo: NGO) => {
+    // Fetch full NGO details including contact info for the profile view
+    const { data: fullNgoData, error } = await supabase
+      .from('ngos')
+      .select('*')
+      .eq('id', ngo.id)
+      .eq('status', 'approved')
+      .single();
+    
+    if (error || !fullNgoData) {
+      console.error('Error fetching NGO details:', error);
+      setViewingNGO(ngo); // Fall back to basic data
+    } else {
+      // Merge full data with posts
+      setViewingNGO({
+        ...ngo,
+        email: fullNgoData.email,
+        phone: fullNgoData.phone || undefined,
+      });
+    }
     setCurrentView(View.NGO_PROFILE);
   };
   const updateNGO = (updatedNGO: NGO) => {
