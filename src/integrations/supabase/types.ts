@@ -49,6 +49,41 @@ export type Database = {
           },
         ]
       }
+      ngo_stripe_accounts: {
+        Row: {
+          created_at: string
+          id: string
+          ngo_id: string
+          onboarding_complete: boolean
+          stripe_account_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ngo_id: string
+          onboarding_complete?: boolean
+          stripe_account_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ngo_id?: string
+          onboarding_complete?: boolean
+          stripe_account_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ngo_stripe_accounts_ngo_id_fkey"
+            columns: ["ngo_id"]
+            isOneToOne: true
+            referencedRelation: "ngos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ngos: {
         Row: {
           category: string
