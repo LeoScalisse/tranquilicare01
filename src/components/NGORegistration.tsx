@@ -48,8 +48,48 @@ const NGORegistration: React.FC<NGORegistrationProps> = ({ onRegisterComplete })
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  // Input validation constants (must match database trigger)
+  const VALIDATION = {
+    nameMaxLength: 100,
+    descriptionMaxLength: 2000,
+    goalMaxLength: 500,
+    imageSizeMaxLength: 15000000, // ~10MB base64 encoded
+    emailRegex: /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/,
+    instagramRegex: /^@?[A-Za-z0-9._]+$/,
+  };
+
+  const validateForm = (): string | null => {
+    if (formData.name.length > VALIDATION.nameMaxLength) {
+      return `Nome muito longo (máximo ${VALIDATION.nameMaxLength} caracteres)`;
+    }
+    if (formData.description.length > VALIDATION.descriptionMaxLength) {
+      return `Descrição muito longa (máximo ${VALIDATION.descriptionMaxLength} caracteres)`;
+    }
+    if (formData.goal.length > VALIDATION.goalMaxLength) {
+      return `Objetivo muito longo (máximo ${VALIDATION.goalMaxLength} caracteres)`;
+    }
+    if (formData.image && formData.image.length > VALIDATION.imageSizeMaxLength) {
+      return 'Imagem muito grande (máximo 10MB)';
+    }
+    if (!VALIDATION.emailRegex.test(formData.email)) {
+      return 'Formato de e-mail inválido';
+    }
+    if (!VALIDATION.instagramRegex.test(formData.instagram)) {
+      return 'Formato de Instagram inválido (use apenas letras, números, pontos e underscores)';
+    }
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate before showing account modal
+    const validationError = validateForm();
+    if (validationError) {
+      toast.error(validationError);
+      return;
+    }
+    
     // Instead of submitting directly, show account creation modal
     setPendingNgoData(formData);
     setShowAccountModal(true);
