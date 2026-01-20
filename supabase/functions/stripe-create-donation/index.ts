@@ -1,9 +1,8 @@
-import Stripe from "https://esm.sh/stripe@17.7.0?target=deno&deno-std=0.132.0&no-check";
+import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") as string, {
-  httpClient: Stripe.createFetchHttpClient(),
-  apiVersion: "2024-12-18.acacia",
+  apiVersion: "2023-10-16",
 });
 
 const corsHeaders = {
