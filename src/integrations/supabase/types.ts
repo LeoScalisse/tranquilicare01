@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      donations: {
+        Row: {
+          amount: number
+          created_at: string
+          donor_email: string | null
+          donor_name: string | null
+          id: string
+          ngo_id: string
+          platform_tip: number | null
+          status: string
+          stripe_payment_intent_id: string | null
+          stripe_session_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          donor_email?: string | null
+          donor_name?: string | null
+          id?: string
+          ngo_id: string
+          platform_tip?: number | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          donor_email?: string | null
+          donor_name?: string | null
+          id?: string
+          ngo_id?: string
+          platform_tip?: number | null
+          status?: string
+          stripe_payment_intent_id?: string | null
+          stripe_session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "donations_ngo_id_fkey"
+            columns: ["ngo_id"]
+            isOneToOne: false
+            referencedRelation: "ngos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "donations_ngo_id_fkey"
+            columns: ["ngo_id"]
+            isOneToOne: false
+            referencedRelation: "ngos_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ngo_posts: {
         Row: {
           caption: string | null
