@@ -47,6 +47,13 @@ export type Database = {
             referencedRelation: "ngos"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "ngo_posts_ngo_id_fkey"
+            columns: ["ngo_id"]
+            isOneToOne: false
+            referencedRelation: "ngos_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       ngo_stripe_accounts: {
@@ -80,6 +87,13 @@ export type Database = {
             columns: ["ngo_id"]
             isOneToOne: true
             referencedRelation: "ngos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ngo_stripe_accounts_ngo_id_fkey"
+            columns: ["ngo_id"]
+            isOneToOne: true
+            referencedRelation: "ngos_public"
             referencedColumns: ["id"]
           },
         ]
@@ -182,7 +196,48 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      ngos_public: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          description: string | null
+          goal: string | null
+          id: string | null
+          image: string | null
+          instagram: string | null
+          name: string | null
+          status: Database["public"]["Enums"]["ngo_status"] | null
+          updated_at: string | null
+          verified: boolean | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          goal?: string | null
+          id?: string | null
+          image?: string | null
+          instagram?: string | null
+          name?: string | null
+          status?: Database["public"]["Enums"]["ngo_status"] | null
+          updated_at?: string | null
+          verified?: boolean | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          description?: string | null
+          goal?: string | null
+          id?: string | null
+          image?: string | null
+          instagram?: string | null
+          name?: string | null
+          status?: Database["public"]["Enums"]["ngo_status"] | null
+          updated_at?: string | null
+          verified?: boolean | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       has_role: {
