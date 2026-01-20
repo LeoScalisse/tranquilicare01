@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { NGO, NGOPost } from '../types';
 import { BrandedText } from '../utils';
 import { 
@@ -22,6 +22,8 @@ import {
   Loader2,
   Clock
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import DonationModal from './DonationModal';
 
 interface NGOProfileProps {
   ngo: NGO;
@@ -34,10 +36,13 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
   const [showContactModal, setShowContactModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showPostModal, setShowPostModal] = useState(false);
+  const [showDonationModal, setShowDonationModal] = useState(false);
   const [zoomedPost, setZoomedPost] = useState<NGOPost | null>(null);
   const [copied, setCopied] = useState(false);
   const [copiedPhone, setCopiedPhone] = useState(false);
   const [editedData, setEditedData] = useState(ngo);
+  const [canReceiveDonations, setCanReceiveDonations] = useState(false);
+  const [checkingDonations, setCheckingDonations] = useState(true);
   
   // States for new post upload simulation
   const [newPostFile, setNewPostFile] = useState<{url: string, type: 'image' | 'video', file: File} | null>(null);
@@ -47,6 +52,28 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Check if NGO can receive donations
+  useEffect(() => {
+    const checkDonationStatus = async () => {
+      try {
+        const { data } = await supabase.functions.invoke('stripe-check-onboarding', {
+          body: { ngoId: ngo.id },
+        });
+        setCanReceiveDonations(data?.onboardingComplete || false);
+      } catch (err) {
+        console.error('Error checking donation status:', err);
+      } finally {
+        setCheckingDonations(false);
+      }
+    };
+
+    if (ngo.verified) {
+      checkDonationStatus();
+    } else {
+      setCheckingDonations(false);
+    }
+  }, [ngo.id, ngo.verified]);
 
   const handleSave = () => {
     onUpdate(editedData);
@@ -404,13 +431,26 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
             </div>
             
             <p className="text-sm leading-relaxed whitespace-pre-wrap">{ngo.description}</p>
-            <button 
-              onClick={() => setShowContactModal(true)}
-              className="flex items-center justify-center sm:justify-start gap-2 text-white bg-brand-blue hover:bg-blue-600 font-bold text-sm px-4 py-2 rounded-xl mt-2 transition-colors shadow-sm"
-            >
-              <MessageCircle size={16} />
-              <span>Contato</span>
-            </button>
+            <div className="flex flex-wrap gap-2 mt-2">
+              <button 
+                onClick={() => setShowContactModal(true)}
+                className="flex items-center justify-center sm:justify-start gap-2 text-white bg-brand-blue hover:bg-blue-600 font-bold text-sm px-4 py-2 rounded-xl transition-colors shadow-sm"
+              >
+                <MessageCircle size={16} />
+                <span>Contato</span>
+              </button>
+              
+              {/* Donation button - only show if NGO can receive donations */}
+              {!isOwner && canReceiveDonations && (
+                <button 
+                  onClick={() => setShowDonationModal(true)}
+                  className="flex items-center justify-center sm:justify-start gap-2 text-white bg-green-500 hover:bg-green-600 font-bold text-sm px-4 py-2 rounded-xl transition-colors shadow-sm"
+                >
+                  <Heart size={16} />
+                  <span>Doar</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -458,6 +498,14 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
           </div>
         )}
       </div>
+
+      {/* Donation Modal */}
+      <DonationModal
+        isOpen={showDonationModal}
+        onClose={() => setShowDonationModal(false)}
+        ngoId={ngo.id}
+        ngoName={ngo.name}
+      />
     </div>
   );
 };

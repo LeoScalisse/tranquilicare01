@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { BrandedText } from '../utils';
 import { 
   User, Edit2, Save, X, Image as ImageIcon, Upload, LogOut, 
-  Instagram, Mail, Phone, Target, FileText, Plus, Trash2, Loader2, Video
+  Instagram, Mail, Phone, Target, FileText, Plus, Trash2, Loader2, Video,
+  CreditCard, CheckCircle
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { User as SupabaseUser } from '@supabase/supabase-js';
+import StripeOnboardingModal from '@/components/StripeOnboardingModal';
 
 
 interface NGOData {
@@ -32,6 +34,7 @@ interface NGOPost {
 
 const NGODashboard: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [ngo, setNgo] = useState<NGOData | null>(null);
   const [posts, setPosts] = useState<NGOPost[]>([]);
@@ -46,6 +49,14 @@ const NGODashboard: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const postFileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Stripe onboarding state
+  const [showStripeOnboarding, setShowStripeOnboarding] = useState(false);
+  const [stripeStatus, setStripeStatus] = useState<{
+    hasAccount: boolean;
+    onboardingComplete: boolean;
+  } | null>(null);
+  const [checkingStripe, setCheckingStripe] = useState(true);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -83,12 +94,46 @@ const NGODashboard: React.FC = () => {
       setNgo(ngoData as NGOData);
       setEditData(ngoData as NGOData);
       fetchPosts(ngoData.id);
+      checkStripeStatus(ngoData.id);
     } else {
       // Not approved or no NGO
       navigate('/ngo/pending');
     }
 
     setLoading(false);
+  };
+
+  const checkStripeStatus = async (ngoId: string) => {
+    try {
+      const { data } = await supabase.functions.invoke('stripe-check-onboarding', {
+        body: { ngoId },
+      });
+      
+      setStripeStatus({
+        hasAccount: data?.hasAccount || false,
+        onboardingComplete: data?.onboardingComplete || false,
+      });
+
+      // Check if coming back from Stripe onboarding
+      const stripeOnboarding = searchParams.get('stripe_onboarding');
+      if (stripeOnboarding === 'complete') {
+        if (data?.onboardingComplete) {
+          toast.success('Configuração de pagamentos concluída com sucesso!');
+        } else {
+          toast.info('Complete a configuração de pagamentos para receber doações.');
+          setShowStripeOnboarding(true);
+        }
+        // Clean up URL
+        window.history.replaceState({}, '', '/ngo/dashboard');
+      } else if (!data?.hasAccount) {
+        // First time accessing dashboard - show onboarding modal
+        setShowStripeOnboarding(true);
+      }
+    } catch (err) {
+      console.error('Error checking Stripe status:', err);
+    } finally {
+      setCheckingStripe(false);
+    }
   };
 
   const fetchPosts = async (ngoId: string) => {
@@ -503,6 +548,59 @@ const NGODashboard: React.FC = () => {
           </div>
         </div>
 
+        {/* Stripe Payment Status Card */}
+        <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 mb-8">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <CreditCard size={20} className="text-brand-blue" />
+                Recebimento de Doações
+              </h2>
+              <p className="text-gray-500 text-sm mt-1">
+                Configure para receber doações diretamente na sua conta
+              </p>
+            </div>
+          </div>
+
+          {checkingStripe ? (
+            <div className="flex items-center gap-2 text-gray-400">
+              <Loader2 size={16} className="animate-spin" />
+              Verificando status...
+            </div>
+          ) : stripeStatus?.onboardingComplete ? (
+            <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200">
+              <CheckCircle size={24} className="text-green-500" />
+              <div>
+                <p className="font-bold text-green-700">Configurado</p>
+                <p className="text-sm text-green-600">
+                  Sua ONG pode receber doações diretamente
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 p-4 bg-yellow-50 rounded-xl border border-yellow-200">
+                <CreditCard size={24} className="text-yellow-600" />
+                <div>
+                  <p className="font-bold text-yellow-700">
+                    {stripeStatus?.hasAccount ? 'Configuração incompleta' : 'Não configurado'}
+                  </p>
+                  <p className="text-sm text-yellow-600">
+                    Configure seus dados para receber doações
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowStripeOnboarding(true)}
+                className="w-full py-3 bg-brand-blue hover:bg-blue-600 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2"
+              >
+                <CreditCard size={18} />
+                {stripeStatus?.hasAccount ? 'Continuar configuração' : 'Configurar agora'}
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Stories Section */}
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
           <div className="flex justify-between items-center mb-6">
@@ -680,6 +778,20 @@ const NGODashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Stripe Onboarding Modal */}
+      {ngo && (
+        <StripeOnboardingModal
+          isOpen={showStripeOnboarding}
+          onClose={() => setShowStripeOnboarding(false)}
+          ngoId={ngo.id}
+          ngoName={ngo.name}
+          onComplete={() => {
+            setShowStripeOnboarding(false);
+            if (ngo) checkStripeStatus(ngo.id);
+          }}
+        />
       )}
     </div>
   );
