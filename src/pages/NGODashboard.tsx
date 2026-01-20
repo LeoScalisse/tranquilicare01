@@ -5,11 +5,12 @@ import { BrandedText } from '../utils';
 import { 
   User, Edit2, Save, X, Image as ImageIcon, Upload, LogOut, 
   Instagram, Mail, Phone, Target, FileText, Plus, Trash2, Loader2, Video,
-  CreditCard, CheckCircle
+  CreditCard, CheckCircle, BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { User as SupabaseUser } from '@supabase/supabase-js';
 import StripeOnboardingModal from '@/components/StripeOnboardingModal';
+import DonationsHistory from '@/components/DonationsHistory';
 
 
 interface NGOData {
@@ -600,6 +601,17 @@ const NGODashboard: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Donations History Section */}
+        {stripeStatus?.onboardingComplete && (
+          <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 mb-8">
+            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-6">
+              <BarChart3 size={20} className="text-brand-blue" />
+              Histórico de Doações
+            </h2>
+            <DonationsHistory ngoId={ngo.id} />
+          </div>
+        )}
 
         {/* Stories Section */}
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
