@@ -15,11 +15,13 @@ interface DonationModalProps {
 }
 
 const SUGGESTED_AMOUNTS = [500, 1000, 2500, 5000, 10000]; // In cents (R$5, R$10, R$25, R$50, R$100)
+const PLATFORM_TIP_OPTIONS = [0, 200, 500, 1000]; // R$0, R$2, R$5, R$10
 
 const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose, ngoId, ngoName }) => {
   const [amount, setAmount] = useState<number>(1000); // Default R$10
   const [customAmount, setCustomAmount] = useState<string>('');
   const [isCustom, setIsCustom] = useState(false);
+  const [platformTip, setPlatformTip] = useState<number>(0); // No tip by default
   const [showCheckout, setShowCheckout] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -55,6 +57,7 @@ const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose, ngoId, n
         ngoId,
         ngoName,
         amount: finalAmount,
+        platformTipAmount: platformTip > 0 ? platformTip : undefined,
         returnUrl: window.location.origin,
       },
     });
@@ -64,7 +67,7 @@ const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose, ngoId, n
     }
 
     return data.clientSecret;
-  }, [ngoId, ngoName, amount, isCustom, customAmount]);
+  }, [ngoId, ngoName, amount, isCustom, customAmount, platformTip]);
 
   const handleProceed = async () => {
     const finalAmount = isCustom && customAmount ? parseInt(customAmount) * 100 : amount;
@@ -172,16 +175,53 @@ const DonationModal: React.FC<DonationModalProps> = ({ isOpen, onClose, ngoId, n
                 </div>
               </div>
 
+              {/* Platform Tip Section */}
+              <div className="mb-4">
+                <label className="block text-sm font-bold text-gray-600 mb-2">
+                  💚 Gostaria de apoiar a TranquiliCare também?
+                </label>
+                <p className="text-xs text-gray-400 mb-3">
+                  100% da sua doação vai para a ONG. Esta contribuição opcional ajuda a manter a plataforma.
+                </p>
+                <div className="grid grid-cols-4 gap-2">
+                  {PLATFORM_TIP_OPTIONS.map((value) => (
+                    <button
+                      key={value}
+                      onClick={() => setPlatformTip(value)}
+                      className={`py-2 rounded-xl font-bold text-xs transition-all ${
+                        platformTip === value
+                          ? 'bg-emerald-500 text-white shadow-lg'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {value === 0 ? 'Não' : formatCurrency(value)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Summary */}
               <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                <div className="flex justify-between items-center text-sm text-gray-600 mb-2">
-                  <span>Valor da doação</span>
+                <div className="flex justify-between items-center text-sm text-gray-600 mb-1">
+                  <span>Doação para {ngoName}</span>
                   <span className="font-bold text-gray-800">
                     {formatCurrency(isCustom && customAmount ? parseInt(customAmount) * 100 : amount)}
                   </span>
                 </div>
-                <p className="text-xs text-gray-400">
-                  Uma pequena taxa é destinada à manutenção da plataforma TranquiliCare
+                {platformTip > 0 && (
+                  <div className="flex justify-between items-center text-sm text-gray-600 mb-1">
+                    <span>Contribuição TranquiliCare</span>
+                    <span className="font-bold text-emerald-600">{formatCurrency(platformTip)}</span>
+                  </div>
+                )}
+                <div className="border-t border-gray-200 mt-2 pt-2 flex justify-between items-center text-sm">
+                  <span className="font-bold text-gray-700">Total</span>
+                  <span className="font-bold text-gray-800">
+                    {formatCurrency((isCustom && customAmount ? parseInt(customAmount) * 100 : amount) + platformTip)}
+                  </span>
+                </div>
+                <p className="text-xs text-green-600 mt-2">
+                  ✓ 100% da doação vai diretamente para a ONG
                 </p>
               </div>
 
