@@ -1,0 +1,189 @@
+"use client"
+
+import { useState, useEffect, useCallback, type ReactNode } from "react"
+import { motion, AnimatePresence } from "framer-motion"
+import { cn } from "@/lib/utils"
+
+export interface CommandItem {
+  id: string
+  icon: ReactNode
+  label: string
+  shortcut?: string
+  onClick?: () => void
+}
+
+export interface CircularCommandMenuProps {
+  items?: CommandItem[]
+  trigger?: ReactNode
+  className?: string
+  radius?: number
+  onSelect?: (item: CommandItem) => void
+}
+
+function CircularCommandMenu({
+  items = [],
+  trigger,
+  className,
+  radius = 120,
+  onSelect,
+}: CircularCommandMenuProps) {
+  const [isOpen, setIsOpen] = useState(false)
+  const [activeIndex, setActiveIndex] = useState(0)
+
+  const safeItems = items || []
+  const itemCount = safeItems.length
+
+  const angleStep = itemCount > 0 ? 360 / itemCount : 0
+  const startAngle = -90
+
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (!isOpen || itemCount === 0) return
+
+      switch (e.key) {
+        case "ArrowRight":
+        case "ArrowDown":
+          e.preventDefault()
+          setActiveIndex((prev) => (prev + 1) % itemCount)
+          break
+        case "ArrowLeft":
+        case "ArrowUp":
+          e.preventDefault()
+          setActiveIndex((prev) => (prev - 1 + itemCount) % itemCount)
+          break
+        case "Enter":
+          e.preventDefault()
+          const selectedItem = safeItems[activeIndex]
+          if (selectedItem) {
+            selectedItem.onClick?.()
+            onSelect?.(selectedItem)
+          }
+          setIsOpen(false)
+          break
+        case "Escape":
+          e.preventDefault()
+          setIsOpen(false)
+          break
+      }
+    },
+    [isOpen, activeIndex, safeItems, itemCount, onSelect],
+  )
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [handleKeyDown])
+
+  const getItemPosition = (index: number) => {
+    const angle = ((startAngle + index * angleStep) * Math.PI) / 180
+    return {
+      x: Math.cos(angle) * radius,
+      y: Math.sin(angle) * radius,
+    }
+  }
+
+  return (
+    <div className={cn("relative inline-flex items-center justify-center", className)}>
+      {/* Trigger */}
+      <motion.button
+        onClick={() => setIsOpen(!isOpen)}
+        className={cn(
+          "relative z-20 flex h-12 w-12 items-center justify-center rounded-full",
+          "bg-white/10 backdrop-blur-xl border border-white/20 text-white shadow-xl",
+          "hover:bg-brand-blue hover:scale-110 transition-all",
+          "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background",
+        )}
+        whileTap={{ scale: 0.95 }}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+      >
+        <motion.span
+          animate={{ rotate: isOpen ? 45 : 0 }}
+          transition={{ duration: 0.2 }}
+        >
+          {trigger}
+        </motion.span>
+      </motion.button>
+
+      {/* Backdrop */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-10 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsOpen(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Menu Items */}
+      <AnimatePresence>
+        {isOpen && itemCount > 0 && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.2 }}
+            className="absolute z-30"
+            role="menu"
+          >
+            {safeItems.map((item, index) => {
+              const position = getItemPosition(index)
+              const isActive = activeIndex === index
+
+              return (
+                <motion.button
+                  key={item.id}
+                  initial={{ opacity: 0, x: 0, y: 0 }}
+                  animate={{
+                    opacity: 1,
+                    x: position.x,
+                    y: position.y,
+                  }}
+                  exit={{ opacity: 0, x: 0, y: 0 }}
+                  transition={{
+                    duration: 0.3,
+                    delay: index * 0.05,
+                    type: "spring",
+                    stiffness: 300,
+                    damping: 25,
+                  }}
+                  onClick={() => {
+                    item.onClick?.()
+                    onSelect?.(item)
+                    setIsOpen(false)
+                  }}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  className={cn(
+                    "absolute flex h-14 w-14 items-center justify-center rounded-full",
+                    "border border-white/20 bg-zinc-900/90 backdrop-blur-xl shadow-2xl",
+                    "transition-all hover:bg-brand-blue hover:scale-110",
+                    isActive && "ring-2 ring-brand-blue bg-brand-blue scale-110",
+                  )}
+                  style={{ transform: `translate(-50%, -50%)` }}
+                  role="menuitem"
+                  aria-label={item.label}
+                >
+                  <span className="text-white">{item.icon}</span>
+
+                  {/* Tooltip */}
+                  <motion.span
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: isActive ? 1 : 0, y: isActive ? 0 : 5 }}
+                    className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-white shadow-lg pointer-events-none"
+                  >
+                    {item.label}
+                  </motion.span>
+                </motion.button>
+              )
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+export { CircularCommandMenu }

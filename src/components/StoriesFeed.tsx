@@ -1,7 +1,10 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { motion, type PanInfo } from 'framer-motion';
 import { NGOPost } from '../types';
-import { Share2, CircleCheck, UserPlus, Play, Loader2 } from 'lucide-react';
+import { Share2, CircleCheck, UserPlus, Play, Loader2, Copy, MessageCircle } from 'lucide-react';
+import { CircularCommandMenu, CommandItem } from './ui/circular-command-menu';
+import { toast } from '@/hooks/use-toast';
+
 interface StoriesFeedProps {
   stories: NGOPost[];
   onSelectNGO: (ngoId: string) => void;
@@ -258,13 +261,41 @@ const StoriesFeed: React.FC<StoriesFeedProps> = ({
                     </button>
                   </div>}
 
-                {/* Share Button */}
-                {isCurrent && <button onClick={e => e.stopPropagation()} className="absolute right-3 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 group z-20">
-                    <div className="w-12 h-12 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full flex items-center justify-center group-hover:bg-brand-blue group-hover:scale-110 transition-all shadow-xl">
-                      <Share2 size={24} className="text-white" />
-                    </div>
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-white/80">Share</span>
-                  </button>}
+                {/* Share Button with Circular Menu */}
+                {isCurrent && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 z-20" onClick={e => e.stopPropagation()}>
+                    <CircularCommandMenu
+                      trigger={<Share2 size={24} />}
+                      radius={70}
+                      items={[
+                        {
+                          id: 'whatsapp',
+                          icon: <MessageCircle className="h-5 w-5" />,
+                          label: 'WhatsApp',
+                          onClick: () => {
+                            const storyUrl = `${window.location.origin}/?story=${story.id}`;
+                            const text = `Confira esta história incrível de ${story.ngoName}: ${storyUrl}`;
+                            window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                          }
+                        },
+                        {
+                          id: 'copy',
+                          icon: <Copy className="h-5 w-5" />,
+                          label: 'Copiar Link',
+                          onClick: () => {
+                            const storyUrl = `${window.location.origin}/?story=${story.id}`;
+                            navigator.clipboard.writeText(storyUrl);
+                            toast({
+                              title: "Link copiado!",
+                              description: "O link da história foi copiado para a área de transferência.",
+                            });
+                          }
+                        }
+                      ] as CommandItem[]}
+                    />
+                    <span className="block text-center text-[9px] font-bold uppercase tracking-widest text-white/80 mt-2">Share</span>
+                  </div>
+                )}
               </div>
             </motion.div>;
       })}
