@@ -141,18 +141,29 @@ function CircularCommandMenu({
               return (
                 <motion.button
                   key={item.id}
-                  initial={{ opacity: 0, x: 0, y: 0 }}
-                  animate={{
-                    opacity: 1,
+                  initial={{ 
+                    opacity: 0, 
+                    scale: 0.3,
                     x: position.x,
                     y: position.y,
                   }}
-                  exit={{ opacity: 0, x: 0, y: 0 }}
+                  animate={{
+                    opacity: 1,
+                    scale: 1,
+                    x: position.x,
+                    y: position.y,
+                  }}
+                  exit={{ 
+                    opacity: 0, 
+                    scale: 0.3,
+                    x: position.x,
+                    y: position.y,
+                  }}
                   transition={{
-                    duration: 0.3,
+                    duration: 0.25,
                     delay: index * 0.05,
                     type: "spring",
-                    stiffness: 300,
+                    stiffness: 400,
                     damping: 25,
                   }}
                   onClick={() => {
