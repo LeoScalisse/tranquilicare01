@@ -17,6 +17,8 @@ export interface CircularCommandMenuProps {
   trigger?: ReactNode
   className?: string
   radius?: number
+  startAngle?: number
+  spreadAngle?: number
   onSelect?: (item: CommandItem) => void
 }
 
@@ -25,6 +27,8 @@ function CircularCommandMenu({
   trigger,
   className,
   radius = 120,
+  startAngle = 0,
+  spreadAngle = 90,
   onSelect,
 }: CircularCommandMenuProps) {
   const [isOpen, setIsOpen] = useState(false)
@@ -33,8 +37,9 @@ function CircularCommandMenu({
   const safeItems = items || []
   const itemCount = safeItems.length
 
-  const angleStep = itemCount > 0 ? 360 / itemCount : 0
-  const startAngle = -90
+  // Cluster items within the spread angle, centered around startAngle
+  const angleStep = itemCount > 1 ? spreadAngle / (itemCount - 1) : 0
+  const startOffset = itemCount > 1 ? -spreadAngle / 2 : 0
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
@@ -75,7 +80,7 @@ function CircularCommandMenu({
   }, [handleKeyDown])
 
   const getItemPosition = (index: number) => {
-    const angle = ((startAngle + index * angleStep) * Math.PI) / 180
+    const angle = ((startAngle + startOffset + index * angleStep) * Math.PI) / 180
     return {
       x: Math.cos(angle) * radius,
       y: Math.sin(angle) * radius,
