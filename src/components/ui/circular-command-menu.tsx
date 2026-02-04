@@ -93,7 +93,7 @@ function CircularCommandMenu({
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "relative z-20 flex h-12 w-12 items-center justify-center rounded-full",
+          "relative z-20 flex h-10 w-10 items-center justify-center rounded-full",
           "bg-white/10 backdrop-blur-xl border border-white/20 text-white shadow-xl",
           "hover:bg-brand-blue hover:scale-110 transition-all",
           "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background",
@@ -104,7 +104,7 @@ function CircularCommandMenu({
       >
         <motion.span
           animate={{ rotate: isOpen ? 45 : 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.15, ease: "easeOut" }}
         >
           {trigger}
         </motion.span>
@@ -143,7 +143,7 @@ function CircularCommandMenu({
                   key={item.id}
                   initial={{ 
                     opacity: 0, 
-                    scale: 0.3,
+                    scale: 0,
                     x: position.x,
                     y: position.y,
                   }}
@@ -155,16 +155,16 @@ function CircularCommandMenu({
                   }}
                   exit={{ 
                     opacity: 0, 
-                    scale: 0.3,
+                    scale: 0,
                     x: position.x,
                     y: position.y,
                   }}
                   transition={{
-                    duration: 0.25,
-                    delay: index * 0.05,
+                    duration: 0.2,
+                    delay: index * 0.03,
                     type: "spring",
-                    stiffness: 400,
-                    damping: 25,
+                    stiffness: 500,
+                    damping: 28,
                   }}
                   onClick={() => {
                     item.onClick?.()
@@ -173,10 +173,10 @@ function CircularCommandMenu({
                   }}
                   onMouseEnter={() => setActiveIndex(index)}
                   className={cn(
-                    "absolute flex h-14 w-14 items-center justify-center rounded-full",
+                    "absolute flex h-11 w-11 items-center justify-center rounded-full",
                     "border border-white/20 bg-zinc-900/90 backdrop-blur-xl shadow-2xl",
-                    "transition-all hover:bg-brand-blue hover:scale-110",
-                    isActive && "ring-2 ring-brand-blue bg-brand-blue scale-110",
+                    "transition-colors duration-150 hover:bg-brand-blue",
+                    isActive && "ring-2 ring-brand-blue bg-brand-blue",
                   )}
                   style={{ transform: `translate(-50%, -50%)` }}
                   role="menuitem"
@@ -186,9 +186,10 @@ function CircularCommandMenu({
 
                   {/* Tooltip */}
                   <motion.span
-                    initial={{ opacity: 0, y: 5 }}
-                    animate={{ opacity: isActive ? 1 : 0, y: isActive ? 0 : 5 }}
-                    className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-zinc-800 px-3 py-1.5 text-xs font-medium text-white shadow-lg pointer-events-none"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: isActive ? 1 : 0, y: isActive ? 0 : 4 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute -bottom-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-zinc-800 px-2 py-1 text-[10px] font-medium text-white shadow-lg pointer-events-none"
                   >
                     {item.label}
                   </motion.span>
