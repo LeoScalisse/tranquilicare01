@@ -267,6 +267,8 @@ const StoriesFeed: React.FC<StoriesFeedProps> = ({
                     <CircularCommandMenu
                       trigger={<Share2 size={24} />}
                       radius={70}
+                      startAngle={180}
+                      spreadAngle={90}
                       items={[
                         {
                           id: 'whatsapp',
