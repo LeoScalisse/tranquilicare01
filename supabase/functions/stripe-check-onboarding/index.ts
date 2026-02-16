@@ -29,9 +29,43 @@ Deno.serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
+    // Authenticate user
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Authentication required" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
+    if (userError || !userData.user) {
+      return new Response(
+        JSON.stringify({ error: "Invalid authentication" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    logStep("User authenticated", { userId: userData.user.id });
+
     const { ngoId } = await req.json();
     if (!ngoId) throw new Error("Missing ngoId");
     logStep("Checking onboarding for NGO", { ngoId });
+
+    // Verify user owns this NGO
+    const { data: ngo, error: ngoError } = await supabaseAdmin
+      .from("ngos")
+      .select("owner_id")
+      .eq("id", ngoId)
+      .eq("owner_id", userData.user.id)
+      .single();
+
+    if (ngoError || !ngo) {
+      return new Response(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Get NGO's Stripe account
     const { data: stripeAccount, error: accountError } = await supabaseAdmin
@@ -85,7 +119,6 @@ Deno.serve(async (req) => {
       JSON.stringify({ 
         hasAccount: true, 
         onboardingComplete: isComplete,
-        stripeAccountId: stripeAccount.stripe_account_id
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
