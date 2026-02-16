@@ -230,7 +230,7 @@ const StoriesFeed: React.FC<StoriesFeedProps> = ({
 
                 {/* Story Info Overlay */}
                 {isCurrent && <div className="absolute bottom-6 left-4 right-4 text-white z-20">
-                    <div className="flex items-center gap-3 mb-3 cursor-pointer group" onClick={e => {
+                    <div className="flex items-center gap-3 cursor-pointer group" onClick={e => {
                 e.stopPropagation();
                 story.ngoId && onSelectNGO(story.ngoId);
               }}>
@@ -247,18 +247,6 @@ const StoriesFeed: React.FC<StoriesFeedProps> = ({
                         </h3>
                       </div>
                     </div>
-
-                    {story.caption && <p className="text-xs text-gray-100 mb-4 drop-shadow-md leading-relaxed line-clamp-2 bg-black/20 backdrop-blur-sm p-2 rounded-xl border border-white/5">
-                        {story.caption}
-                      </p>}
-                    
-                    <button onClick={e => {
-                e.stopPropagation();
-                story.ngoId && onSelectNGO(story.ngoId);
-              }} className="px-6 py-3 bg-brand-blue rounded-full font-black text-xs uppercase tracking-widest shadow-2xl hover:bg-blue-400 transform hover:scale-105 transition-all flex items-center gap-2">
-                      Apoiar agora
-                      <span className="text-brand-yellow">+</span>
-                    </button>
                   </div>}
 
                 {/* Share Button with Circular Menu */}
