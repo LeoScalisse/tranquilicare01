@@ -53,7 +53,7 @@ const Hero: React.FC<HeroProps> = ({
           
           <div className="relative">
             <div className="relative z-10 grid grid-cols-2 gap-4">
-               <div className="space-y-4 translate-y-8">
+               <div className="space-y-4 translate-y-16">
                   <div className="bg-white p-6 rounded-3xl shadow-xl border border-gray-50">
                      <HeartHandshake className="w-12 h-12 text-brand-blue mb-4" />
                      <h3 className="font-bold text-xl mb-2">Conexão Real</h3>
