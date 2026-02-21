@@ -59,7 +59,7 @@ const Hero: React.FC<HeroProps> = ({
                      <h3 className="font-bold text-xl mb-2">Conexão Real</h3>
                      <p className="text-gray-500 text-sm">Conecte-se diretamente com organizações que cuidam de pessoas reais</p>
                   </div>
-                  <div className="bg-brand-yellow p-6 rounded-3xl shadow-xl">
+                  <div className="bg-brand-yellow p-6 rounded-3xl shadow-xl translate-x-12">
                      <h3 className="font-bold text-xl mb-2 text-yellow-900">ONGs verificadas</h3>
                      <p className="text-yellow-800 text-sm">Parceiros verificados prontos para receber seu apoio.</p>
                   </div>
