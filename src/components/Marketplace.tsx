@@ -161,12 +161,15 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO }) => {
         })}
 
         {filteredNgos.length === 0 && (
-          <div className="col-span-full py-32 text-center">
-            <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
+          <div className="col-span-full py-16 flex flex-col items-center gap-8">
+            <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center">
               <Search className="text-gray-200 w-12 h-12" />
             </div>
-            <h3 className="text-xl font-bold text-gray-700">Nenhuma organização encontrada</h3>
-            <p className="text-gray-400 mt-2 max-w-xs mx-auto">Tente ajustar seus filtros ou buscar por outro termo.</p>
+            <div className="bg-brand-yellow/15 border-2 border-brand-yellow rounded-2xl p-6 max-w-lg text-center">
+              <p className="text-gray-800 font-medium leading-relaxed">
+                Estamos selecionando as primeiras organizações parceiras da TranquiliCare. Se você está lendo isso, saiba que está no nascimento de algo que vai mudar vidas.
+              </p>
+            </div>
           </div>
         )}
       </div>
