@@ -70,16 +70,16 @@ const Hero: React.FC<HeroProps> = ({
                      <h3 className="font-bold text-xl mb-2 text-white">Impacto Local</h3>
                      <p className="text-blue-100 text-sm">Descubra organizações próximas e gere impacto onde você vive.</p>
                   </div>
-                  <div className="bg-white p-6 rounded-3xl shadow-xl border border-gray-50">
-                     <div className="flex -space-x-2 mb-4">
-                        <img className="w-10 h-10 rounded-full border-2 border-white object-cover" src="https://picsum.photos/100/100?random=1" alt="User Avatar 1" width="40" height="40" />
-                        <img className="w-10 h-10 rounded-full border-2 border-white object-cover" src="https://picsum.photos/100/100?random=2" alt="User Avatar 2" width="40" height="40" />
-                        <img className="w-10 h-10 rounded-full border-2 border-white object-cover" src="https://picsum.photos/100/100?random=3" alt="User Avatar 3" width="40" height="40" />
-                        <div className="w-10 h-10 rounded-full border-2 border-white bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-600">5k+</div>
-                     </div>
-                     <h3 className="font-bold text-xl mb-2">Comunidade</h3>
-                     <p className="text-gray-500 text-sm">Pessoas fazendo o bem todos os dias.</p>
-                  </div>
+                  
+
+
+
+
+
+
+
+
+
                </div>
             </div>
             
