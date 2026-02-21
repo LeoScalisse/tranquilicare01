@@ -102,6 +102,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO }) => {
 
       {/* Results Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* NGO cards hidden until ready - uncomment when marketplace goes live
         {filteredNgos.map(ngo => {
           const theme = getCategoryTheme(ngo.category);
           return (
@@ -110,58 +111,12 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO }) => {
               onClick={() => onSelectNGO(ngo)}
               className="flex items-start gap-4 p-4 hover:bg-slate-50 rounded-3xl transition-all cursor-pointer group border border-transparent hover:border-gray-100 shadow-sm hover:shadow-md"
             >
-              {/* NGO Image */}
-              <div className="relative shrink-0">
-                <div className="w-20 h-20 rounded-2xl overflow-hidden border border-gray-100 shadow-sm bg-white">
-                  <img 
-                    src={ngo.image} 
-                    alt={ngo.name} 
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-                  />
-                </div>
-                {ngo.verified && (
-                  <div className="absolute -top-1 -right-1 bg-white rounded-full p-0.5 shadow-sm">
-                    <CircleCheck className="text-brand-blue w-5 h-5 fill-white" />
-                  </div>
-                )}
-              </div>
-
-              {/* Info */}
-              <div className="flex-1 min-w-0">
-                <h3 className="text-lg font-bold text-gray-800 truncate leading-tight group-hover:text-brand-blue transition-colors mb-1">
-                  {ngo.name}
-                </h3>
-
-                <div className="flex flex-wrap items-center gap-x-1.5 text-[10px] sm:text-[11px] text-gray-500 mb-1.5 font-bold uppercase tracking-wider">
-                  <div className="flex items-center text-brand-yellow">
-                    <Star size={12} className="fill-brand-yellow mr-0.5" />
-                    4.9
-                  </div>
-                  <span className="text-gray-300">•</span>
-                  <span className="text-gray-400 normal-case font-medium">Avaliada pela comunidade</span>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-x-2 text-[11px] font-bold uppercase tracking-wider">
-                  <span className={`truncate px-2 py-0.5 rounded-md border ${theme.bg} ${theme.text} ${theme.border}`}>
-                    {ngo.category}
-                  </span>
-                  <span className="text-gray-300">•</span>
-                  <div className="flex items-center gap-0.5 text-gray-400">
-                    <MapPin size={10} />
-                    0.8 km
-                  </div>
-                </div>
-
-                <p className="mt-3 text-xs text-gray-400 line-clamp-1 italic">
-                  {ngo.goal}
-                </p>
-              </div>
             </div>
           );
         })}
+        */}
 
-        {filteredNgos.length === 0 && (
-          <div className="col-span-full py-16 flex flex-col items-center gap-8">
+        <div className="col-span-full py-16 flex flex-col items-center gap-8">
             <div className="w-24 h-24 bg-gray-50 rounded-full flex items-center justify-center">
               <Search className="text-gray-200 w-12 h-12" />
             </div>
@@ -171,7 +126,6 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO }) => {
               </p>
             </div>
           </div>
-        )}
       </div>
     </div>
   );
