@@ -59,10 +59,6 @@ const Hero: React.FC<HeroProps> = ({
                      <h3 className="font-bold text-xl mb-2">Conexão Real</h3>
                      <p className="text-gray-500 text-sm">Conecte-se diretamente com organizações que cuidam de pessoas reais</p>
                   </div>
-                  <div className="bg-brand-yellow p-6 rounded-3xl shadow-xl translate-x-12">
-                     <h3 className="font-bold text-xl mb-2 text-yellow-900">ONGs verificadas</h3>
-                     <p className="text-yellow-800 text-sm">Parceiros verificados prontos para receber seu apoio.</p>
-                  </div>
                </div>
                <div className="space-y-4">
                   <div className="bg-brand-blue p-6 rounded-3xl shadow-xl text-white">
@@ -70,16 +66,10 @@ const Hero: React.FC<HeroProps> = ({
                      <h3 className="font-bold text-xl mb-2 text-white">Impacto Local</h3>
                      <p className="text-blue-100 text-sm">Descubra organizações próximas e gere impacto onde você vive.</p>
                   </div>
-                  
-
-
-
-
-
-
-
-
-
+                  <div className="bg-brand-yellow p-6 rounded-3xl shadow-xl">
+                     <h3 className="font-bold text-xl mb-2 text-yellow-900">ONGs verificadas</h3>
+                     <p className="text-yellow-800 text-sm">Parceiros verificados prontos para receber seu apoio.</p>
+                  </div>
                </div>
             </div>
             
