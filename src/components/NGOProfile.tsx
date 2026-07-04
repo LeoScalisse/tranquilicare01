@@ -29,9 +29,17 @@ interface NGOProfileProps {
   ngo: NGO;
   isOwner: boolean;
   onUpdate: (ngo: NGO) => void;
+  viewerAccountType?: 'ngo' | 'donor' | null;
+  onRequireDonorAuth?: () => void;
 }
 
-const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
+const NGOProfile: React.FC<NGOProfileProps> = ({
+  ngo,
+  isOwner,
+  onUpdate,
+  viewerAccountType,
+  onRequireDonorAuth,
+}) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
@@ -67,6 +75,12 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
         setCheckingDonations(false);
       }
     };
+
+    if (ngo.id.startsWith('demo-')) {
+      setCanReceiveDonations(false);
+      setCheckingDonations(false);
+      return;
+    }
 
     if (ngo.verified) {
       checkDonationStatus();
@@ -219,7 +233,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
           <div className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl animate-scale-up">
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="font-bold text-lg">Nova história</h3>
+              <h3 className="font-bold text-lg">Nova histÃ³ria</h3>
               <button 
                 disabled={isUploading}
                 onClick={() => { setShowPostModal(false); setNewPostFile(null); setNewPostCaption(''); }}
@@ -247,8 +261,8 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
                     <Upload size={32} className="text-gray-300 group-hover:text-brand-blue transition-colors" />
                   </div>
                   <div className="text-center">
-                    <p className="font-bold text-gray-700">Escolha uma foto ou vídeo</p>
-                    <p className="text-xs text-gray-400 mt-1">PNG, JPG, MP4 até 100MB</p>
+                    <p className="font-bold text-gray-700">Escolha uma foto ou vÃ­deo</p>
+                    <p className="text-xs text-gray-400 mt-1">PNG, JPG, MP4 atÃ© 100MB</p>
                   </div>
                 </div>
               ) : (
@@ -287,7 +301,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-bold text-gray-600">
                   <MessageCircle size={16} className="text-brand-blue" />
-                  Legenda da história
+                  Legenda da histÃ³ria
                 </label>
                 <textarea 
                   disabled={isUploading}
@@ -304,7 +318,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
                 className="w-full py-4 bg-brand-blue text-white rounded-2xl font-bold shadow-lg hover:bg-blue-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isUploading ? <Loader2 className="animate-spin" /> : <Send size={18} />}
-                {isUploading ? 'Publicando...' : 'Publicar história'}
+                {isUploading ? 'Publicando...' : 'Publicar histÃ³ria'}
               </button>
             </div>
           </div>
@@ -406,7 +420,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
                     className="bg-brand-yellow hover:opacity-90 text-yellow-900 text-sm font-bold px-4 py-1.5 rounded-lg transition-all flex items-center gap-1.5 shadow-sm"
                   >
                     <Plus size={16} />
-                    <BrandedText text="+ Histórias" />
+                    <BrandedText text="+ HistÃ³rias" />
                   </button>
                 </>
               )}
@@ -414,7 +428,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
           </div>
 
           <div className="flex gap-8 justify-center sm:justify-start text-sm">
-            <div><span className="font-bold">{ngo.posts?.length || 0}</span> histórias</div>
+            <div><span className="font-bold">{ngo.posts?.length || 0}</span> histÃ³rias</div>
             <button 
               onClick={() => setShowGoalModal(true)}
               className="text-brand-blue hover:text-blue-600 font-medium cursor-pointer transition-colors flex items-center gap-1"
@@ -443,7 +457,13 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
               {/* Donation button - only show if NGO can receive donations */}
               {!isOwner && canReceiveDonations && (
                 <button 
-                  onClick={() => setShowDonationModal(true)}
+                  onClick={() => {
+                    if (viewerAccountType !== 'donor') {
+                      onRequireDonorAuth?.();
+                      return;
+                    }
+                    setShowDonationModal(true);
+                  }}
                   className="flex items-center justify-center sm:justify-start gap-2 text-white bg-green-500 hover:bg-green-600 font-bold text-sm px-4 py-2 rounded-xl transition-colors shadow-sm"
                 >
                   <Heart size={16} />
@@ -459,7 +479,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
         <div className="flex justify-center -mt-px">
           <button className="flex items-center gap-1.5 py-4 text-xs font-bold uppercase tracking-wider border-t border-gray-800 text-gray-800">
             <Grid size={14} />
-            Histórias
+            HistÃ³rias
           </button>
         </div>
       </div>
@@ -473,7 +493,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
               className="aspect-square relative group cursor-pointer overflow-hidden bg-gray-100 rounded-lg sm:rounded-2xl"
             >
               {post.type === 'image' ? (
-                <img src={post.url} className="w-full h-full object-cover transition-all group-hover:scale-110" alt="História" />
+                <img src={post.url} className="w-full h-full object-cover transition-all group-hover:scale-110" alt="HistÃ³ria" />
               ) : (
                 <div className="relative w-full h-full">
                   <video 
@@ -494,7 +514,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, isOwner, onUpdate }) => {
             <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
               <Camera size={32} className="text-gray-200" />
             </div>
-            <h3 className="text-xl font-bold text-gray-400">Sem histórias no momento</h3>
+            <h3 className="text-xl font-bold text-gray-400">Sem histÃ³rias no momento</h3>
           </div>
         )}
       </div>

@@ -9,6 +9,8 @@ import AdminPanel from "./pages/AdminPanel";
 import NGOAuth from "./pages/NGOAuth";
 import NGOPending from "./pages/NGOPending";
 import NGODashboard from "./pages/NGODashboard";
+import DonorAuth from "./pages/DonorAuth";
+import DonorProfile from "./pages/DonorProfile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +28,8 @@ const App = () => (
           <Route path="/ngo/auth" element={<NGOAuth />} />
           <Route path="/ngo/pending" element={<NGOPending />} />
           <Route path="/ngo/dashboard" element={<NGODashboard />} />
+          <Route path="/donor/auth" element={<DonorAuth />} />
+          <Route path="/donor/profile" element={<DonorProfile />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
