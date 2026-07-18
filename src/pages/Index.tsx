@@ -6,7 +6,7 @@ import { View, NGO, NGOPost } from '../types';
 import { supabase } from '@/integrations/supabase/client';
 import { demoNgos } from '@/data/demoNgos';
 import Header from '../components/Header';
-import Hero from '../components/Hero';
+import ImpactDashboard from '../components/ImpactDashboard';
 import Marketplace from '../components/Marketplace';
 import NGORegistration from '../components/NGORegistration';
 import NGOProfile from '../components/NGOProfile';
@@ -195,6 +195,19 @@ const TranquiliCareApp: React.FC = () => {
 
   useEffect(() => {
     fetchApprovedNGOs();
+
+    // Keep the NGO list (and the live "ONGs verificadas" counter) fresh:
+    // realtime changes trigger a refetch, so users see numbers grow live.
+    const channel = supabase
+      .channel('ngos-live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'ngos' }, () => {
+        fetchApprovedNGOs();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
@@ -230,6 +243,8 @@ const TranquiliCareApp: React.FC = () => {
     const requestedView = searchParams.get('view');
     if (requestedView === 'marketplace') {
       setCurrentView(View.MARKETPLACE);
+    } else if (requestedView === 'registration') {
+      setCurrentView(View.NGO_REGISTRATION);
     }
   }, [searchParams]);
 
@@ -256,10 +271,30 @@ const TranquiliCareApp: React.FC = () => {
     return [...acc, ...ngoPosts];
   }, [] as NGOPost[]).sort((a, b) => b.timestamp - a.timestamp);
 
+  const renderHome = () => (
+    <>
+      <ImpactDashboard
+        userName={(authUser?.user_metadata?.full_name as string | undefined) ?? null}
+        userEmail={authUser?.email ?? null}
+        isLoggedIn={Boolean(authUser)}
+        accountType={accountType}
+        ownedNgoId={ownedNGO?.id ?? null}
+        verifiedCount={ngos.filter((ngo) => ngo.verified).length}
+        onLogin={() => navigate('/donor/auth')}
+        onNameUpdated={(name) =>
+          setAuthUser((prev) =>
+            prev ? ({ ...prev, user_metadata: { ...prev.user_metadata, full_name: name } } as SupabaseUser) : prev,
+          )
+        }
+      />
+      <Marketplace embedded ngos={ngos} onSelectNGO={handleSelectNGO} onSupportNGO={handleSupportNGO} />
+    </>
+  );
+
   const renderView = () => {
     switch (currentView) {
       case View.HOME:
-        return <Hero setCurrentView={setCurrentView} />;
+        return renderHome();
       case View.MARKETPLACE:
         return <Marketplace ngos={ngos} onSelectNGO={handleSelectNGO} onSupportNGO={handleSupportNGO} />;
       case View.NGO_REGISTRATION:
@@ -280,9 +315,9 @@ const TranquiliCareApp: React.FC = () => {
             viewerAccountType={accountType}
             onRequireDonorAuth={() => navigate(`/donor/auth?redirect=${encodeURIComponent(`/?support=${viewingNGO.id}`)}`)}
           />
-        ) : <Hero setCurrentView={setCurrentView} />;
+        ) : renderHome();
       default:
-        return <Hero setCurrentView={setCurrentView} />;
+        return renderHome();
     }
   };
 
@@ -305,7 +340,7 @@ const TranquiliCareApp: React.FC = () => {
             <div className="flex justify-center mb-4">
               <img src={logo} alt="TranquiliCare" className="w-12 h-12 rounded-xl shadow-md" />
             </div>
-            <p className="mb-2 font-bold text-gray-400">TRANQUILI<span className="text-brand-yellow">CARE</span></p>
+            <p className="mb-2 font-bold text-gray-400">TRANQUILI<span className="text-brand-blue">CARE</span></p>
             <p>© 2025 TranquiliCare. Conectando corações, mudando o mundo.</p>
           </div>
         </footer>}

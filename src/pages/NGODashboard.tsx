@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { BrandedText } from '../utils';
-import { 
-  User, Edit2, Save, X, Image as ImageIcon, Upload, LogOut, 
+import {
+  User, Edit2, Save, X, Image as ImageIcon, Upload, LogOut,
   Instagram, Mail, Phone, Target, FileText, Plus, Trash2, Loader2, Video,
-  CreditCard, CheckCircle, BarChart3
+  CreditCard, CheckCircle, BarChart3, Compass
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { User as SupabaseUser } from '@supabase/supabase-js';
@@ -353,7 +353,7 @@ const NGODashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-yellow-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-blue"></div>
       </div>
     );
@@ -364,29 +364,39 @@ const NGODashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-yellow-50 py-8 px-4">
-      <div className="max-w-4xl mx-auto">
+    <div className="relative min-h-screen bg-background py-8 px-4 overflow-hidden">
+      <div className="aurora opacity-40" aria-hidden="true" />
+      <div className="relative z-10 max-w-4xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-wrap gap-4 justify-between items-center mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="font-display text-2xl md:text-3xl font-semibold text-brand-ink">
               <BrandedText text="Painel da ONG" />
             </h1>
-            <p className="text-gray-500 text-sm">Gerencie seu perfil e histórias</p>
+            <p className="text-muted-foreground text-sm mt-0.5">Gerencie seu perfil, doações e histórias</p>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <LogOut size={18} />
-            Sair
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-brand-blue text-white text-sm font-bold shadow-md shadow-brand-blue/25 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300 btn-shine"
+            >
+              <Compass size={17} />
+              Explorar o site
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white/80 backdrop-blur border border-border text-muted-foreground hover:text-red-500 text-sm font-bold shadow-sm transition-colors"
+            >
+              <LogOut size={17} />
+              Sair
+            </button>
+          </div>
         </div>
 
         {/* Profile Card */}
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 mb-8">
           <div className="flex justify-between items-start mb-6">
-            <h2 className="text-xl font-bold text-gray-900">Perfil da ONG</h2>
+            <h2 className="font-display text-xl font-semibold text-brand-ink">Perfil da ONG</h2>
             {!editing ? (
               <button
                 onClick={() => setEditing(true)}
@@ -553,7 +563,7 @@ const NGODashboard: React.FC = () => {
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 mb-8">
           <div className="flex justify-between items-start mb-4">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+              <h2 className="font-display text-xl font-semibold text-brand-ink flex items-center gap-2">
                 <CreditCard size={20} className="text-brand-blue" />
                 Recebimento de Doações
               </h2>
@@ -605,7 +615,7 @@ const NGODashboard: React.FC = () => {
         {/* Donations History Section */}
         {stripeStatus?.onboardingComplete && (
           <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 mb-8">
-            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 mb-6">
+            <h2 className="font-display text-xl font-semibold text-brand-ink flex items-center gap-2 mb-6">
               <BarChart3 size={20} className="text-brand-blue" />
               Histórico de Doações
             </h2>
@@ -616,7 +626,7 @@ const NGODashboard: React.FC = () => {
         {/* Stories Section */}
         <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold text-gray-900">Histórias</h2>
+            <h2 className="font-display text-xl font-semibold text-brand-ink">Histórias</h2>
             <button
               onClick={() => setShowPostModal(true)}
               className="flex items-center gap-2 px-4 py-2 bg-brand-yellow text-yellow-900 rounded-xl font-medium hover:bg-yellow-400 transition-all"

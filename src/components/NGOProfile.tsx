@@ -233,7 +233,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
           <div className="bg-white w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl animate-scale-up">
             <div className="p-6 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="font-bold text-lg">Nova histÃ³ria</h3>
+              <h3 className="font-display font-semibold text-lg text-brand-ink">Nova história</h3>
               <button 
                 disabled={isUploading}
                 onClick={() => { setShowPostModal(false); setNewPostFile(null); setNewPostCaption(''); }}

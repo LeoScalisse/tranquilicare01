@@ -50,6 +50,20 @@ export interface NGO {
   posts: NGOPost[];
 }
 
+/** A time-boxed "vaquinha relâmpago" (flash fundraiser) shown above the NGOs. */
+export interface FlashCampaign {
+  id: string;
+  title: string;
+  ngoId?: string;
+  ngoName: string;
+  category: string;
+  image: string;
+  raised: number;
+  goal: number;
+  /** Epoch ms when the campaign closes — drives the countdown clock. */
+  endsAt: number;
+}
+
 export enum View {
   HOME = 'HOME',
   MARKETPLACE = 'MARKETPLACE',

@@ -1,7 +1,8 @@
 import React from 'react';
 import { View } from '../types';
 import { BrandedText } from '../utils';
-import { Heart, UserPlus, ShoppingBag, UserCircle, LogOut, LogIn } from 'lucide-react';
+import { Heart, UserPlus, HandHeart, UserCircle, LogOut, LogIn } from 'lucide-react';
+import CosmosNav, { CosmosNavItem } from './CosmosNav';
 import logo from '@/assets/logo.png';
 
 interface HeaderProps {
@@ -25,34 +26,69 @@ const Header: React.FC<HeaderProps> = ({
 }) => {
   const isLoggedIn = Boolean(currentUserEmail);
   const navItemClass = (view: View) => `
-    flex items-center gap-2 px-5 py-2.5 rounded-full font-bold transition-all
-    ${currentView === view 
-      ? 'bg-brand-blue text-white shadow-lg scale-105' 
-      : 'text-gray-600 hover:bg-gray-100 hover:text-brand-blue'}
+    flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm transition-all duration-300
+    ${currentView === view
+      ? 'bg-brand-ink text-white shadow-lg shadow-brand-blue/20'
+      : 'text-muted-foreground hover:bg-brand-blue/10 hover:text-brand-ink'}
   `;
 
+  const mobileNavItems: CosmosNavItem[] = [
+    {
+      key: 'home',
+      label: 'Home',
+      icon: <Heart size={19} className={currentView === View.HOME ? 'fill-current' : ''} />,
+      active: currentView === View.HOME,
+      onClick: () => setCurrentView(View.HOME),
+    },
+    {
+      key: 'apoiar',
+      label: 'Apoiar',
+      icon: <HandHeart size={19} />,
+      active: currentView === View.MARKETPLACE,
+      onClick: () => setCurrentView(View.MARKETPLACE),
+    },
+    {
+      key: 'apoiado',
+      label: 'Seja apoiado',
+      icon: <UserPlus size={19} />,
+      active: currentView === View.NGO_REGISTRATION,
+      onClick: () => setCurrentView(View.NGO_REGISTRATION),
+    },
+    {
+      key: 'perfil',
+      label: isLoggedIn ? 'Perfil' : 'Entrar',
+      icon: isLoggedIn ? <UserCircle size={19} /> : <LogIn size={19} />,
+      active: false,
+      onClick: () => (isLoggedIn ? onProfileClick?.() : onDonorLogin?.()),
+    },
+  ];
+
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-100">
-      <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-        <div 
-          className="flex items-center gap-2 cursor-pointer group"
+    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-border/70">
+      <div className="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between">
+        <div
+          className="flex items-center gap-2.5 cursor-pointer group"
           onClick={() => setCurrentView(View.HOME)}
         >
-          <img src={logo} alt="TranquiliCare" className="w-10 h-10 rounded-xl shadow-md group-hover:shadow-brand-blue/30 transition-all" />
-          <h1 className="text-xl font-bold tracking-tight text-gray-800">
-            <span>Tranquili</span><span className="text-brand-yellow">Care</span>
+          <img
+            src={logo}
+            alt="TranquiliCare"
+            className="w-10 h-10 rounded-xl shadow-md transition-all duration-300 group-hover:shadow-brand-blue/40 group-hover:-rotate-6"
+          />
+          <h1 className="font-display text-xl font-semibold tracking-tight text-brand-ink">
+            Tranquili<span className="text-brand-blue">Care</span>
           </h1>
         </div>
 
-        <nav className="hidden md:flex items-center gap-4">
-          <button 
+        <nav className="hidden md:flex items-center gap-2">
+          <button
             onClick={() => setCurrentView(View.MARKETPLACE)}
             className={navItemClass(View.MARKETPLACE)}
           >
-            <ShoppingBag size={18} />
+            <HandHeart size={18} />
             <BrandedText text="Apoiar agora" />
           </button>
-          <button 
+          <button
             onClick={() => setCurrentView(View.NGO_REGISTRATION)}
             className={navItemClass(View.NGO_REGISTRATION)}
           >
@@ -61,12 +97,12 @@ const Header: React.FC<HeaderProps> = ({
           </button>
 
           {isLoggedIn ? (
-            <div className="flex items-center gap-2 pl-2 border-l border-gray-100">
+            <div className="flex items-center gap-1.5 pl-3 ml-1 border-l border-border">
               <button
                 onClick={onProfileClick}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-gray-50 text-gray-700 hover:bg-gray-100 hover:text-brand-blue font-bold transition-all"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-secondary text-brand-ink hover:bg-brand-blue/10 font-bold text-sm transition-all duration-300"
               >
-                <UserCircle size={18} />
+                <UserCircle size={18} className="text-brand-blue" />
                 <span>{accountType === 'ngo' ? 'Perfil da ONG' : 'Meu perfil'}</span>
               </button>
               <button
@@ -80,7 +116,7 @@ const Header: React.FC<HeaderProps> = ({
           ) : (
             <button
               onClick={onDonorLogin}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-gray-50 text-gray-700 hover:bg-gray-100 hover:text-brand-blue font-bold transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 ml-1 rounded-full bg-brand-blue text-white font-bold text-sm shadow-md shadow-brand-blue/25 hover:shadow-lg hover:shadow-brand-blue/35 hover:-translate-y-0.5 transition-all duration-300 btn-shine"
             >
               <LogIn size={18} />
               Entrar
@@ -94,37 +130,8 @@ const Header: React.FC<HeaderProps> = ({
           </svg>
         </button>
       </div>
-      
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex justify-around items-center p-3 z-50 shadow-[0_-8px_30px_rgb(0,0,0,0.06)]">
-         <button 
-            onClick={() => setCurrentView(View.HOME)}
-            className={`flex flex-col items-center gap-1 transition-colors ${currentView === View.HOME ? 'text-brand-blue' : 'text-gray-400'}`}
-          >
-            <Heart size={24} className={currentView === View.HOME ? 'fill-brand-blue' : ''} />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Home</span>
-          </button>
-           <button 
-            onClick={() => setCurrentView(View.MARKETPLACE)}
-            className={`flex flex-col items-center gap-1 transition-colors ${currentView === View.MARKETPLACE ? 'text-brand-blue' : 'text-gray-400'}`}
-          >
-            <ShoppingBag size={24} className={currentView === View.MARKETPLACE ? 'fill-brand-blue' : ''} />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Apoiar</span>
-          </button>
-           <button 
-            onClick={() => setCurrentView(View.NGO_REGISTRATION)}
-            className={`flex flex-col items-center gap-1 transition-colors ${currentView === View.NGO_REGISTRATION ? 'text-brand-blue' : 'text-gray-400'}`}
-          >
-            <UserPlus size={24} className={currentView === View.NGO_REGISTRATION ? 'fill-brand-blue' : ''} />
-            <span className="text-[10px] font-bold uppercase tracking-wider">Seja apoiado</span>
-          </button>
-          <button
-            onClick={isLoggedIn ? onProfileClick : onDonorLogin}
-            className="flex flex-col items-center gap-1 text-gray-400 transition-colors hover:text-brand-blue"
-          >
-            {isLoggedIn ? <UserCircle size={24} /> : <LogIn size={24} />}
-            <span className="text-[10px] font-bold uppercase tracking-wider">{isLoggedIn ? 'Perfil' : 'Entrar'}</span>
-          </button>
-      </div>
+
+      <CosmosNav items={mobileNavItems} />
     </header>
   );
 };

@@ -13,6 +13,10 @@ export default {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["'Albert Sans'", "'Segoe UI'", "sans-serif"],
+        display: ["Fraunces", "Georgia", "serif"],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -60,6 +64,7 @@ export default {
         brand: {
           blue: "#38b6ff",
           yellow: "#ffde59",
+          ink: "hsl(var(--brand-blue-deep))",
         },
       },
       borderRadius: {
@@ -103,6 +108,9 @@ export default {
         "fade-in": "fade-in 0.3s ease-out forwards",
         "fade-in-up": "fade-in-up 0.4s ease-out forwards",
         "scale-up": "scale-up 0.2s ease-out forwards",
+        "float-soft": "float-soft 6s ease-in-out infinite",
+        "sparkle": "sparkle-twinkle 3.2s ease-in-out infinite",
+        "heart-beat": "heart-beat 1.6s ease-in-out infinite",
       },
     },
   },
