@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { supabase } from '@/integrations/supabase/client';
+import { getUser, signIn, signUp } from '@/lib/localAuth';
 import { BrandedText } from '../utils';
 import {
   ArrowLeft,
   ArrowRight,
   Building2,
+  Clock,
   Eye,
   EyeOff,
   Heart,
@@ -22,22 +23,13 @@ import logo from '@/assets/logo.png';
 type Side = 'donor' | 'ngo';
 type DonorMode = 'login' | 'signup';
 
-type OwnedNGO = {
-  id: string;
-  status: 'pending' | 'approved' | 'rejected' | null;
-  has_seen_result: boolean | null;
-};
-
-const ngoPath = (ngo: OwnedNGO) =>
-  ngo.status === 'approved' && ngo.has_seen_result ? '/ngo/dashboard' : '/ngo/pending';
-
 const inputClass =
   'w-full px-4 py-3.5 bg-secondary border-2 border-transparent focus:border-brand-blue focus:bg-white rounded-2xl outline-none transition-all';
 
 const labelClass = 'flex items-center gap-2 text-sm font-bold text-brand-ink';
 
 /* -------------------------------------------------------------------------- */
-/*  Donor form — login + signup (preserves DonorAuth logic)                   */
+/*  Donor form — login + signup (local auth stub)                             */
 /* -------------------------------------------------------------------------- */
 
 const DonorForm: React.FC = () => {
@@ -52,20 +44,6 @@ const DonorForm: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
 
   const redirectTo = searchParams.get('redirect') || '/donor/profile';
-
-  const routeSignedUser = async (userId: string) => {
-    const { data: ngo } = await supabase
-      .from('ngos')
-      .select('id, status, has_seen_result')
-      .eq('owner_id', userId)
-      .maybeSingle();
-
-    if (ngo) {
-      navigate(ngoPath(ngo as OwnedNGO), { replace: true });
-      return;
-    }
-    navigate(redirectTo, { replace: true });
-  };
 
   const validateSignup = () => {
     if (mode !== 'signup') return true;
@@ -91,41 +69,13 @@ const DonorForm: React.FC = () => {
 
     try {
       if (mode === 'login') {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) {
-          toast.error(error.message.includes('Invalid login credentials') ? 'E-mail ou senha incorretos.' : error.message);
-          return;
-        }
-        if (data.user) {
-          toast.success('Login realizado com sucesso!');
-          await routeSignedUser(data.user.id);
-        }
-        return;
-      }
-
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/donor/profile`,
-          data: { full_name: name.trim(), account_type: 'donor' },
-        },
-      });
-
-      if (error) {
-        toast.error(error.message.includes('already registered') ? 'Este e-mail já está cadastrado. Faça login.' : error.message);
-        return;
-      }
-
-      if (data.user) {
-        await supabase.from('profiles').upsert({ id: data.user.id, email });
+        await signIn(email, password);
+        toast.success('Login realizado com sucesso!');
+      } else {
+        await signUp(email, name, password);
         toast.success('Conta de doador criada com sucesso!');
-        if (data.session) {
-          await routeSignedUser(data.user.id);
-        } else {
-          setMode('login');
-        }
       }
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       console.error('Donor auth error:', err);
       toast.error('Erro ao processar. Tente novamente.');
@@ -245,54 +195,11 @@ const DonorForm: React.FC = () => {
 };
 
 /* -------------------------------------------------------------------------- */
-/*  NGO form — login + CTA to the registration wizard (preserves NGOAuth)      */
+/*  NGO side — placeholder until the organization backend is rebuilt          */
 /* -------------------------------------------------------------------------- */
 
-const NGOForm: React.FC = () => {
+const NGOComingSoon: React.FC<{ onBackToDonor: () => void }> = ({ onBackToDonor }) => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-
-  const checkUserNGO = async (userId: string) => {
-    const { data: ngo } = await supabase
-      .from('ngos')
-      .select('id, status, has_seen_result')
-      .eq('owner_id', userId)
-      .maybeSingle();
-
-    if (ngo) {
-      if (ngo.status === 'approved' && ngo.has_seen_result) {
-        navigate('/ngo/dashboard');
-      } else {
-        navigate('/ngo/pending');
-      }
-    } else {
-      // Signed in but owns no NGO yet — send them to register one.
-      navigate('/?view=registration');
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) {
-        toast.error(error.message.includes('Invalid login credentials') ? 'E-mail ou senha incorretos' : error.message);
-        return;
-      }
-      toast.success('Login realizado com sucesso!');
-      if (data.user) await checkUserNGO(data.user.id);
-    } catch (err) {
-      console.error('Auth error:', err);
-      toast.error('Erro ao processar. Tente novamente.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="w-full">
       <div className="flex items-center gap-2.5 mb-1">
@@ -302,59 +209,32 @@ const NGOForm: React.FC = () => {
         <span className="text-xs font-bold uppercase tracking-[0.2em] text-brand-ink/70">Organização</span>
       </div>
       <h2 className="font-display text-3xl font-semibold text-brand-ink">
-        <BrandedText text="Área da sua ONG" />
+        <BrandedText text="Em breve para ONGs" />
       </h2>
       <p className="text-sm text-muted-foreground mt-1 mb-6">
-        Entre para acompanhar sua verificação e receber apoio.
+        O cadastro e o acesso de organizações estão sendo reconstruídos. Enquanto isso, você pode explorar e apoiar as causas como doador.
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <label className={labelClass}>
-            <Mail size={17} className="text-brand-blue" />
-            E-mail
-          </label>
-          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} placeholder="contato@suaong.org" />
-        </div>
+      <div className="rounded-2xl border border-dashed border-brand-yellow/60 bg-brand-yellow/10 p-5 flex items-start gap-3">
+        <Clock size={20} className="mt-0.5 shrink-0 text-brand-ink/60" />
+        <p className="text-sm text-brand-ink/70">
+          Estamos preparando um novo fluxo de verificação e recebimento de doações para as ONGs. Volte logo!
+        </p>
+      </div>
 
-        <div className="space-y-2">
-          <label className={labelClass}>
-            <Lock size={17} className="text-brand-blue" />
-            Senha
-          </label>
-          <div className="relative">
-            <input
-              type={showPassword ? 'text' : 'password'}
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className={`${inputClass} pr-12`}
-              placeholder="••••••••"
-            />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
-              {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
-            </button>
-          </div>
-        </div>
-
+      <div className="mt-6 flex flex-col sm:flex-row gap-3">
         <button
-          type="submit"
-          disabled={loading}
-          className="btn-shine w-full py-3.5 bg-brand-ink text-white rounded-2xl font-bold shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 flex items-center justify-center gap-2"
+          onClick={onBackToDonor}
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-blue px-6 py-3 text-sm font-bold text-white shadow-md shadow-brand-blue/25 hover:-translate-y-0.5 transition-transform btn-shine"
         >
-          {loading ? <Loader2 size={19} className="animate-spin" /> : null}
-          Entrar
+          <Heart size={16} />
+          Entrar como doador
         </button>
-      </form>
-
-      <div className="mt-5 rounded-2xl border border-dashed border-brand-yellow/60 bg-brand-yellow/10 p-4 text-center">
-        <p className="text-sm text-muted-foreground mb-2">Ainda não cadastrou sua organização?</p>
         <button
-          onClick={() => navigate('/?view=registration')}
-          className="inline-flex items-center gap-1.5 rounded-full bg-brand-yellow px-5 py-2.5 text-sm font-bold text-brand-ink shadow-sm hover:-translate-y-0.5 transition-transform"
+          onClick={() => navigate('/')}
+          className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-bold text-brand-ink hover:bg-secondary transition-colors"
         >
-          <Building2 size={16} />
-          Cadastrar minha ONG
+          Voltar ao início
         </button>
       </div>
     </div>
@@ -374,21 +254,9 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
   const [searchParams] = useSearchParams();
   const [side, setSide] = useState<Side>(initialSide);
 
-  // Already signed in? Route them where they belong.
+  // Already signed in? Send them to their profile.
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (!session?.user) return;
-      const { data: ngo } = await supabase
-        .from('ngos')
-        .select('id, status, has_seen_result')
-        .eq('owner_id', session.user.id)
-        .maybeSingle();
-      if (ngo) {
-        navigate(ngoPath(ngo as OwnedNGO), { replace: true });
-      } else {
-        navigate(searchParams.get('redirect') || '/donor/profile', { replace: true });
-      }
-    });
+    if (getUser()) navigate(searchParams.get('redirect') || '/donor/profile', { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -424,7 +292,7 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
                   Sua causa também<br />merece apoio
                 </h3>
                 <p className="text-white/70 text-sm mb-8">
-                  Cadastre sua ONG, seja verificada e receba doações de quem acredita no seu trabalho.
+                  Um novo espaço para ONGs se cadastrarem e receberem doações está a caminho.
                 </p>
                 <button
                   onClick={() => setSide('ngo')}
@@ -499,7 +367,7 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
               <DonorForm />
             </div>
             <div className={`flex items-center p-10 lg:p-14 transition-opacity duration-300 ${!isDonor ? 'opacity-100' : 'opacity-0'}`} aria-hidden={isDonor}>
-              <NGOForm />
+              <NGOComingSoon onBackToDonor={() => setSide('donor')} />
             </div>
           </div>
           {overlay}
@@ -514,7 +382,7 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
                 exit={{ opacity: 0, x: isDonor ? 20 : -20 }}
                 transition={{ duration: 0.3 }}
               >
-                {isDonor ? <DonorForm /> : <NGOForm />}
+                {isDonor ? <DonorForm /> : <NGOComingSoon onBackToDonor={() => setSide('donor')} />}
               </motion.div>
             </AnimatePresence>
           </div>

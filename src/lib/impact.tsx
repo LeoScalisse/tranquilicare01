@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { supabase } from '@/integrations/supabase/client';
 
 /**
  * Shared donation-impact primitives used by both the home dashboard
@@ -111,53 +110,13 @@ export const devDonationRows = (userEmail: string | null): DonationRow[] => {
 };
 
 /**
- * Fetches donation rows and keeps them live so on-screen numbers grow in
- * real time (Tesla-style): realtime INSERT subscription for instant ticks,
- * plus a 30s polling refresh and a refetch on window focus as a safety net
- * for missed websocket events.
- * Both the dashboard and profile consume this so their figures stay identical.
+ * Donation rows powering the impact numbers. With no backend yet, these come
+ * from a local seed so the dashboard and profile still show coherent totals,
+ * streaks, and the week strip. When a real backend returns, fetch here instead
+ * — every screen consumes this hook, so the figures stay identical everywhere.
  */
-export const useDonationRows = (userEmail: string | null): DonationRow[] => {
-  const [rows, setRows] = useState<DonationRow[]>([]);
-
-  useEffect(() => {
-    let active = true;
-
-    const load = async () => {
-      const { data, error } = await supabase.from('donations').select('amount, donor_email, created_at, ngo_id');
-      if (!active) return;
-
-      let next: DonationRow[] = !error && data ? (data as DonationRow[]) : [];
-      if (import.meta.env.DEV && next.length === 0) {
-        next = devDonationRows(userEmail);
-      }
-      setRows(next);
-    };
-
-    load();
-
-    const channel = supabase
-      .channel('donation-rows-shared')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'donations' }, (payload) => {
-        const row = payload.new as DonationRow;
-        setRows((prev) => [...prev, row]);
-      })
-      .subscribe();
-
-    const poll = setInterval(load, 30_000);
-    const onFocus = () => load();
-    window.addEventListener('focus', onFocus);
-
-    return () => {
-      active = false;
-      supabase.removeChannel(channel);
-      clearInterval(poll);
-      window.removeEventListener('focus', onFocus);
-    };
-  }, [userEmail]);
-
-  return rows;
-};
+export const useDonationRows = (userEmail: string | null): DonationRow[] =>
+  useMemo(() => devDonationRows(userEmail), [userEmail]);
 
 /** Animated count-up; finishes instantly when the user prefers reduced motion. */
 export const useCountUp = (target: number, duration = 1400): number => {

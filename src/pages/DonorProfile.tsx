@@ -1,8 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User as SupabaseUser } from '@supabase/supabase-js';
 import { motion } from 'framer-motion';
-import { supabase } from '@/integrations/supabase/client';
+import { getUser, updateUser, signOut, LocalUser } from '@/lib/localAuth';
 import { BrandedText } from '../utils';
 import {
   ProgressRing,
@@ -86,7 +85,7 @@ const resizeToDataUrl = (file: File): Promise<string> =>
 
 const DonorProfile: React.FC = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const [user, setUser] = useState<LocalUser | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -118,35 +117,17 @@ const DonorProfile: React.FC = () => {
   const animatedTotal = useCountUp(stats.total);
 
   useEffect(() => {
-    const loadProfile = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session?.user) {
-        navigate('/donor/auth', { replace: true });
-        return;
-      }
-
-      const { data: ngo } = await supabase
-        .from('ngos')
-        .select('id, status, has_seen_result')
-        .eq('owner_id', session.user.id)
-        .maybeSingle();
-
-      if (ngo) {
-        navigate(ngo.status === 'approved' && ngo.has_seen_result ? '/ngo/dashboard' : '/ngo/pending', { replace: true });
-        return;
-      }
-
-      const meta = session.user.user_metadata ?? {};
-      setUser(session.user);
-      setEmail(session.user.email || '');
-      setName((meta.full_name as string) || '');
-      setAvatarUrl((meta.avatar_url as string) || null);
-      setCredits(typeof meta.credits === 'number' ? meta.credits : import.meta.env.DEV ? 350 : 0);
-      setLoading(false);
-    };
-
-    loadProfile();
+    const current = getUser();
+    if (!current) {
+      navigate('/donor/auth', { replace: true });
+      return;
+    }
+    setUser(current);
+    setEmail(current.email);
+    setName(current.name || '');
+    setAvatarUrl(current.avatar);
+    setCredits(current.credits);
+    setLoading(false);
   }, [navigate]);
 
   const completeness = useMemo(() => {
@@ -180,21 +161,7 @@ const DonorProfile: React.FC = () => {
     setSaving(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        data: {
-          ...user.user_metadata,
-          full_name: name.trim(),
-          avatar_url: avatarUrl,
-          account_type: 'donor',
-        },
-      });
-
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
-
-      await supabase.from('profiles').upsert({ id: user.id, email });
+      await updateUser({ name: name.trim(), avatar: avatarUrl });
       setDirty(false);
       toast.success('Perfil atualizado!');
     } catch (err) {
@@ -206,7 +173,7 @@ const DonorProfile: React.FC = () => {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    await signOut();
     navigate('/');
   };
 

@@ -1,293 +1,79 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { User as SupabaseUser } from '@supabase/supabase-js';
-import { toast } from 'sonner';
-import { View, NGO, NGOPost } from '../types';
-import { supabase } from '@/integrations/supabase/client';
+import { View, NGO } from '../types';
 import { demoNgos } from '@/data/demoNgos';
+import { getUser, onAuthChange, signOut, LocalUser } from '@/lib/localAuth';
 import Header from '../components/Header';
 import ImpactDashboard from '../components/ImpactDashboard';
 import Marketplace from '../components/Marketplace';
-import NGORegistration from '../components/NGORegistration';
 import NGOProfile from '../components/NGOProfile';
-import StoriesFeed from '../components/StoriesFeed';
-import PendingVerification from '../components/PendingVerification';
+import { Clock } from 'lucide-react';
 import logo from '@/assets/logo.png';
 
-type AccountType = 'ngo' | 'donor';
-type OwnedNGO = {
-  id: string;
-  status: 'pending' | 'approved' | 'rejected' | null;
-  has_seen_result: boolean | null;
-};
+// No backend yet: the marketplace runs on the local demo dataset. This is the
+// seam where a real fetch returns once a new database is wired up.
+const ngos: NGO[] = demoNgos;
+
+/** Placeholder for the "Seja apoiado" flow until the NGO backend is rebuilt. */
+const ComingSoon: React.FC<{ onBack: () => void }> = ({ onBack }) => (
+  <div className="max-w-2xl mx-auto px-4 py-20 text-center">
+    <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-brand-yellow/20">
+      <Clock className="h-8 w-8 text-brand-ink/60" />
+    </div>
+    <h2 className="font-display text-3xl font-semibold text-brand-ink mb-2">Em breve para organizações</h2>
+    <p className="text-muted-foreground max-w-md mx-auto">
+      O cadastro de ONGs está sendo reconstruído. Volte logo para inscrever sua organização e receber apoio.
+    </p>
+    <button
+      onClick={onBack}
+      className="mt-6 inline-flex items-center rounded-full bg-brand-blue px-6 py-3 font-bold text-white shadow-md shadow-brand-blue/25 hover:-translate-y-0.5 transition-transform btn-shine"
+    >
+      Explorar causas
+    </button>
+  </div>
+);
 
 const TranquiliCareApp: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const [currentView, setCurrentView] = useState<View>(View.HOME);
-  const [ngos, setNgos] = useState<NGO[]>([]);
   const [viewingNGO, setViewingNGO] = useState<NGO | null>(null);
-  const [pendingNGOName, setPendingNGOName] = useState<string>('');
-  const [loading, setLoading] = useState(true);
-  const [authUser, setAuthUser] = useState<SupabaseUser | null>(null);
-  const [accountType, setAccountType] = useState<AccountType | null>(null);
-  const [ownedNGO, setOwnedNGO] = useState<OwnedNGO | null>(null);
+  const [user, setUser] = useState<LocalUser | null>(getUser);
 
-  const fetchApprovedNGOs = async () => {
-    setLoading(true);
-
-    const { data: ngosData, error: ngosError } = await supabase
-      .from('ngos_public')
-      .select('*');
-
-    if (ngosError) {
-      console.error('Error fetching NGOs:', ngosError);
-      setNgos(demoNgos);
-      setLoading(false);
-      return;
-    }
-
-    if (!ngosData || ngosData.length === 0) {
-      setNgos(demoNgos);
-      setLoading(false);
-      return;
-    }
-
-    const ngoIds = ngosData.map(ngo => ngo.id).filter(Boolean) as string[];
-    const { data: postsData, error: postsError } = await supabase
-      .from('ngo_posts')
-      .select('*')
-      .in('ngo_id', ngoIds)
-      .order('created_at', { ascending: false });
-
-    if (postsError) {
-      console.error('Error fetching posts:', postsError);
-    }
-
-    const postsByNgoId: Record<string, NGOPost[]> = {};
-    if (postsData) {
-      postsData.forEach(post => {
-        if (!postsByNgoId[post.ngo_id]) {
-          postsByNgoId[post.ngo_id] = [];
-        }
-        postsByNgoId[post.ngo_id].push({
-          id: post.id,
-          url: post.url,
-          type: post.type as 'image' | 'video',
-          caption: post.caption || undefined,
-          timestamp: new Date(post.created_at).getTime()
-        });
-      });
-    }
-
-    const formattedNGOs: NGO[] = ngosData.map(ngo => ({
-      id: ngo.id || '',
-      name: ngo.name || '',
-      description: ngo.description || '',
-      category: ngo.category || 'Outros',
-      goal: ngo.goal || '',
-      image: ngo.image || '',
-      email: '',
-      instagram: ngo.instagram || '',
-      phone: undefined,
-      verified: ngo.verified || false,
-      status: ngo.status as 'pending' | 'approved' | 'rejected',
-      posts: ngo.id ? postsByNgoId[ngo.id] || [] : []
-    }));
-
-    setNgos(import.meta.env.DEV ? [...formattedNGOs, ...demoNgos] : formattedNGOs);
-    setLoading(false);
-  };
-
-  const loadAccountType = async (userId: string) => {
-    const { data: ngo, error } = await supabase
-      .from('ngos')
-      .select('id, status, has_seen_result')
-      .eq('owner_id', userId)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error checking account type:', error);
-    }
-
-    if (ngo) {
-      setOwnedNGO(ngo as OwnedNGO);
-      setAccountType('ngo');
-    } else {
-      setOwnedNGO(null);
-      setAccountType('donor');
-    }
-  };
-
-  const getOwnedNGOPath = () => {
-    if (!ownedNGO) return '/ngo/auth';
-    if (ownedNGO.status === 'approved' && ownedNGO.has_seen_result) return '/ngo/dashboard';
-    return '/ngo/pending';
-  };
+  useEffect(() => onAuthChange(setUser), []);
 
   const handleProfileClick = () => {
-    if (!authUser) {
-      navigate('/donor/auth');
-      return;
-    }
-
-    navigate(accountType === 'ngo' ? getOwnedNGOPath() : '/donor/profile');
+    navigate(user ? '/donor/profile' : '/donor/auth');
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setAuthUser(null);
-    setAccountType(null);
-    setOwnedNGO(null);
+    await signOut();
     navigate('/');
   };
 
-  const handleRegisterComplete = (ngoName: string) => {
-    setPendingNGOName(ngoName);
-    setCurrentView(View.PENDING_VERIFICATION);
-  };
-
-  const handleSelectNGO = async (ngo: NGO) => {
-    if (ngo.id.startsWith('demo-')) {
-      setViewingNGO(ngo);
-      setCurrentView(View.NGO_PROFILE);
-      return;
-    }
-
-    const { data: fullNgoData, error } = await supabase
-      .from('ngos')
-      .select('*')
-      .eq('id', ngo.id)
-      .eq('status', 'approved')
-      .single();
-
-    if (error || !fullNgoData) {
-      console.error('Error fetching NGO details:', error);
-      setViewingNGO(ngo);
-    } else {
-      setViewingNGO({
-        ...ngo,
-        email: fullNgoData.email,
-        phone: fullNgoData.phone || undefined,
-      });
-    }
+  const handleSelectNGO = (ngo: NGO) => {
+    setViewingNGO(ngo);
     setCurrentView(View.NGO_PROFILE);
   };
 
-  const handleSupportNGO = (ngo: NGO) => {
-    if (!authUser) {
-      navigate(`/donor/auth?redirect=${encodeURIComponent(`/?support=${ngo.id}`)}`);
-      return;
-    }
-
-    if (accountType === 'ngo') {
-      toast.error('Para apoiar uma ONG, entre com uma conta de doador.');
-      return;
-    }
-
-    handleSelectNGO(ngo);
-  };
-
-  const updateNGO = (updatedNGO: NGO) => {
-    setNgos(ngos.map(n => n.id === updatedNGO.id ? updatedNGO : n));
-    if (viewingNGO?.id === updatedNGO.id) setViewingNGO(updatedNGO);
-  };
-
-  useEffect(() => {
-    fetchApprovedNGOs();
-
-    // Keep the NGO list (and the live "ONGs verificadas" counter) fresh:
-    // realtime changes trigger a refetch, so users see numbers grow live.
-    const channel = supabase
-      .channel('ngos-live')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'ngos' }, () => {
-        fetchApprovedNGOs();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  useEffect(() => {
-    let active = true;
-
-    const syncSession = async (user: SupabaseUser | null) => {
-      if (!active) return;
-      setAuthUser(user);
-
-      if (user) {
-        await loadAccountType(user.id);
-      } else {
-        setAccountType(null);
-        setOwnedNGO(null);
-      }
-    };
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      syncSession(session?.user ?? null);
-    });
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      syncSession(session?.user ?? null);
-    });
-
-    return () => {
-      active = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
   useEffect(() => {
     const requestedView = searchParams.get('view');
-    if (requestedView === 'marketplace') {
-      setCurrentView(View.MARKETPLACE);
-    } else if (requestedView === 'registration') {
-      setCurrentView(View.NGO_REGISTRATION);
-    }
+    if (requestedView === 'marketplace') setCurrentView(View.MARKETPLACE);
+    else if (requestedView === 'registration') setCurrentView(View.NGO_REGISTRATION);
   }, [searchParams]);
-
-  useEffect(() => {
-    const supportNgoId = searchParams.get('support');
-    if (!supportNgoId || !authUser || accountType !== 'donor' || ngos.length === 0) return;
-
-    const target = ngos.find((ngo) => ngo.id === supportNgoId);
-    if (!target) return;
-
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.delete('support');
-    setSearchParams(nextParams, { replace: true });
-    handleSelectNGO(target);
-  }, [searchParams, setSearchParams, authUser, accountType, ngos]);
-
-  const allStories: NGOPost[] = ngos.reduce((acc, ngo) => {
-    const ngoPosts = ngo.posts.map(post => ({
-      ...post,
-      ngoId: ngo.id,
-      ngoName: ngo.name,
-      ngoImage: ngo.image
-    }));
-    return [...acc, ...ngoPosts];
-  }, [] as NGOPost[]).sort((a, b) => b.timestamp - a.timestamp);
 
   const renderHome = () => (
     <>
       <ImpactDashboard
-        userName={(authUser?.user_metadata?.full_name as string | undefined) ?? null}
-        userEmail={authUser?.email ?? null}
-        isLoggedIn={Boolean(authUser)}
-        accountType={accountType}
-        ownedNgoId={ownedNGO?.id ?? null}
+        userName={user?.name ?? null}
+        userEmail={user?.email ?? null}
+        isLoggedIn={Boolean(user)}
+        accountType={user ? 'donor' : null}
+        ownedNgoId={null}
         verifiedCount={ngos.filter((ngo) => ngo.verified).length}
         onLogin={() => navigate('/donor/auth')}
-        onNameUpdated={(name) =>
-          setAuthUser((prev) =>
-            prev ? ({ ...prev, user_metadata: { ...prev.user_metadata, full_name: name } } as SupabaseUser) : prev,
-          )
-        }
       />
-      <Marketplace embedded ngos={ngos} onSelectNGO={handleSelectNGO} onSupportNGO={handleSupportNGO} />
+      <Marketplace embedded ngos={ngos} onSelectNGO={handleSelectNGO} onSupportNGO={handleSelectNGO} />
     </>
   );
 
@@ -296,55 +82,42 @@ const TranquiliCareApp: React.FC = () => {
       case View.HOME:
         return renderHome();
       case View.MARKETPLACE:
-        return <Marketplace ngos={ngos} onSelectNGO={handleSelectNGO} onSupportNGO={handleSupportNGO} />;
+        return <Marketplace ngos={ngos} onSelectNGO={handleSelectNGO} onSupportNGO={handleSelectNGO} />;
       case View.NGO_REGISTRATION:
-        return <NGORegistration onRegisterComplete={handleRegisterComplete} />;
-      case View.PENDING_VERIFICATION:
-        return <PendingVerification ngoName={pendingNGOName} onBackToHome={() => setCurrentView(View.HOME)} />;
-      case View.STORIES_FEED:
-        return <StoriesFeed stories={allStories} onSelectNGO={ngoId => {
-          const target = ngos.find(n => n.id === ngoId);
-          if (target) handleSelectNGO(target);
-        }} />;
+        return <ComingSoon onBack={() => setCurrentView(View.MARKETPLACE)} />;
       case View.NGO_PROFILE:
-        return viewingNGO ? (
-          <NGOProfile
-            ngo={viewingNGO}
-            isOwner={false}
-            onUpdate={updateNGO}
-            viewerAccountType={accountType}
-            onRequireDonorAuth={() => navigate(`/donor/auth?redirect=${encodeURIComponent(`/?support=${viewingNGO.id}`)}`)}
-          />
-        ) : renderHome();
+        return viewingNGO ? <NGOProfile ngo={viewingNGO} /> : renderHome();
       default:
         return renderHome();
     }
   };
 
-  return <div className="min-h-screen bg-white text-gray-900 font-sans pb-20 md:pb-0">
+  return (
+    <div className="min-h-screen bg-white text-gray-900 font-sans pb-20 md:pb-0">
       <Header
         currentView={currentView}
         setCurrentView={setCurrentView}
-        currentUserEmail={authUser?.email ?? null}
-        accountType={accountType}
+        currentUserEmail={user?.email ?? null}
+        accountType={user ? 'donor' : null}
         onProfileClick={handleProfileClick}
         onLogout={handleLogout}
         onDonorLogin={() => navigate('/donor/auth')}
       />
-      <main className="animate-fade-in">
-        {renderView()}
-      </main>
+      <main className="animate-fade-in">{renderView()}</main>
 
-      {currentView !== View.STORIES_FEED && <footer className="bg-gray-50 border-t border-gray-200 py-8 md:py-12 mt-12 mb-20 md:mb-0">
-          <div className="max-w-6xl mx-auto px-4 text-center text-gray-500 text-sm">
-            <div className="flex justify-center mb-4">
-              <img src={logo} alt="TranquiliCare" className="w-12 h-12 rounded-xl shadow-md" />
-            </div>
-            <p className="mb-2 font-bold text-gray-400">TRANQUILI<span className="text-brand-blue">CARE</span></p>
-            <p>© 2025 TranquiliCare. Conectando corações, mudando o mundo.</p>
+      <footer className="bg-gray-50 border-t border-gray-200 py-8 md:py-12 mt-12 mb-20 md:mb-0">
+        <div className="max-w-6xl mx-auto px-4 text-center text-gray-500 text-sm">
+          <div className="flex justify-center mb-4">
+            <img src={logo} alt="TranquiliCare" className="w-12 h-12 rounded-xl shadow-md" />
           </div>
-        </footer>}
-    </div>;
+          <p className="mb-2 font-bold text-gray-400">
+            TRANQUILI<span className="text-brand-blue">CARE</span>
+          </p>
+          <p>© 2025 TranquiliCare. Conectando corações, mudando o mundo.</p>
+        </div>
+      </footer>
+    </div>
+  );
 };
 
 export default TranquiliCareApp;

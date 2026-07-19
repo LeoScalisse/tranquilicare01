@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, HandCoins, HandHeart, Heart, Loader2, Pencil, ShieldCheck, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { updateUser } from '@/lib/localAuth';
 import {
   COMMUNITY_STEPS,
   PERSONAL_STEPS,
@@ -85,14 +85,7 @@ const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
     const trimmed = nameDraft.trim();
     setSavingName(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { error } = await supabase.auth.updateUser({
-        data: { ...(user?.user_metadata ?? {}), full_name: trimmed },
-      });
-      if (error) {
-        toast.error(error.message);
-        return;
-      }
+      await updateUser({ name: trimmed });
       setDisplayName(trimmed);
       setEditingName(false);
       onNameUpdated?.(trimmed);
