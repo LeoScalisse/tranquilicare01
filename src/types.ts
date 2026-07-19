@@ -67,6 +67,5 @@ export interface FlashCampaign {
 export enum View {
   HOME = 'HOME',
   MARKETPLACE = 'MARKETPLACE',
-  NGO_REGISTRATION = 'NGO_REGISTRATION',
   NGO_PROFILE = 'NGO_PROFILE',
 }

@@ -2,36 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { View, NGO } from '../types';
 import { demoNgos } from '@/data/demoNgos';
-import { getUser, onAuthChange, signOut, LocalUser } from '@/lib/localAuth';
+import { getUser, onAuthChange, signOut, defaultDestForAccount, LocalUser } from '@/lib/localAuth';
 import Header from '../components/Header';
 import ImpactDashboard from '../components/ImpactDashboard';
 import Marketplace from '../components/Marketplace';
 import NGOProfile from '../components/NGOProfile';
-import { Clock } from 'lucide-react';
 import logo from '@/assets/logo.png';
 
 // No backend yet: the marketplace runs on the local demo dataset. This is the
 // seam where a real fetch returns once a new database is wired up.
 const ngos: NGO[] = demoNgos;
-
-/** Placeholder for the "Seja apoiado" flow until the NGO backend is rebuilt. */
-const ComingSoon: React.FC<{ onBack: () => void }> = ({ onBack }) => (
-  <div className="max-w-2xl mx-auto px-4 py-20 text-center">
-    <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-brand-yellow/20">
-      <Clock className="h-8 w-8 text-brand-ink/60" />
-    </div>
-    <h2 className="font-display text-3xl font-semibold text-brand-ink mb-2">Em breve para organizações</h2>
-    <p className="text-muted-foreground max-w-md mx-auto">
-      O cadastro de ONGs está sendo reconstruído. Volte logo para inscrever sua organização e receber apoio.
-    </p>
-    <button
-      onClick={onBack}
-      className="mt-6 inline-flex items-center rounded-full bg-brand-blue px-6 py-3 font-bold text-white shadow-md shadow-brand-blue/25 hover:-translate-y-0.5 transition-transform btn-shine"
-    >
-      Explorar causas
-    </button>
-  </div>
-);
 
 const TranquiliCareApp: React.FC = () => {
   const navigate = useNavigate();
@@ -43,7 +23,7 @@ const TranquiliCareApp: React.FC = () => {
   useEffect(() => onAuthChange(setUser), []);
 
   const handleProfileClick = () => {
-    navigate(user ? '/donor/profile' : '/donor/auth');
+    navigate(user ? defaultDestForAccount(user.accountType) : '/donor/auth');
   };
 
   const handleLogout = async () => {
@@ -57,9 +37,7 @@ const TranquiliCareApp: React.FC = () => {
   };
 
   useEffect(() => {
-    const requestedView = searchParams.get('view');
-    if (requestedView === 'marketplace') setCurrentView(View.MARKETPLACE);
-    else if (requestedView === 'registration') setCurrentView(View.NGO_REGISTRATION);
+    if (searchParams.get('view') === 'marketplace') setCurrentView(View.MARKETPLACE);
   }, [searchParams]);
 
   const renderHome = () => (
@@ -68,7 +46,7 @@ const TranquiliCareApp: React.FC = () => {
         userName={user?.name ?? null}
         userEmail={user?.email ?? null}
         isLoggedIn={Boolean(user)}
-        accountType={user ? 'donor' : null}
+        accountType={user?.accountType ?? null}
         ownedNgoId={null}
         verifiedCount={ngos.filter((ngo) => ngo.verified).length}
         onLogin={() => navigate('/donor/auth')}
@@ -83,8 +61,6 @@ const TranquiliCareApp: React.FC = () => {
         return renderHome();
       case View.MARKETPLACE:
         return <Marketplace ngos={ngos} onSelectNGO={handleSelectNGO} onSupportNGO={handleSelectNGO} />;
-      case View.NGO_REGISTRATION:
-        return <ComingSoon onBack={() => setCurrentView(View.MARKETPLACE)} />;
       case View.NGO_PROFILE:
         return viewingNGO ? <NGOProfile ngo={viewingNGO} /> : renderHome();
       default:
@@ -98,10 +74,11 @@ const TranquiliCareApp: React.FC = () => {
         currentView={currentView}
         setCurrentView={setCurrentView}
         currentUserEmail={user?.email ?? null}
-        accountType={user ? 'donor' : null}
+        accountType={user?.accountType ?? null}
         onProfileClick={handleProfileClick}
         onLogout={handleLogout}
         onDonorLogin={() => navigate('/donor/auth')}
+        onNGOAuth={() => navigate('/ngo/auth?mode=signup')}
       />
       <main className="animate-fade-in">{renderView()}</main>
 

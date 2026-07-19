@@ -7,13 +7,22 @@
  * later, not an auth system. Swap the bodies here when the new backend lands.
  */
 
+export type AccountType = 'donor' | 'ngo';
+
 export interface LocalUser {
   id: string;
   email: string;
   name: string;
   avatar: string | null;
   credits: number;
+  accountType: AccountType;
 }
+
+/** Single source of truth for where a signed-in user lands. Donors get their
+ *  profile; organizations get the home dashboard (its NGO card is their account
+ *  surface for now — there's no separate NGO profile after the backend removal). */
+export const defaultDestForAccount = (accountType: AccountType): string =>
+  accountType === 'ngo' ? '/' : '/donor/profile';
 
 const KEY = 'tc-user';
 type Listener = (user: LocalUser | null) => void;
@@ -27,7 +36,9 @@ const uid = (): string =>
 const read = (): LocalUser | null => {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as LocalUser) : null;
+    if (!raw) return null;
+    // Default accountType for users persisted before it existed.
+    return { accountType: 'donor', ...(JSON.parse(raw) as LocalUser) };
   } catch {
     return null;
   }
@@ -53,18 +64,27 @@ export const onAuthChange = (listener: Listener): (() => void) => {
   };
 };
 
-export const signIn = async (email: string, _password: string): Promise<LocalUser> => {
+export const signIn = async (
+  email: string,
+  _password: string,
+  accountType: AccountType = 'donor',
+): Promise<LocalUser> => {
   const existing = read();
   const user: LocalUser =
     existing && existing.email === email
-      ? existing
-      : { id: uid(), email, name: '', avatar: null, credits: DEV_CREDITS };
+      ? { ...existing, accountType } // stub: log in as whichever role's form was used
+      : { id: uid(), email, name: '', avatar: null, credits: DEV_CREDITS, accountType };
   write(user);
   return user;
 };
 
-export const signUp = async (email: string, name: string, _password: string): Promise<LocalUser> => {
-  const user: LocalUser = { id: uid(), email, name: name.trim(), avatar: null, credits: DEV_CREDITS };
+export const signUp = async (
+  email: string,
+  name: string,
+  _password: string,
+  accountType: AccountType = 'donor',
+): Promise<LocalUser> => {
+  const user: LocalUser = { id: uid(), email, name: name.trim(), avatar: null, credits: DEV_CREDITS, accountType };
   write(user);
   return user;
 };

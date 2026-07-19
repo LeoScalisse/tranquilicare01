@@ -13,6 +13,7 @@ interface HeaderProps {
   onProfileClick?: () => void;
   onLogout?: () => void;
   onDonorLogin?: () => void;
+  onNGOAuth?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -23,6 +24,7 @@ const Header: React.FC<HeaderProps> = ({
   onProfileClick,
   onLogout,
   onDonorLogin,
+  onNGOAuth,
 }) => {
   const isLoggedIn = Boolean(currentUserEmail);
   const navItemClass = (view: View) => `
@@ -51,8 +53,8 @@ const Header: React.FC<HeaderProps> = ({
       key: 'apoiado',
       label: 'Seja apoiado',
       icon: <UserPlus size={19} />,
-      active: currentView === View.NGO_REGISTRATION,
-      onClick: () => setCurrentView(View.NGO_REGISTRATION),
+      active: false,
+      onClick: () => onNGOAuth?.(),
     },
     {
       key: 'perfil',
@@ -89,8 +91,8 @@ const Header: React.FC<HeaderProps> = ({
             <BrandedText text="Apoiar agora" />
           </button>
           <button
-            onClick={() => setCurrentView(View.NGO_REGISTRATION)}
-            className={navItemClass(View.NGO_REGISTRATION)}
+            onClick={onNGOAuth}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm text-muted-foreground hover:bg-brand-blue/10 hover:text-brand-ink transition-all duration-300"
           >
             <UserPlus size={18} />
             <BrandedText text="Seja apoiado" />

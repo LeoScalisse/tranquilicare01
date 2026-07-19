@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getUser, signIn, signUp } from '@/lib/localAuth';
+import { getUser, signIn, signUp, defaultDestForAccount, AccountType } from '@/lib/localAuth';
 import { BrandedText } from '../utils';
 import {
   ArrowLeft,
   ArrowRight,
   Building2,
-  Clock,
   Eye,
   EyeOff,
   Heart,
@@ -20,22 +19,71 @@ import {
 import { toast } from 'sonner';
 import logo from '@/assets/logo.png';
 
-type Side = 'donor' | 'ngo';
-type DonorMode = 'login' | 'signup';
+type Side = AccountType;
+type Mode = 'login' | 'signup';
+
+const SPRING = { type: 'spring' as const, stiffness: 400, damping: 34 };
 
 const inputClass =
   'w-full px-4 py-3.5 bg-secondary border-2 border-transparent focus:border-brand-blue focus:bg-white rounded-2xl outline-none transition-all';
-
 const labelClass = 'flex items-center gap-2 text-sm font-bold text-brand-ink';
 
+interface RoleConfig {
+  tab: string;
+  kicker: string;
+  Icon: typeof Heart;
+  iconWrap: string;
+  kickerText: string;
+  submitBg: string;
+  titles: Record<Mode, string>;
+  subs: Record<Mode, string>;
+  namePlaceholder: string;
+  emailPlaceholder: string;
+}
+
+const ROLE: Record<Side, RoleConfig> = {
+  donor: {
+    tab: 'Doador',
+    kicker: 'Doador',
+    Icon: Heart,
+    iconWrap: 'bg-brand-blue/10',
+    kickerText: 'text-brand-blue',
+    submitBg: 'bg-brand-blue shadow-brand-blue/25',
+    titles: { login: 'Bem-vindo de volta', signup: 'Comece a fazer o bem' },
+    subs: {
+      login: 'Entre para acompanhar seus apoios.',
+      signup: 'Crie sua conta e apoie causas em minutos.',
+    },
+    namePlaceholder: 'Seu nome',
+    emailPlaceholder: 'seu@email.com',
+  },
+  ngo: {
+    tab: 'Organização',
+    kicker: 'Organização',
+    Icon: Building2,
+    iconWrap: 'bg-brand-yellow/25',
+    kickerText: 'text-brand-ink/70',
+    submitBg: 'bg-brand-ink shadow-brand-ink/20',
+    titles: { login: 'Área da sua ONG', signup: 'Cadastre sua organização' },
+    subs: {
+      login: 'Entre para acompanhar sua organização.',
+      signup: 'Crie a conta da sua ONG e comece a receber apoio.',
+    },
+    namePlaceholder: 'Nome da organização',
+    emailPlaceholder: 'contato@suaong.org',
+  },
+};
+
 /* -------------------------------------------------------------------------- */
-/*  Donor form — login + signup (local auth stub)                             */
+/*  Unified auth form — login + signup, identical for both roles              */
 /* -------------------------------------------------------------------------- */
 
-const DonorForm: React.FC = () => {
+const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [mode, setMode] = useState<DonorMode>('login');
+  const cfg = ROLE[role];
+
+  const [mode, setMode] = useState<Mode>(searchParams.get('mode') === 'signup' ? 'signup' : 'login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,12 +91,10 @@ const DonorForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const redirectTo = searchParams.get('redirect') || '/donor/profile';
-
   const validateSignup = () => {
     if (mode !== 'signup') return true;
     if (!name.trim()) {
-      toast.error('Informe seu nome para criar a conta.');
+      toast.error(role === 'ngo' ? 'Informe o nome da organização.' : 'Informe seu nome para criar a conta.');
       return false;
     }
     if (password !== confirmPassword) {
@@ -66,38 +112,37 @@ const DonorForm: React.FC = () => {
     event.preventDefault();
     if (!validateSignup()) return;
     setLoading(true);
-
     try {
       if (mode === 'login') {
-        await signIn(email, password);
+        await signIn(email, password, role);
         toast.success('Login realizado com sucesso!');
       } else {
-        await signUp(email, name, password);
-        toast.success('Conta de doador criada com sucesso!');
+        await signUp(email, name, password, role);
+        toast.success(role === 'ngo' ? 'Organização cadastrada com sucesso!' : 'Conta de doador criada com sucesso!');
       }
-      navigate(redirectTo, { replace: true });
+      navigate(searchParams.get('redirect') || defaultDestForAccount(role), { replace: true });
     } catch (err) {
-      console.error('Donor auth error:', err);
+      console.error('Auth error:', err);
       toast.error('Erro ao processar. Tente novamente.');
     } finally {
       setLoading(false);
     }
   };
 
+  const { Icon } = cfg;
+
   return (
     <div className="w-full">
       <div className="flex items-center gap-2.5 mb-1">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-blue/10">
-          <Heart className="text-brand-blue fill-brand-blue" size={22} />
+        <div className={`flex h-11 w-11 items-center justify-center rounded-2xl ${cfg.iconWrap}`}>
+          <Icon className={role === 'donor' ? 'text-brand-blue fill-brand-blue' : 'text-brand-ink'} size={22} />
         </div>
-        <span className="text-xs font-bold uppercase tracking-[0.2em] text-brand-blue">Doador</span>
+        <span className={`text-xs font-bold uppercase tracking-[0.2em] ${cfg.kickerText}`}>{cfg.kicker}</span>
       </div>
       <h2 className="font-display text-3xl font-semibold text-brand-ink">
-        <BrandedText text={mode === 'login' ? 'Bem-vindo de volta' : 'Comece a fazer o bem'} />
+        <BrandedText text={cfg.titles[mode]} />
       </h2>
-      <p className="text-sm text-muted-foreground mt-1 mb-6">
-        {mode === 'login' ? 'Entre para acompanhar seus apoios.' : 'Crie sua conta e apoie causas em minutos.'}
-      </p>
+      <p className="text-sm text-muted-foreground mt-1 mb-6">{cfg.subs[mode]}</p>
 
       <div className="grid grid-cols-2 gap-1.5 bg-secondary p-1 rounded-2xl mb-6">
         <button
@@ -128,9 +173,9 @@ const DonorForm: React.FC = () => {
             >
               <label className={labelClass}>
                 <User size={17} className="text-brand-blue" />
-                Nome
+                {role === 'ngo' ? 'Nome da organização' : 'Nome'}
               </label>
-              <input type="text" required={mode === 'signup'} value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder="Seu nome" />
+              <input type="text" required={mode === 'signup'} value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder={cfg.namePlaceholder} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -140,7 +185,7 @@ const DonorForm: React.FC = () => {
             <Mail size={17} className="text-brand-blue" />
             E-mail
           </label>
-          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} placeholder="seu@email.com" />
+          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} placeholder={cfg.emailPlaceholder} />
         </div>
 
         <div className="space-y-2">
@@ -184,59 +229,12 @@ const DonorForm: React.FC = () => {
         <button
           type="submit"
           disabled={loading}
-          className="btn-shine w-full py-3.5 bg-brand-blue text-white rounded-2xl font-bold shadow-lg shadow-brand-blue/25 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 flex items-center justify-center gap-2"
+          className={`btn-shine w-full py-3.5 ${cfg.submitBg} text-white rounded-2xl font-bold shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 flex items-center justify-center gap-2`}
         >
           {loading ? <Loader2 size={19} className="animate-spin" /> : null}
-          {mode === 'login' ? 'Entrar' : 'Criar conta'}
+          {mode === 'login' ? 'Entrar' : role === 'ngo' ? 'Cadastrar organização' : 'Criar conta'}
         </button>
       </form>
-    </div>
-  );
-};
-
-/* -------------------------------------------------------------------------- */
-/*  NGO side — placeholder until the organization backend is rebuilt          */
-/* -------------------------------------------------------------------------- */
-
-const NGOComingSoon: React.FC<{ onBackToDonor: () => void }> = ({ onBackToDonor }) => {
-  const navigate = useNavigate();
-  return (
-    <div className="w-full">
-      <div className="flex items-center gap-2.5 mb-1">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-yellow/25">
-          <Building2 className="text-brand-ink" size={22} />
-        </div>
-        <span className="text-xs font-bold uppercase tracking-[0.2em] text-brand-ink/70">Organização</span>
-      </div>
-      <h2 className="font-display text-3xl font-semibold text-brand-ink">
-        <BrandedText text="Em breve para ONGs" />
-      </h2>
-      <p className="text-sm text-muted-foreground mt-1 mb-6">
-        O cadastro e o acesso de organizações estão sendo reconstruídos. Enquanto isso, você pode explorar e apoiar as causas como doador.
-      </p>
-
-      <div className="rounded-2xl border border-dashed border-brand-yellow/60 bg-brand-yellow/10 p-5 flex items-start gap-3">
-        <Clock size={20} className="mt-0.5 shrink-0 text-brand-ink/60" />
-        <p className="text-sm text-brand-ink/70">
-          Estamos preparando um novo fluxo de verificação e recebimento de doações para as ONGs. Volte logo!
-        </p>
-      </div>
-
-      <div className="mt-6 flex flex-col sm:flex-row gap-3">
-        <button
-          onClick={onBackToDonor}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-blue px-6 py-3 text-sm font-bold text-white shadow-md shadow-brand-blue/25 hover:-translate-y-0.5 transition-transform btn-shine"
-        >
-          <Heart size={16} />
-          Entrar como doador
-        </button>
-        <button
-          onClick={() => navigate('/')}
-          className="inline-flex items-center justify-center gap-2 rounded-full border border-border px-6 py-3 text-sm font-bold text-brand-ink hover:bg-secondary transition-colors"
-        >
-          Voltar ao início
-        </button>
-      </div>
     </div>
   );
 };
@@ -254,15 +252,16 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
   const [searchParams] = useSearchParams();
   const [side, setSide] = useState<Side>(initialSide);
 
-  // Already signed in? Send them to their profile.
+  // Already signed in? Send them to their account's home.
   useEffect(() => {
-    if (getUser()) navigate(searchParams.get('redirect') || '/donor/profile', { replace: true });
+    const user = getUser();
+    if (user) navigate(searchParams.get('redirect') || defaultDestForAccount(user.accountType), { replace: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const isDonor = side === 'donor';
 
-  // The sliding brand overlay: covers whichever side is INACTIVE.
+  // The sliding brand overlay (desktop): covers whichever side is INACTIVE.
   const overlay = (
     <motion.div
       className="absolute inset-y-0 left-0 hidden md:flex w-1/2 z-20 overflow-hidden"
@@ -292,7 +291,7 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
                   Sua causa também<br />merece apoio
                 </h3>
                 <p className="text-white/70 text-sm mb-8">
-                  Um novo espaço para ONGs se cadastrarem e receberem doações está a caminho.
+                  Cadastre sua ONG e comece a receber doações de quem acredita no seu trabalho.
                 </p>
                 <button
                   onClick={() => setSide('ngo')}
@@ -342,47 +341,57 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
           Voltar ao início
         </button>
 
-        {/* Mobile: tab switcher */}
-        <div className="md:hidden grid grid-cols-2 gap-1.5 bg-secondary p-1 rounded-2xl mb-5">
-          <button
-            onClick={() => setSide('donor')}
-            className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-bold transition-all ${isDonor ? 'bg-brand-blue text-white shadow-sm' : 'text-muted-foreground'}`}
-          >
-            <Heart size={15} />
-            Doador
-          </button>
-          <button
-            onClick={() => setSide('ngo')}
-            className={`flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-bold transition-all ${!isDonor ? 'bg-brand-ink text-white shadow-sm' : 'text-muted-foreground'}`}
-          >
-            <Building2 size={15} />
-            ONG
-          </button>
+        {/* Mobile: animated segmented role switch (sliding pill) */}
+        <div className="md:hidden relative grid grid-cols-2 bg-secondary p-1 rounded-2xl mb-5">
+          {(['donor', 'ngo'] as Side[]).map((s) => {
+            const active = side === s;
+            const { Icon, tab } = ROLE[s];
+            return (
+              <button
+                key={s}
+                onClick={() => setSide(s)}
+                className="relative py-2.5 rounded-xl text-sm font-bold"
+                aria-pressed={active}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="auth-mobile-pill"
+                    transition={SPRING}
+                    className={`absolute inset-0 rounded-xl shadow-sm ${s === 'donor' ? 'bg-brand-blue' : 'bg-brand-ink'}`}
+                  />
+                )}
+                <span className={`relative z-10 flex items-center justify-center gap-1.5 transition-colors ${active ? 'text-white' : 'text-muted-foreground'}`}>
+                  <Icon size={15} />
+                  {tab}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="relative bg-card border border-border rounded-3xl shadow-2xl overflow-hidden md:min-h-[600px]">
           {/* Desktop: two columns with sliding overlay */}
           <div className="hidden md:grid grid-cols-2 min-h-[600px]">
             <div className={`flex items-center p-10 lg:p-14 transition-opacity duration-300 ${isDonor ? 'opacity-100' : 'opacity-0'}`} aria-hidden={!isDonor}>
-              <DonorForm />
+              <AuthForm role="donor" />
             </div>
             <div className={`flex items-center p-10 lg:p-14 transition-opacity duration-300 ${!isDonor ? 'opacity-100' : 'opacity-0'}`} aria-hidden={isDonor}>
-              <NGOComingSoon onBackToDonor={() => setSide('donor')} />
+              <AuthForm role="ngo" />
             </div>
           </div>
           {overlay}
 
-          {/* Mobile: single active form */}
+          {/* Mobile: single active form, slides on role change */}
           <div className="md:hidden p-7 sm:p-10">
             <AnimatePresence mode="wait">
               <motion.div
                 key={side}
-                initial={{ opacity: 0, x: isDonor ? -20 : 20 }}
+                initial={{ opacity: 0, x: isDonor ? -24 : 24 }}
                 animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: isDonor ? 20 : -20 }}
-                transition={{ duration: 0.3 }}
+                exit={{ opacity: 0, x: isDonor ? 24 : -24 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
               >
-                {isDonor ? <DonorForm /> : <NGOComingSoon onBackToDonor={() => setSide('donor')} />}
+                <AuthForm role={side} />
               </motion.div>
             </AnimatePresence>
           </div>
