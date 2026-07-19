@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NGO, FlashCampaign } from '../types';
 import { Search, Star, Heart, HeartHandshake, ChevronRight, Clock, Zap } from 'lucide-react';
-import { FlipReveal, FlipRevealItem } from '@/components/ui/flip-reveal';
 import { flashCampaigns } from '@/data/flashCampaigns';
 import { formatBRL } from '@/lib/impact';
 
@@ -390,28 +389,35 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
           </div>
         ))}
 
-      {/* ---- CATEGORY FILTER: FlipReveal grid (animated) ---- */}
+      {/* ---- CATEGORY FILTER: framer-motion layout grid (clean reflow) ---- */}
       {mode === 'category' &&
         (categoryNgos.length === 0 ? (
           <EmptyState />
         ) : (
-          <FlipReveal
-            className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-8"
-            keys={[selectedCategory]}
-            showClass="block"
-            hideClass="hidden"
+          <motion.div
+            layout
+            className="relative grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-8"
           >
-            {ngos.map((ngo) => (
-              <FlipRevealItem
-                key={ngo.id}
-                flipKey={ngo.category}
-                onClick={() => onSelectNGO(ngo)}
-                className="group cursor-pointer text-left"
-              >
-                <NgoCardContent {...cardProps(ngo)} />
-              </FlipRevealItem>
-            ))}
-          </FlipReveal>
+            <AnimatePresence mode="popLayout">
+              {categoryNgos.map((ngo) => (
+                <motion.div
+                  key={ngo.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.92 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.92 }}
+                  transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                  onClick={() => onSelectNGO(ngo)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && onSelectNGO(ngo)}
+                  className="group cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 rounded-2xl"
+                >
+                  <NgoCardContent {...cardProps(ngo)} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
         ))}
 
       {/* ---- DEFAULT: flash fundraisers + Airbnb-style themed carousels ---- */}
