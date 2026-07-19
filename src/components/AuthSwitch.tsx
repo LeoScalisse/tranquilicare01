@@ -381,15 +381,24 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
           </div>
           {overlay}
 
-          {/* Mobile: single active form, slides on role change */}
-          <div className="md:hidden p-7 sm:p-10">
-            <AnimatePresence mode="wait">
+          {/* Mobile: full horizontal "screen change" slide between roles,
+              mirroring the desktop panel motion. popLayout lets the entering
+              form define the card height while the outgoing one slides away. */}
+          <div className="md:hidden relative overflow-hidden">
+            <AnimatePresence mode="popLayout" initial={false} custom={isDonor ? -1 : 1}>
               <motion.div
                 key={side}
-                initial={{ opacity: 0, x: isDonor ? -24 : 24 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: isDonor ? 24 : -24 }}
-                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                custom={isDonor ? -1 : 1}
+                variants={{
+                  enter: (d: number) => ({ x: d > 0 ? '100%' : '-100%', opacity: 0 }),
+                  center: { x: '0%', opacity: 1 },
+                  exit: (d: number) => ({ x: d > 0 ? '-100%' : '100%', opacity: 0 }),
+                }}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                transition={{ duration: 0.45, ease: [0.65, 0, 0.35, 1] }}
+                className="p-7 sm:p-10"
               >
                 <AuthForm role={side} />
               </motion.div>
