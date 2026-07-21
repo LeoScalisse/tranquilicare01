@@ -16,6 +16,13 @@ interface CosmosNavProps {
 
 const SPRING = { type: 'spring' as const, stiffness: 380, damping: 34 };
 
+// Frosted-glass look (from the reference): backdrop blur + saturation, a glass
+// rim built from inset white highlights, and a soft drop shadow — all in one
+// box-shadow so no extra pseudo-element is needed.
+const GLASS = 'backdrop-blur-md backdrop-saturate-150';
+const RIM =
+  'shadow-[inset_2px_2px_5px_-2px_rgba(255,255,255,0.6),inset_-2px_-2px_5px_2px_rgba(255,255,255,0.35),inset_0_-2px_0_rgba(255,255,255,0.2),0_12px_34px_rgba(16,42,67,0.22)]';
+
 /** Icon-only circle used inside a grouped (non-active) pill. */
 const CompactItem: React.FC<{ item: CosmosNavItem }> = ({ item }) => (
   <motion.button
@@ -24,18 +31,18 @@ const CompactItem: React.FC<{ item: CosmosNavItem }> = ({ item }) => (
     transition={SPRING}
     onClick={item.onClick}
     aria-label={item.label}
-    className="flex h-11 w-11 items-center justify-center rounded-full text-brand-ink transition-[background-color,transform] hover:bg-secondary active:scale-90"
+    className="flex h-11 w-11 items-center justify-center rounded-full text-white/90 transition-[background-color,transform] hover:bg-white/25 active:scale-90"
   >
     <motion.span layout="position">{item.icon}</motion.span>
   </motion.button>
 );
 
-/** A rounded pill grouping one or more non-active items together. */
+/** A rounded glass pill grouping one or more non-active items together. */
 const GroupPill: React.FC<{ items: CosmosNavItem[] }> = ({ items }) => (
   <motion.div
     layout
     transition={SPRING}
-    className="flex items-center gap-1 rounded-full border border-border bg-white/90 p-1.5 shadow-[0_12px_40px_rgba(16,42,67,0.16)] backdrop-blur-xl"
+    className={`flex items-center gap-1 rounded-full border border-white/30 bg-brand-blue/40 p-1.5 ${GLASS} ${RIM}`}
   >
     {items.map((item) => (
       <CompactItem key={item.key} item={item} />
@@ -43,20 +50,20 @@ const GroupPill: React.FC<{ items: CosmosNavItem[] }> = ({ items }) => (
   </motion.div>
 );
 
-/** The active section — in evidence: dark pill with icon + label. */
+/** The active section — in evidence: a light glass chip with brand-blue content. */
 const ProminentPill: React.FC<{ item: CosmosNavItem }> = ({ item }) => (
   <motion.button
     layout
     transition={SPRING}
     onClick={item.onClick}
     aria-label={item.label}
-    className="flex items-center gap-2 rounded-full bg-brand-ink p-1.5 pr-4 text-white shadow-[0_12px_40px_rgba(16,42,67,0.28)] active:scale-95"
+    className={`flex items-center gap-2 rounded-full border border-white/60 bg-white/85 p-1.5 pr-4 text-brand-blue ${GLASS} ${RIM} active:scale-95`}
   >
     <motion.span
       layoutId={`nav-icon-${item.key}`}
       layout
       transition={SPRING}
-      className="flex h-11 w-11 items-center justify-center rounded-full bg-white/15"
+      className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-blue/15 text-brand-blue"
     >
       {item.icon}
     </motion.span>
@@ -73,10 +80,9 @@ const ProminentPill: React.FC<{ item: CosmosNavItem }> = ({ item }) => (
 
 /**
  * Cosmos-app-style floating nav. The current section sits "in evidence" as a
- * dark labeled pill; the remaining items are grouped into light pill(s) on
- * either side of it. Tapping a section navigates and the layout reflows — the
- * tapped icon flies out to become prominent while the rest regroup (a single
- * pill splits into up to three chunks; tapping an end item yields two).
+ * light glass chip; the remaining items are grouped into translucent brand-blue
+ * glass pill(s) beside it. Tapping a section navigates and the layout reflows —
+ * the tapped icon flies out to become prominent while the rest regroup.
  */
 const CosmosNav: React.FC<CosmosNavProps> = ({ items }) => {
   if (typeof document === 'undefined') return null;
@@ -84,14 +90,15 @@ const CosmosNav: React.FC<CosmosNavProps> = ({ items }) => {
   const activeIndex = items.findIndex((i) => i.active);
   const before = activeIndex > 0 ? items.slice(0, activeIndex) : [];
   const active = activeIndex >= 0 ? items[activeIndex] : null;
-  const after =
-    activeIndex >= 0 ? items.slice(activeIndex + 1) : items; // no active → all grouped
+  const after = activeIndex >= 0 ? items.slice(activeIndex + 1) : items; // no active → all grouped
 
   // Portal to <body>: keeps the fixed nav anchored to the viewport regardless
-  // of ancestor backdrop-filter/transform (e.g. the header's backdrop-blur,
-  // which would otherwise become its containing block).
+  // of ancestor backdrop-filter/transform (e.g. the header's backdrop-blur).
   return createPortal(
-    <div className="md:hidden fixed bottom-4 left-1/2 z-50 -translate-x-1/2">
+    <div
+      className="md:hidden fixed left-1/2 z-50 -translate-x-1/2"
+      style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
+    >
       <LayoutGroup id="cosmos-nav">
         <div className="flex items-center gap-2">
           {before.length > 0 && <GroupPill items={before} />}

@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NGO, FlashCampaign } from '../types';
-import { Search, Star, Heart, HeartHandshake, ChevronRight, Clock, Zap } from 'lucide-react';
+import { Search, Star, HeartHandshake, ChevronRight, Clock, Zap } from 'lucide-react';
+import LoveHeart from '@/components/ui/love-heart';
 import { flashCampaigns } from '@/data/flashCampaigns';
 import { formatBRL } from '@/lib/impact';
 
@@ -85,23 +86,13 @@ const NgoCardContent: React.FC<{
           loading="lazy"
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleSave(ngo.id);
-          }}
-          aria-label={saved ? 'Remover dos favoritos' : 'Salvar nos favoritos'}
-          aria-pressed={saved}
-          className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full transition-transform active:scale-90"
-        >
-          <Heart
-            size={26}
-            className={`drop-shadow-[0_1px_3px_rgba(0,0,0,0.35)] transition-colors ${
-              saved ? 'fill-brand-blue text-brand-blue' : 'fill-black/25 text-white'
-            }`}
+        <span className="absolute right-2 top-2 z-10">
+          <LoveHeart
+            checked={saved}
+            onChange={() => onToggleSave(ngo.id)}
+            label={saved ? 'Remover dos favoritos' : 'Salvar nos favoritos'}
           />
-        </button>
+        </span>
       </div>
 
       <div className="pt-3">

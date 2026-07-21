@@ -258,3 +258,125 @@
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ---------------------------------------------------------------------------
+   Animated like / favorite heart — CSS-art checkbox toggle.
+   Ported from the styled-components reference to plain CSS (project is
+   Tailwind-only). Unchecked is white + drop-shadow so it stays visible on top
+   of card photos; checked fills the reference pink.
+--------------------------------------------------------------------------- */
+.love-heart-toggle {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 34px;
+}
+
+.love-heart-toggle input {
+  display: none;
+}
+
+.love-heart-toggle .love-heart::before {
+  display: none;
+}
+
+.love-heart-toggle .love-heart,
+.love-heart-toggle .love-heart::after {
+  box-sizing: border-box;
+  border: 1px solid;
+  border-top-left-radius: 100px;
+  border-top-right-radius: 100px;
+  width: 10px;
+  height: 8px;
+  border-bottom: 0;
+}
+
+.love-heart-toggle .love-heart {
+  position: absolute;
+  left: 8px;
+  top: 5px;
+  display: block;
+  cursor: pointer;
+  transform: rotate(-45deg) scale(1.9);
+  transform-origin: center;
+  filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.35));
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.love-heart-toggle .love-heart::after,
+.love-heart-toggle .love-heart .bottom {
+  content: "";
+  display: block;
+  box-sizing: border-box;
+  position: absolute;
+}
+
+.love-heart-toggle .love-heart::after {
+  right: -9px;
+  top: 7px;
+  transform: rotate(90deg);
+}
+
+.love-heart-toggle .love-heart .bottom {
+  width: 11px;
+  height: 11px;
+  border-left: 1px solid;
+  border-bottom: 1px solid;
+  left: -1px;
+  top: 5px;
+  border-radius: 0 0 0 5px;
+}
+
+/* Unchecked: white outline (readable on any photo) */
+.love-heart-toggle .love-heart,
+.love-heart-toggle .love-heart::after,
+.love-heart-toggle .love-heart .bottom {
+  border-color: #ffffff;
+}
+
+/* Checked: the reference pink, filled via inset shadow */
+.love-heart-toggle input:checked + .love-heart,
+.love-heart-toggle input:checked + .love-heart::after,
+.love-heart-toggle input:checked + .love-heart .bottom {
+  border-color: hsl(347deg 81% 61%);
+  box-shadow: inset 6px -5px 0px 2px hsl(347deg 99% 72%);
+}
+
+/* The little ball that rolls along the heart on toggle */
+.love-heart-toggle .round {
+  position: absolute;
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+  background: hsl(0deg 0% 100%);
+  box-shadow: rgb(0 0 0 / 24%) 0px 0px 4px 0px;
+  border-radius: 100%;
+  left: 0;
+  bottom: -1px;
+  transition: all 0.5s ease;
+  animation: love-round-out 0.5s forwards;
+}
+
+.love-heart-toggle input:checked + .love-heart .round {
+  animation: love-round-in 0.5s forwards;
+  background-color: hsl(0deg 0% 100%);
+}
+
+@keyframes love-round-in {
+  0% { transform: translate(0px, 0px); }
+  50% { transform: translate(0px, 7px); }
+  100% { transform: translate(7px, 7px); }
+}
+
+@keyframes love-round-out {
+  0% { transform: translate(7px, 7px); }
+  50% { transform: translate(0px, 7px); }
+  100% { transform: translate(0px, 0px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .love-heart-toggle .round,
+  .love-heart-toggle input:checked + .love-heart .round {
+    animation: none;
+  }
+}
