@@ -17,6 +17,8 @@ import {
   User,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import CosmosNav from './CosmosNav';
+import { buildMobileNavItems } from './mobileNavItems';
 import logo from '@/assets/logo.png';
 
 type Side = AccountType;
@@ -328,9 +330,22 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
     </motion.div>
   );
 
+  // The floating nav stays available on the auth screen too. "Entrar" is the
+  // active section here; "Seja apoiado" flips to the organization side, since
+  // the NGO signup now lives on this very page.
+  const navItems = buildMobileNavItems({
+    activeKey: 'perfil',
+    isLoggedIn: false,
+    onHome: () => navigate('/'),
+    onApoiar: () => navigate('/?view=marketplace'),
+    onApoiado: () => setSide('ngo'),
+    onPerfil: () => setSide('donor'),
+  });
+
   return (
-    <div className="relative min-h-screen bg-background flex items-center justify-center px-4 py-10 overflow-hidden">
+    <div className="relative min-h-screen bg-background flex items-center justify-center px-4 py-10 pb-32 md:pb-10 overflow-hidden">
       <div className="aurora opacity-40" aria-hidden="true" />
+      <CosmosNav items={navItems} />
 
       <div className="relative z-10 w-full max-w-5xl">
         <button

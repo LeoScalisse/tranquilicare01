@@ -1,8 +1,9 @@
 import React from 'react';
 import { View } from '../types';
 import { BrandedText } from '../utils';
-import { Heart, UserPlus, HandHeart, UserCircle, LogOut, LogIn } from 'lucide-react';
-import CosmosNav, { CosmosNavItem } from './CosmosNav';
+import { UserPlus, HandHeart, UserCircle, LogOut, LogIn } from 'lucide-react';
+import CosmosNav from './CosmosNav';
+import { buildMobileNavItems } from './mobileNavItems';
 import logo from '@/assets/logo.png';
 
 interface HeaderProps {
@@ -34,36 +35,15 @@ const Header: React.FC<HeaderProps> = ({
       : 'text-muted-foreground hover:bg-brand-blue/10 hover:text-brand-ink'}
   `;
 
-  const mobileNavItems: CosmosNavItem[] = [
-    {
-      key: 'home',
-      label: 'Home',
-      icon: <Heart size={19} className={currentView === View.HOME ? 'fill-current' : ''} />,
-      active: currentView === View.HOME,
-      onClick: () => setCurrentView(View.HOME),
-    },
-    {
-      key: 'apoiar',
-      label: 'Apoiar',
-      icon: <HandHeart size={19} />,
-      active: currentView === View.MARKETPLACE,
-      onClick: () => setCurrentView(View.MARKETPLACE),
-    },
-    {
-      key: 'apoiado',
-      label: 'Seja apoiado',
-      icon: <UserPlus size={19} />,
-      active: false,
-      onClick: () => onNGOAuth?.(),
-    },
-    {
-      key: 'perfil',
-      label: isLoggedIn ? 'Perfil' : 'Entrar',
-      icon: isLoggedIn ? <UserCircle size={19} /> : <LogIn size={19} />,
-      active: false,
-      onClick: () => (isLoggedIn ? onProfileClick?.() : onDonorLogin?.()),
-    },
-  ];
+  const mobileNavItems = buildMobileNavItems({
+    activeKey:
+      currentView === View.HOME ? 'home' : currentView === View.MARKETPLACE ? 'apoiar' : null,
+    isLoggedIn,
+    onHome: () => setCurrentView(View.HOME),
+    onApoiar: () => setCurrentView(View.MARKETPLACE),
+    onApoiado: () => onNGOAuth?.(),
+    onPerfil: () => (isLoggedIn ? onProfileClick?.() : onDonorLogin?.()),
+  });
 
   return (
     <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-border/70">
