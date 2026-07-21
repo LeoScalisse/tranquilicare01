@@ -16,12 +16,19 @@ interface CosmosNavProps {
 
 const SPRING = { type: 'spring' as const, stiffness: 380, damping: 34 };
 
-// Frosted-glass look (from the reference): backdrop blur + saturation, a glass
-// rim built from inset white highlights, and a soft drop shadow — all in one
-// box-shadow so no extra pseudo-element is needed.
-const GLASS = 'backdrop-blur-md backdrop-saturate-150';
+/**
+ * Colour system — deliberately kept coherent so nothing clashes while the
+ * layout reflows:
+ *  - Icons are WHITE in every state, so an icon flying between a group pill and
+ *    the active chip never flips colour mid-flight.
+ *  - Surfaces are opaque enough to stay legible over any page content (a
+ *    translucent light tint would wash out over white cards as you scroll).
+ * Frosted glass = backdrop blur + saturation, a glass rim from inset white
+ * highlights, and a soft drop shadow, all in one box-shadow.
+ */
+const GLASS = 'backdrop-blur-xl backdrop-saturate-150';
 const RIM =
-  'shadow-[inset_2px_2px_5px_-2px_rgba(255,255,255,0.6),inset_-2px_-2px_5px_2px_rgba(255,255,255,0.35),inset_0_-2px_0_rgba(255,255,255,0.2),0_12px_34px_rgba(16,42,67,0.22)]';
+  'shadow-[inset_1px_1px_3px_-1px_rgba(255,255,255,0.45),inset_-1px_-1px_3px_0px_rgba(255,255,255,0.25),0_12px_34px_rgba(16,42,67,0.28)]';
 
 /** Icon-only circle used inside a grouped (non-active) pill. */
 const CompactItem: React.FC<{ item: CosmosNavItem }> = ({ item }) => (
@@ -31,18 +38,19 @@ const CompactItem: React.FC<{ item: CosmosNavItem }> = ({ item }) => (
     transition={SPRING}
     onClick={item.onClick}
     aria-label={item.label}
-    className="flex h-11 w-11 items-center justify-center rounded-full text-white/90 transition-[background-color,transform] hover:bg-white/25 active:scale-90"
+    whileTap={{ scale: 0.88 }}
+    className="flex h-11 w-11 items-center justify-center rounded-full text-white transition-colors hover:bg-white/15"
   >
     <motion.span layout="position">{item.icon}</motion.span>
   </motion.button>
 );
 
-/** A rounded glass pill grouping one or more non-active items together. */
+/** A rounded dark-glass pill grouping one or more non-active items together. */
 const GroupPill: React.FC<{ items: CosmosNavItem[] }> = ({ items }) => (
   <motion.div
     layout
     transition={SPRING}
-    className={`flex items-center gap-1 rounded-full border border-white/30 bg-brand-blue/40 p-1.5 ${GLASS} ${RIM}`}
+    className={`flex items-center gap-1 rounded-full border border-white/15 bg-brand-ink/80 p-1.5 ${GLASS} ${RIM}`}
   >
     {items.map((item) => (
       <CompactItem key={item.key} item={item} />
@@ -50,20 +58,21 @@ const GroupPill: React.FC<{ items: CosmosNavItem[] }> = ({ items }) => (
   </motion.div>
 );
 
-/** The active section — in evidence: a light glass chip with brand-blue content. */
+/** The active section — in evidence: solid brand-blue chip, white content. */
 const ProminentPill: React.FC<{ item: CosmosNavItem }> = ({ item }) => (
   <motion.button
     layout
     transition={SPRING}
     onClick={item.onClick}
     aria-label={item.label}
-    className={`flex items-center gap-2 rounded-full border border-white/60 bg-white/85 p-1.5 pr-4 text-brand-blue ${GLASS} ${RIM} active:scale-95`}
+    whileTap={{ scale: 0.96 }}
+    className={`flex items-center gap-2 rounded-full border border-white/25 bg-brand-blue p-1.5 pr-4 text-white ${GLASS} ${RIM}`}
   >
     <motion.span
       layoutId={`nav-icon-${item.key}`}
       layout
       transition={SPRING}
-      className="flex h-11 w-11 items-center justify-center rounded-full bg-brand-blue/15 text-brand-blue"
+      className="flex h-11 w-11 items-center justify-center rounded-full bg-white/20 text-white"
     >
       {item.icon}
     </motion.span>
@@ -71,7 +80,7 @@ const ProminentPill: React.FC<{ item: CosmosNavItem }> = ({ item }) => (
       layout="position"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="whitespace-nowrap text-sm font-bold"
+      className="whitespace-nowrap text-sm font-bold text-white"
     >
       {item.label}
     </motion.span>
