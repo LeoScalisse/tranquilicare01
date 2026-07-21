@@ -330,15 +330,13 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
     </motion.div>
   );
 
-  // The floating nav stays available on the auth screen too. "Entrar" is the
-  // active section here; "Seja apoiado" flips to the organization side, since
-  // the NGO signup now lives on this very page.
+  // The floating nav stays available on the auth screen too, with "Entrar" as
+  // the active section.
   const navItems = buildMobileNavItems({
     activeKey: 'perfil',
     isLoggedIn: false,
     onHome: () => navigate('/'),
     onApoiar: () => navigate('/?view=marketplace'),
-    onApoiado: () => setSide('ngo'),
     onPerfil: () => setSide('donor'),
   });
 

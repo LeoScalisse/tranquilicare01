@@ -1,15 +1,14 @@
 import React from 'react';
-import { Heart, HandHeart, UserPlus, UserCircle, LogIn } from 'lucide-react';
+import { Heart, HandHeart, UserCircle, LogIn } from 'lucide-react';
 import { CosmosNavItem } from './CosmosNav';
 
-export type MobileNavKey = 'home' | 'apoiar' | 'apoiado' | 'perfil';
+export type MobileNavKey = 'home' | 'apoiar' | 'perfil';
 
 interface BuildOpts {
   activeKey: MobileNavKey | null;
   isLoggedIn: boolean;
   onHome: () => void;
   onApoiar: () => void;
-  onApoiado: () => void;
   onPerfil: () => void;
 }
 
@@ -23,7 +22,6 @@ export const buildMobileNavItems = ({
   isLoggedIn,
   onHome,
   onApoiar,
-  onApoiado,
   onPerfil,
 }: BuildOpts): CosmosNavItem[] => [
   {
@@ -39,13 +37,6 @@ export const buildMobileNavItems = ({
     icon: <HandHeart size={19} />,
     active: activeKey === 'apoiar',
     onClick: onApoiar,
-  },
-  {
-    key: 'apoiado',
-    label: 'Seja apoiado',
-    icon: <UserPlus size={19} />,
-    active: activeKey === 'apoiado',
-    onClick: onApoiado,
   },
   {
     key: 'perfil',

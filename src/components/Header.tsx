@@ -41,7 +41,6 @@ const Header: React.FC<HeaderProps> = ({
     isLoggedIn,
     onHome: () => setCurrentView(View.HOME),
     onApoiar: () => setCurrentView(View.MARKETPLACE),
-    onApoiado: () => onNGOAuth?.(),
     onPerfil: () => (isLoggedIn ? onProfileClick?.() : onDonorLogin?.()),
   });
 
