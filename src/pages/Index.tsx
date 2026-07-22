@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { View, NGO } from '../types';
 import { demoNgos } from '@/data/demoNgos';
-import { getUser, onAuthChange, signOut, defaultDestForAccount, LocalUser } from '@/lib/localAuth';
+import { getUser, onAuthChange, signOut, defaultDestForAccount, AppUser } from '@/lib/auth';
 import Header from '../components/Header';
 import ImpactDashboard from '../components/ImpactDashboard';
 import Marketplace from '../components/Marketplace';
@@ -18,7 +18,7 @@ const TranquiliCareApp: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [currentView, setCurrentView] = useState<View>(View.HOME);
   const [viewingNGO, setViewingNGO] = useState<NGO | null>(null);
-  const [user, setUser] = useState<LocalUser | null>(getUser);
+  const [user, setUser] = useState<AppUser | null>(getUser);
 
   useEffect(() => onAuthChange(setUser), []);
 

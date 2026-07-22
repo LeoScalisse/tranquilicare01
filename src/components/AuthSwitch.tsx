@@ -1,7 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getUser, signIn, signUp, defaultDestForAccount, AccountType } from '@/lib/localAuth';
+import {
+  getUser,
+  authReady,
+  signIn,
+  signUp,
+  signInWithGoogle,
+  canUseGoogle,
+  defaultDestForAccount,
+  needsProfileSetup,
+  AccountType,
+} from '@/lib/auth';
 import { BrandedText } from '../utils';
 import {
   ArrowLeft,
@@ -13,6 +23,7 @@ import {
   Loader2,
   Lock,
   Mail,
+  MailCheck,
   Sparkles,
   User,
 } from 'lucide-react';
@@ -76,6 +87,16 @@ const ROLE: Record<Side, RoleConfig> = {
   },
 };
 
+/** Google's official 4-colour "G", inlined so no asset or network call is needed. */
+const GoogleG: React.FC<{ size?: number }> = ({ size = 19 }) => (
+  <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden="true">
+    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+  </svg>
+);
+
 /* -------------------------------------------------------------------------- */
 /*  Unified auth form — login + signup, identical for both roles              */
 /* -------------------------------------------------------------------------- */
@@ -89,18 +110,17 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  /** Set when the account was created but e-mail confirmation is required, so
+   *  there's no session to navigate with yet. */
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   const validateSignup = () => {
     if (mode !== 'signup') return true;
     if (!name.trim()) {
       toast.error(role === 'ngo' ? 'Informe o nome da organização.' : 'Informe seu nome para criar a conta.');
-      return false;
-    }
-    if (password !== confirmPassword) {
-      toast.error('As senhas não coincidem.');
       return false;
     }
     if (password.length < 6) {
@@ -110,28 +130,87 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
     return true;
   };
 
+  /** Maps Supabase's English auth errors to something a Brazilian user can act on. */
+  const messageFor = (err: unknown): string => {
+    const raw = err instanceof Error ? err.message.toLowerCase() : '';
+    if (raw.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
+    if (raw.includes('email not confirmed')) return 'Confirme seu e-mail antes de entrar.';
+    if (raw.includes('already registered')) return 'Esse e-mail já tem conta. Tente entrar.';
+    if (raw.includes('supabase-disabled') || raw.includes('google-unavailable'))
+      return 'Login com Google ainda não está ativo — falta configurar o Supabase.';
+    return 'Erro ao processar. Tente novamente.';
+  };
+
+  const goAfterAuth = (dest: string) =>
+    navigate(searchParams.get('redirect') || dest, { replace: true });
+
+  const handleGoogle = async () => {
+    // Expected state before the backend is set up — explain it, don't log noise.
+    if (!canUseGoogle) {
+      toast.error('Login com Google ainda não está ativo — falta configurar o Supabase.');
+      return;
+    }
+    setGoogleLoading(true);
+    try {
+      // Full-page redirect to Google; execution continues on /auth/callback.
+      await signInWithGoogle(role);
+    } catch (err) {
+      console.error('Google auth error:', err);
+      toast.error(messageFor(err));
+      setGoogleLoading(false);
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!validateSignup()) return;
     setLoading(true);
     try {
       if (mode === 'login') {
-        await signIn(email, password, role);
+        const user = await signIn(email, password, role);
         toast.success('Login realizado com sucesso!');
+        goAfterAuth(defaultDestForAccount(user.accountType));
       } else {
-        await signUp(email, name, password, role);
-        toast.success(role === 'ngo' ? 'Organização cadastrada com sucesso!' : 'Conta de doador criada com sucesso!');
+        const { user, needsEmailConfirmation } = await signUp(email, name, password, role);
+        if (needsEmailConfirmation) {
+          setAwaitingConfirmation(true);
+          return;
+        }
+        toast.success(role === 'ngo' ? 'Organização cadastrada com sucesso!' : 'Conta criada com sucesso!');
+        const dest = defaultDestForAccount(user?.accountType ?? role);
+        goAfterAuth(needsProfileSetup(user) ? `${dest}?setup=1` : dest);
       }
-      navigate(searchParams.get('redirect') || defaultDestForAccount(role), { replace: true });
     } catch (err) {
       console.error('Auth error:', err);
-      toast.error('Erro ao processar. Tente novamente.');
+      toast.error(messageFor(err));
     } finally {
       setLoading(false);
     }
   };
 
   const { Icon } = cfg;
+
+  if (awaitingConfirmation) {
+    return (
+      <div className="w-full text-center">
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-blue/10">
+          <MailCheck className="text-brand-blue" size={26} />
+        </div>
+        <h2 className="font-display text-2xl font-semibold text-brand-ink">Confirme seu e-mail</h2>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Enviamos um link para <span className="font-bold text-brand-ink">{email}</span>. Abra-o para
+          ativar sua conta.
+        </p>
+        <button
+          type="button"
+          onClick={() => setAwaitingConfirmation(false)}
+          className="mt-6 text-sm font-bold text-brand-blue hover:underline"
+        >
+          Voltar
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
@@ -144,7 +223,29 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
       <h2 className="font-display text-3xl font-semibold text-brand-ink">
         <BrandedText text={cfg.titles[mode]} />
       </h2>
-      <p className="text-sm text-muted-foreground mt-1 mb-6">{cfg.subs[mode]}</p>
+      <p className="text-sm text-muted-foreground mt-1 mb-5">{cfg.subs[mode]}</p>
+
+      {/* Fast path first: one tap, no password, straight to the profile. */}
+      <button
+        type="button"
+        onClick={handleGoogle}
+        disabled={googleLoading}
+        className="w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl border-2 border-border bg-white font-bold text-brand-ink shadow-sm hover:border-brand-blue/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0"
+      >
+        {googleLoading ? <Loader2 size={19} className="animate-spin text-brand-blue" /> : <GoogleG />}
+        Continuar com Google
+      </button>
+      {!canUseGoogle && (
+        <p className="mt-2 text-center text-xs text-muted-foreground">
+          Disponível assim que o Supabase for configurado.
+        </p>
+      )}
+
+      <div className="my-5 flex items-center gap-3">
+        <span className="h-px flex-1 bg-border" />
+        <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">ou</span>
+        <span className="h-px flex-1 bg-border" />
+      </div>
 
       <div className="grid grid-cols-2 gap-1.5 bg-secondary p-1 rounded-2xl mb-6">
         <button
@@ -210,24 +311,6 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
           </div>
         </div>
 
-        <AnimatePresence initial={false}>
-          {mode === 'signup' && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.25 }}
-              className="space-y-2 overflow-hidden"
-            >
-              <label className={labelClass}>
-                <Lock size={17} className="text-brand-blue" />
-                Confirmar senha
-              </label>
-              <input type="password" required={mode === 'signup'} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className={inputClass} placeholder="Repita a senha" />
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         <button
           type="submit"
           disabled={loading}
@@ -254,10 +337,18 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
   const [searchParams] = useSearchParams();
   const [side, setSide] = useState<Side>(initialSide);
 
-  // Already signed in? Send them to their account's home.
+  // Already signed in? Send them to their account's home. Waits for the session
+  // to hydrate first — with Supabase, getUser() is null on the first tick.
   useEffect(() => {
-    const user = getUser();
-    if (user) navigate(searchParams.get('redirect') || defaultDestForAccount(user.accountType), { replace: true });
+    let alive = true;
+    authReady.then(() => {
+      const user = getUser();
+      if (!alive || !user) return;
+      navigate(searchParams.get('redirect') || defaultDestForAccount(user.accountType), { replace: true });
+    });
+    return () => {
+      alive = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

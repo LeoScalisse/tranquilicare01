@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { getUser, updateUser, signOut, LocalUser } from '@/lib/localAuth';
+import { getUser, updateUser, signOut, authReady, onAuthChange, AppUser } from '@/lib/auth';
 import { BrandedText } from '../utils';
 import {
   ProgressRing,
@@ -85,7 +85,9 @@ const resizeToDataUrl = (file: File): Promise<string> =>
 
 const DonorProfile: React.FC = () => {
   const navigate = useNavigate();
-  const [user, setUser] = useState<LocalUser | null>(null);
+  const [searchParams] = useSearchParams();
+  const isSetup = searchParams.get('setup') === '1';
+  const [user, setUser] = useState<AppUser | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -116,19 +118,38 @@ const DonorProfile: React.FC = () => {
 
   const animatedTotal = useCountUp(stats.total);
 
+  // Wait for the session to hydrate before deciding there's no user — with
+  // Supabase, getUser() is null for the first tick and refreshing this page
+  // would otherwise bounce a logged-in donor back to the login screen.
   useEffect(() => {
-    const current = getUser();
-    if (!current) {
-      navigate('/donor/auth', { replace: true });
-      return;
-    }
-    setUser(current);
-    setEmail(current.email);
-    setName(current.name || '');
-    setAvatarUrl(current.avatar);
-    setCredits(current.credits);
-    setLoading(false);
+    let alive = true;
+    authReady.then(() => {
+      if (!alive) return;
+      const current = getUser();
+      if (!current) {
+        navigate('/donor/auth', { replace: true });
+        return;
+      }
+      setUser(current);
+      setEmail(current.email);
+      setName(current.name || '');
+      setAvatarUrl(current.avatar);
+      setCredits(current.credits);
+      setLoading(false);
+    });
+    return () => {
+      alive = false;
+    };
   }, [navigate]);
+
+  // Signing out from another tab (or the nav) must not leave this page open.
+  useEffect(
+    () =>
+      onAuthChange((next) => {
+        if (!next) navigate('/donor/auth', { replace: true });
+      }),
+    [navigate],
+  );
 
   const completeness = useMemo(() => {
     const checks = [Boolean(name.trim()), Boolean(avatarUrl), stats.count > 0];
@@ -163,6 +184,7 @@ const DonorProfile: React.FC = () => {
     try {
       await updateUser({ name: name.trim(), avatar: avatarUrl });
       setDirty(false);
+      if (isSetup) navigate('/donor/profile', { replace: true }); // drop the setup banner
       toast.success('Perfil atualizado!');
     } catch (err) {
       console.error('Error updating donor profile:', err);
@@ -208,6 +230,25 @@ const DonorProfile: React.FC = () => {
             Sair
           </button>
         </div>
+
+        {/* Fresh account (usually straight from Google) — nudge personalization */}
+        {isSetup && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-6 flex items-start gap-3 rounded-2xl border border-brand-blue/20 bg-brand-blue/5 p-4"
+          >
+            <Sparkles size={20} className="mt-0.5 shrink-0 text-brand-blue" />
+            <div>
+              <p className="font-display text-base font-semibold text-brand-ink">
+                Conta criada! Bora deixar seu perfil com a sua cara?
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Escolha uma foto e confirme seu nome logo abaixo — leva 10 segundos.
+              </p>
+            </div>
+          </motion.div>
+        )}
 
         {/* Identity */}
         <motion.div

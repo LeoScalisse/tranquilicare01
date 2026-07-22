@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Check, HandCoins, HandHeart, Heart, Loader2, Pencil, ShieldCheck, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { updateUser } from '@/lib/localAuth';
+import { updateUser } from '@/lib/auth';
 import {
   COMMUNITY_STEPS,
   PERSONAL_STEPS,

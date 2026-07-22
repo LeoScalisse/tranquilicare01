@@ -6,6 +6,7 @@ import Index from "./pages/Index";
 import NGOAuth from "./pages/NGOAuth";
 import DonorAuth from "./pages/DonorAuth";
 import DonorProfile from "./pages/DonorProfile";
+import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
 
 const App = () => (
@@ -18,6 +19,7 @@ const App = () => (
         <Route path="/ngo/auth" element={<NGOAuth />} />
         <Route path="/donor/auth" element={<DonorAuth />} />
         <Route path="/donor/profile" element={<DonorProfile />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
