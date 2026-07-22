@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { View, NGO } from '../types';
 import { demoNgos } from '@/data/demoNgos';
-import { getUser, onAuthChange, signOut, defaultDestForAccount, AppUser } from '@/lib/auth';
+import { getUser, onAuthChange, authReady, signOut, defaultDestForAccount, AppUser } from '@/lib/auth';
 import Header from '../components/Header';
 import ImpactDashboard from '../components/ImpactDashboard';
 import Marketplace from '../components/Marketplace';
@@ -20,7 +20,15 @@ const TranquiliCareApp: React.FC = () => {
   const [viewingNGO, setViewingNGO] = useState<NGO | null>(null);
   const [user, setUser] = useState<AppUser | null>(getUser);
 
-  useEffect(() => onAuthChange(setUser), []);
+  // `getUser()` is only populated synchronously by the local mock. With
+  // Supabase it stays null until the session hydrates, and `onAuthChange` only
+  // reports *future* changes — so resync once explicitly, or the header sits
+  // logged-out after a refresh.
+  useEffect(() => {
+    const unsubscribe = onAuthChange(setUser);
+    authReady.then(() => setUser(getUser()));
+    return unsubscribe;
+  }, []);
 
   const handleProfileClick = () => {
     navigate(user ? defaultDestForAccount(user.accountType) : '/donor/auth');

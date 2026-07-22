@@ -47,8 +47,15 @@ const publish = (session: Session | null) => {
   listeners.forEach((l) => l(cached));
 };
 
-/** After a Google redirect there's no form to read the role from, so pick up
- *  whatever the user chose before leaving and persist it on the account. */
+/**
+ * After a Google redirect there's no form to read the role from, so pick up
+ * whatever the user chose before leaving and persist it on the account.
+ *
+ * Runs on BOTH session paths (`getSession` on boot and the `SIGNED_IN` event) —
+ * whichever wins the race post-redirect. Idempotent: it clears the pending
+ * value and no-ops when the account already carries the role, so the
+ * `USER_UPDATED` event its own `updateUser` triggers can't loop.
+ */
 const applyPendingRole = async (user: User) => {
   const pending = localStorage.getItem(PENDING_ROLE_KEY) as AccountType | null;
   if (!pending) return;
@@ -74,7 +81,10 @@ export const ready: Promise<void> = (async () => {
 })();
 
 if (supabase) {
-  supabase.auth.onAuthStateChange((_event, session) => publish(session));
+  supabase.auth.onAuthStateChange((_event, session) => {
+    publish(session);
+    if (session?.user) void applyPendingRole(session.user);
+  });
 }
 
 export const getUser = (): AppUser | null => cached;
