@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from '../types';
 import { BrandedText } from '../utils';
-import { UserPlus, HandHeart, UserCircle, LogOut, LogIn } from 'lucide-react';
+import { Images, HandHeart, UserCircle, LogOut, LogIn } from 'lucide-react';
 import CosmosNav from './CosmosNav';
 import { buildMobileNavItems } from './mobileNavItems';
 import logo from '@/assets/logo.png';
@@ -14,7 +14,6 @@ interface HeaderProps {
   onProfileClick?: () => void;
   onLogout?: () => void;
   onDonorLogin?: () => void;
-  onNGOAuth?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -25,7 +24,6 @@ const Header: React.FC<HeaderProps> = ({
   onProfileClick,
   onLogout,
   onDonorLogin,
-  onNGOAuth,
 }) => {
   const isLoggedIn = Boolean(currentUserEmail);
   const navItemClass = (view: View) => `
@@ -37,10 +35,11 @@ const Header: React.FC<HeaderProps> = ({
 
   const mobileNavItems = buildMobileNavItems({
     activeKey:
-      currentView === View.HOME ? 'home' : currentView === View.MARKETPLACE ? 'apoiar' : null,
+      currentView === View.HOME ? 'home' : currentView === View.MARKETPLACE ? 'apoiar' : currentView === View.STORIES ? 'historias' : null,
     isLoggedIn,
     onHome: () => setCurrentView(View.HOME),
     onApoiar: () => setCurrentView(View.MARKETPLACE),
+    onStories: () => setCurrentView(View.STORIES),
     onPerfil: () => (isLoggedIn ? onProfileClick?.() : onDonorLogin?.()),
   });
 
@@ -67,14 +66,14 @@ const Header: React.FC<HeaderProps> = ({
             className={navItemClass(View.MARKETPLACE)}
           >
             <HandHeart size={18} />
-            <BrandedText text="Apoiar agora" />
+            <BrandedText text="Explorar causas" />
           </button>
           <button
-            onClick={onNGOAuth}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm text-muted-foreground hover:bg-brand-blue/10 hover:text-brand-ink transition-all duration-300"
+            onClick={() => setCurrentView(View.STORIES)}
+            className={navItemClass(View.STORIES)}
           >
-            <UserPlus size={18} />
-            <BrandedText text="Seja apoiado" />
+            <Images size={18} />
+            <BrandedText text="Histórias" />
           </button>
 
           {isLoggedIn ? (
@@ -97,9 +96,10 @@ const Header: React.FC<HeaderProps> = ({
           ) : (
             <button
               onClick={onDonorLogin}
-              className="flex items-center gap-2 px-5 py-2.5 ml-1 rounded-full bg-brand-blue text-white font-bold text-sm shadow-md shadow-brand-blue/25 hover:shadow-lg hover:shadow-brand-blue/35 hover:-translate-y-0.5 transition-all duration-300 btn-shine"
+              className="tc-button-3d btn-shine ml-1 flex h-12 items-center justify-center gap-2 rounded-full px-5 text-sm font-bold text-white"
+              title="Entrar"
             >
-              <LogIn size={18} />
+              <LogIn size={18} strokeWidth={2.6} />
               Entrar
             </button>
           )}

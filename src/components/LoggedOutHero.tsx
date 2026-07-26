@@ -1,0 +1,223 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { ArrowRight, HandCoins, HandHeart, Heart, Images, ShieldCheck, TrendingUp } from 'lucide-react';
+import { demoNgos } from '@/data/demoNgos';
+import { formatBRL, useCountUp } from '@/lib/impact';
+import SphereImageGrid, { SphereImage } from './ui/img-sphere';
+
+interface LoggedOutHeroProps {
+  communityTotal: number;
+  communityDonationCount: number;
+  onExplore: () => void;
+  onStories: () => void;
+}
+
+const LoggedOutHero: React.FC<LoggedOutHeroProps> = ({
+  communityTotal,
+  communityDonationCount,
+  onExplore,
+  onStories,
+}) => {
+  const reduceMotion = useReducedMotion();
+  const [metricIndex, setMetricIndex] = useState(0);
+  const animatedTotal = useCountUp(communityTotal);
+  const animatedCount = useCountUp(communityDonationCount, 700);
+  const averageDonation = useCountUp(
+    communityDonationCount > 0 ? Math.round(communityTotal / communityDonationCount) : 0,
+    700,
+  );
+
+  const sphereImages = useMemo<SphereImage[]>(
+    () => demoNgos.flatMap((ngo) => [
+      {
+        id: `profile-${ngo.id}`,
+        src: ngo.image,
+        alt: `Conhecer ${ngo.name}`,
+        type: 'image' as const,
+      },
+      ...ngo.posts.map((post) => ({
+        id: post.id,
+        src: post.url,
+        alt: post.caption || `História de ${ngo.name}`,
+        type: post.type,
+      })),
+    ]),
+    [],
+  );
+
+  const metrics = useMemo(() => [
+    {
+      id: 'donated',
+      eyebrow: 'Doado pela comunidade',
+      value: formatBRL(animatedTotal),
+      detail: 'em apoios confirmados na plataforma',
+      Icon: HandCoins,
+      color: 'text-brand-blue',
+    },
+    {
+      id: 'donations',
+      eyebrow: 'Apoios realizados',
+      value: new Intl.NumberFormat('pt-BR').format(animatedCount),
+      detail: communityDonationCount === 1 ? 'doação confirmada' : 'doações confirmadas',
+      Icon: Heart,
+      color: 'text-rose-500',
+    },
+    {
+      id: 'average',
+      eyebrow: 'Média de cada apoio',
+      value: formatBRL(averageDonation),
+      detail: 'calculada a partir das doações confirmadas',
+      Icon: TrendingUp,
+      color: 'text-amber-500',
+    },
+  ], [animatedCount, animatedTotal, averageDonation, communityDonationCount]);
+
+  useEffect(() => {
+    const timer = window.setInterval(
+      () => setMetricIndex((current) => (current + 1) % 3),
+      4200,
+    );
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const activeMetric = metrics[metricIndex];
+  const ActiveMetricIcon = activeMetric.Icon;
+
+  return (
+    <section className='relative overflow-hidden border-b border-border/70 bg-white'>
+      <div className='mx-auto max-w-6xl px-4 pb-8 pt-10 sm:pt-14 lg:pb-10 lg:pt-16'>
+        <div className='grid items-center gap-8 lg:grid-cols-[1.04fr_0.96fr] lg:gap-10'>
+          <motion.div
+            initial={{ opacity: 0, y: 18 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className='relative z-10'
+          >
+            <span className='inline-flex items-center gap-2 rounded-full bg-brand-blue/10 px-3 py-1.5 text-xs font-bold text-brand-ink'>
+              <ShieldCheck size={15} className='text-brand-blue' />
+              ONGs verificadas com cuidado
+            </span>
+            <h1 className='mt-5 max-w-2xl font-display text-4xl font-semibold leading-[1.05] text-brand-ink sm:text-5xl lg:text-[3.55rem]'>
+              Encontre uma causa
+              <em className='mt-1 block font-display font-semibold text-brand-blue'>
+                que combina com você
+              </em>
+            </h1>
+            <p className='mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg'>
+              Conheça organizações verificadas, descubra histórias reais e escolha como participar.
+            </p>
+            <div className='mt-7 flex flex-col gap-3 sm:flex-row'>
+              <button
+                type='button'
+                onClick={onExplore}
+                className='tc-button-3d inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white'
+              >
+                Explorar causas
+                <ArrowRight size={18} />
+              </button>
+              <button
+                type='button'
+                onClick={onStories}
+                className='inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-border bg-white px-6 py-3 text-sm font-bold text-brand-ink transition-colors hover:border-brand-blue hover:text-brand-blue'
+              >
+                <Images size={18} />
+                Ver histórias reais
+              </button>
+            </div>
+            <p className='mt-6 flex items-center gap-2 text-sm font-semibold text-muted-foreground'>
+              <HandHeart size={19} className='text-brand-blue' />
+              100% da doação escolhida é destinada à organização.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              y: reduceMotion ? 0 : [0, -5, 0],
+            }}
+            transition={{
+              opacity: { duration: 0.65, delay: 0.12 },
+              scale: { duration: 0.65, delay: 0.12 },
+              y: reduceMotion ? { duration: 0 } : { duration: 6, repeat: Infinity, ease: 'easeInOut' },
+            }}
+            className='relative mx-auto w-full max-w-[520px]'
+          >
+            <SphereImageGrid
+              images={sphereImages}
+              onImageSelect={() => onStories()}
+              appearance='transparent'
+              showHint={false}
+              autoRotate
+              autoRotateSpeed={0.055}
+              maxSize={520}
+            />
+          </motion.div>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.24, ease: [0.22, 1, 0.36, 1] }}
+          className='mt-5 overflow-hidden rounded-lg border border-border bg-white shadow-[0_14px_40px_rgba(23,37,84,0.08)] sm:mt-7'
+        >
+          <div className='grid min-h-[138px] items-center gap-4 px-5 py-5 sm:grid-cols-[220px_1fr_auto] sm:px-7'>
+            <div>
+              <p className='font-display text-lg font-semibold text-brand-ink'>Impacto da comunidade agora</p>
+              <span className='mt-2 inline-flex items-center gap-2 text-xs font-semibold text-emerald-700'>
+                <span className='relative flex h-2.5 w-2.5'>
+                  <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-50' />
+                  <span className='relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500' />
+                </span>
+                Atualizado em tempo real
+              </span>
+            </div>
+
+            <div className='relative min-h-[76px] overflow-hidden border-t border-border pt-4 sm:border-l sm:border-t-0 sm:pl-7 sm:pt-0'>
+              <AnimatePresence mode='wait' initial={false}>
+                <motion.div
+                  key={activeMetric.id}
+                  initial={reduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -10 }}
+                  transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
+                  className='flex items-center gap-4'
+                >
+                  <span className='grid h-12 w-12 shrink-0 place-items-center rounded-full bg-secondary'>
+                    <ActiveMetricIcon size={23} className={activeMetric.color} />
+                  </span>
+                  <span className='min-w-0'>
+                    <span className='block text-xs font-bold uppercase text-muted-foreground'>
+                      {activeMetric.eyebrow}
+                    </span>
+                    <span className='mt-0.5 block font-display text-3xl font-semibold leading-none text-brand-ink sm:text-4xl'>
+                      {activeMetric.value}
+                    </span>
+                    <span className='mt-1.5 block text-xs text-muted-foreground'>{activeMetric.detail}</span>
+                  </span>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+
+            <div className='flex gap-1.5 sm:flex-col' aria-label='Indicador da métrica exibida'>
+              {metrics.map((metric, index) => (
+                <button
+                  key={metric.id}
+                  type='button'
+                  onClick={() => setMetricIndex(index)}
+                  className={`h-2 rounded-full transition-[width,background-color] duration-300 sm:h-2 sm:w-2 ${
+                    index === metricIndex ? 'w-8 bg-brand-blue sm:w-2' : 'w-2 bg-border'
+                  }`}
+                  aria-label={`Mostrar ${metric.eyebrow}`}
+                />
+              ))}
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  );
+};
+
+export default LoggedOutHero;

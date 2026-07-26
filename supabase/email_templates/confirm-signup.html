@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="margin:0;background:#3cc5fa;font-family:Arial,Helvetica,sans-serif;color:#0e2638;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="background:#3cc5fa;">
+    <tr><td align="center" style="padding:36px 16px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="max-width:560px;background:#ffffff;">
+        <tr><td style="padding:42px 42px 36px;">
+          <img src="{{ .SiteURL }}/tranquilicare-logo.png" width="58" height="58" alt="TranquiliCare" style="display:block;width:58px;height:58px;object-fit:contain;margin:0 0 28px;border-radius:14px;">
+          <h1 style="margin:0 0 18px;font-size:28px;line-height:1.2;color:#0e2638;">Verifique seu endereco de email</h1>
+          <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#476073;">Recebemos uma solicitacao para usar este endereco na sua conta TranquiliCare.</p>
+          <p style="margin:0 0 24px;font-size:15px;line-height:1.6;color:#476073;">Use este codigo para concluir a verificacao:</p>
+          <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;background:#eaf8ff;border:1px solid #b9eaff;">
+            <tr><td style="padding:18px 22px;font-size:30px;line-height:1;font-weight:700;color:#0e2638;white-space:nowrap;">{{ if eq (len .Token) 8 }}<span style="letter-spacing:7px;">{{ slice .Token 0 4 }}</span><span style="display:inline-block;margin:0 8px;color:#3cc5fa;">-</span><span style="letter-spacing:7px;">{{ slice .Token 4 8 }}</span>{{ else }}<span style="letter-spacing:7px;">{{ .Token }}</span>{{ end }}</td></tr>
+          </table>
+          <p style="margin:0 0 14px;font-size:13px;line-height:1.6;color:#607789;">Nao compartilhe este codigo com ninguem. Ele expira em 1 hora.</p>
+          <p style="margin:0 0 32px;font-size:13px;line-height:1.6;color:#607789;">Se voce nao solicitou este cadastro, ignore esta mensagem.</p>
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-top:1px solid #b8c6cf;">
+            <tr><td style="padding-top:16px;font-size:12px;line-height:1.5;color:#78909f;">TranquiliCare<br>Este e um email automatico de verificacao.</td></tr>
+          </table>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>

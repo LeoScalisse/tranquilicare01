@@ -1,269 +1,234 @@
-import React, { useState } from 'react';
-import { NGO, NGOPost } from '../types';
-import { BrandedText } from '../utils';
+import React, { useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
-  Grid,
-  Heart,
-  MessageCircle,
-  Target,
-  X,
-  Instagram,
-  Mail,
-  Phone,
-  ExternalLink,
-  Copy,
   Check,
-  Camera,
-  Video as VideoIcon,
+  ChevronRight,
+  Copy,
+  CreditCard,
+  ExternalLink,
+  Heart,
+  Instagram,
+  LayoutGrid,
+  Loader2,
+  Mail,
+  MessageCircle,
+  Pencil,
+  Phone,
   Play,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  Video as VideoIcon,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { NGO, NGOPost } from '../types';
+import { BrandedText } from '../utils';
+import { getUser } from '@/lib/auth';
+import { createDonationCheckout } from '@/lib/donations';
+import { formatBRL } from '@/lib/impact';
+
+type ProfileTab = 'impacto' | 'historias' | 'sobre';
 
 interface NGOProfileProps {
   ngo: NGO;
+  ownerMode?: boolean;
+  onEditProfile?: () => void;
 }
 
-/**
- * Read-only public cause detail. Backend-free: donations are a placeholder
- * until the new Stripe flow is wired up, and NGO editing/verification lives in
- * the (removed) organization backend.
- */
-const NGOProfile: React.FC<NGOProfileProps> = ({ ngo }) => {
+const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditProfile }) => {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState<ProfileTab>('impacto');
   const [showContactModal, setShowContactModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
+  const [showDonationModal, setShowDonationModal] = useState(false);
+  const [donationAmount, setDonationAmount] = useState('100');
+  const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [zoomedPost, setZoomedPost] = useState<NGOPost | null>(null);
   const [copiedPhone, setCopiedPhone] = useState(false);
 
-  const copyPhone = (text: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedPhone(true);
-    setTimeout(() => setCopiedPhone(false), 2000);
+  const amountCents = useMemo(() => {
+    const amount = Number(donationAmount.replace(',', '.').trim());
+    return Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) : 0;
+  }, [donationAmount]);
+  const platformFeeCents = Math.round(amountCents * 0.05);
+  const totalCents = amountCents + platformFeeCents;
+
+  const startDonation = async () => {
+    if (!getUser()) {
+      toast('Entre na sua conta para fazer uma doação.');
+      navigate('/donor/auth');
+      return;
+    }
+    if (amountCents < 500 || amountCents > 10_000_000) {
+      toast('Escolha um valor entre R$ 5,00 e R$ 100.000,00.');
+      return;
+    }
+
+    setIsStartingCheckout(true);
+    try {
+      const checkoutUrl = await createDonationCheckout({ ngoId: ngo.id, amountCents });
+      window.location.assign(checkoutUrl);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('not connected') || message.includes('not ready') || message.includes('mode does not match')) {
+        toast(message);
+      } else if (message.includes('payments-not-configured')) {
+        toast('O pagamento ainda não foi configurado no ambiente.');
+      } else {
+        toast('Não foi possível iniciar o pagamento. Tente novamente.');
+      }
+    } finally {
+      setIsStartingCheckout(false);
+    }
   };
 
-  const getInstagramUrl = (handle: string) => {
-    const cleanHandle = handle.startsWith('@') ? handle.slice(1) : handle;
-    return `https://www.instagram.com/${cleanHandle}`;
+  const copyPhone = async (text: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedPhone(true);
+    window.setTimeout(() => setCopiedPhone(false), 2000);
   };
+
+  const instagramUrl = `https://www.instagram.com/${ngo.instagram.replace(/^@/, '')}`;
+  const latestPost = ngo.posts?.[0];
+  const tabs: Array<{ id: ProfileTab; label: string }> = [
+    { id: 'impacto', label: 'Impacto' },
+    { id: 'historias', label: 'Histórias' },
+    { id: 'sobre', label: 'Sobre' },
+  ];
 
   return (
-    <div className="max-w-4xl mx-auto px-4 pt-8 pb-16">
-      {/* Zoomed Post Modal */}
-      {zoomedPost && (
-        <div
-          className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in"
-          onClick={() => setZoomedPost(null)}
-        >
-          <button
-            onClick={() => setZoomedPost(null)}
-            className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all z-[130]"
-          >
-            <X size={24} />
-          </button>
-
-          <div
-            className={`relative w-full bg-black rounded-3xl overflow-hidden shadow-2xl animate-scale-up ${
-              zoomedPost.type === 'video' ? 'max-w-md' : 'max-w-lg'
-            }`}
-            style={{ aspectRatio: zoomedPost.type === 'video' ? '9/16' : '4/5' }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {zoomedPost.type === 'video' ? (
-              <video
-                src={zoomedPost.url}
-                className="w-full h-full object-contain"
-                controls
-                autoPlay
-                loop
-                playsInline
-                preload="auto"
-                onLoadedData={(e) => (e.target as HTMLVideoElement).play()}
-              />
-            ) : (
-              <img src={zoomedPost.url} className="w-full h-full object-contain" alt="História ampliada" />
-            )}
-
-            <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/80 to-transparent text-white">
-              <div className="flex items-center gap-3 mb-2">
-                <img src={ngo.image} className="w-10 h-10 rounded-full border-2 border-white" alt={ngo.name} />
-                <span className="font-bold">{ngo.name}</span>
+    <div className='mx-auto w-full max-w-6xl overflow-x-hidden px-4 pb-24 pt-7 text-brand-ink md:overflow-visible md:pt-10'>
+      <AnimatePresence>
+        {zoomedPost && (
+          <motion.div className='fixed inset-0 z-[120] grid place-items-center bg-brand-ink/90 p-4 backdrop-blur-md' initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setZoomedPost(null)}>
+            <button onClick={() => setZoomedPost(null)} className='absolute right-5 top-5 grid h-11 w-11 place-items-center rounded-full bg-white text-brand-blue shadow-lg' aria-label='Fechar história'><X size={21} /></button>
+            <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} className={`relative w-full overflow-hidden rounded-lg bg-black shadow-2xl ${zoomedPost.type === 'video' ? 'max-w-sm' : 'max-w-lg'}`} style={{ aspectRatio: zoomedPost.type === 'video' ? '9/16' : '4/5' }} onClick={(event) => event.stopPropagation()}>
+              {zoomedPost.type === 'video' ? <video src={zoomedPost.url} className='h-full w-full object-contain' controls autoPlay playsInline /> : <img src={zoomedPost.url} className='h-full w-full object-contain' alt='História ampliada' />}
+              <div className='absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-5 pt-16 text-white'>
+                <div className='flex items-center gap-3'><img src={ngo.image} className='h-10 w-10 rounded-full border-2 border-white object-cover' alt='' /><span className='font-bold'>{ngo.name}</span></div>
+                {zoomedPost.caption && <p className='mt-2 text-sm leading-relaxed text-white/85'>{zoomedPost.caption}</p>}
               </div>
-              {zoomedPost.caption && (
-                <p className="text-sm text-gray-200 leading-relaxed max-w-lg">{zoomedPost.caption}</p>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Goal Modal */}
-      {showGoalModal && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
-          onClick={() => setShowGoalModal(false)}
-        >
-          <div
-            className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl animate-scale-up"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="relative h-24 bg-gradient-to-r from-brand-yellow to-yellow-400">
-              <button onClick={() => setShowGoalModal(false)} className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/40 rounded-full text-yellow-900 transition-colors">
-                <X size={18} />
-              </button>
-              <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 w-16 h-16 rounded-full bg-white shadow-lg flex items-center justify-center">
-                <Target size={28} className="text-brand-yellow" />
-              </div>
-            </div>
-            <div className="pt-12 pb-8 px-6 text-center">
-              <h3 className="font-bold text-xl text-gray-800">Nossa Meta</h3>
-              <p className="text-gray-600 mt-4 leading-relaxed">{ngo.goal}</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {showGoalModal && <ModalShell onClose={() => setShowGoalModal(false)} title='Nossa meta' icon={<Target size={23} />}><p className='leading-relaxed text-muted-foreground'>{ngo.goal}</p></ModalShell>}
 
-      {/* Contact Modal */}
       {showContactModal && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
-          onClick={() => setShowContactModal(false)}
-        >
-          <div
-            className="bg-white w-full max-w-sm rounded-[2rem] overflow-hidden shadow-2xl animate-scale-up"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="relative h-32 bg-gradient-to-r from-brand-blue to-blue-400">
-              <button onClick={() => setShowContactModal(false)} className="absolute top-4 right-4 p-2 bg-white/20 hover:bg-white/40 rounded-full text-white transition-colors">
-                <X size={18} />
-              </button>
-              <img src={ngo.image} className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover" alt={ngo.name} />
-            </div>
-            <div className="pt-14 pb-8 px-6 text-center">
-              <h3 className="font-bold text-xl">{ngo.name}</h3>
-              <p className="text-gray-500 text-sm mt-1">{ngo.category}</p>
-              <div className="mt-6 space-y-3">
-                <a href={getInstagramUrl(ngo.instagram)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:opacity-90 transition-opacity">
-                  <Instagram size={20} />
-                  <span className="font-medium">{ngo.instagram}</span>
-                  <ExternalLink size={14} className="ml-auto opacity-70" />
-                </a>
-                <a href={`mailto:${ngo.email}`} className="flex items-center gap-3 w-full p-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
-                  <Mail size={20} className="text-gray-600" />
-                  <span className="font-medium text-gray-700 truncate flex-1 text-left">{ngo.email}</span>
-                  <ExternalLink size={14} className="text-gray-400" />
-                </a>
-                {ngo.phone && (
-                  <button onClick={() => copyPhone(ngo.phone!)} className="flex items-center gap-3 w-full p-3 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors">
-                    <Phone size={20} className="text-gray-600" />
-                    <span className="font-medium text-gray-700">{ngo.phone}</span>
-                    {copiedPhone ? <Check size={16} className="text-green-500" /> : <Copy size={14} className="text-gray-400" />}
-                  </button>
-                )}
-              </div>
+        <ModalShell onClose={() => setShowContactModal(false)} title='Fale com a organização' icon={<MessageCircle size={22} />}>
+          <div className='mb-5 flex items-center gap-3'><img src={ngo.image} className='h-14 w-14 rounded-lg object-cover' alt='' /><div><p className='font-bold'>{ngo.name}</p><p className='text-sm text-muted-foreground'>{ngo.category}</p></div></div>
+          <div className='space-y-2'>
+            <a href={instagramUrl} target='_blank' rel='noopener noreferrer' className='flex items-center gap-3 rounded-lg border border-border p-3 font-semibold transition-colors hover:border-brand-blue'><Instagram size={19} className='text-brand-blue' /><span className='min-w-0 flex-1 truncate'>{ngo.instagram}</span><ExternalLink size={15} className='text-muted-foreground' /></a>
+            <a href={`mailto:${ngo.email}`} className='flex items-center gap-3 rounded-lg border border-border p-3 font-semibold transition-colors hover:border-brand-blue'><Mail size={19} className='text-brand-blue' /><span className='min-w-0 flex-1 truncate'>{ngo.email}</span><ExternalLink size={15} className='text-muted-foreground' /></a>
+            {ngo.phone && <button onClick={() => copyPhone(ngo.phone!)} className='flex w-full items-center gap-3 rounded-lg border border-border p-3 text-left font-semibold transition-colors hover:border-brand-blue'><Phone size={19} className='text-brand-blue' /><span className='flex-1'>{ngo.phone}</span>{copiedPhone ? <Check size={17} className='text-emerald-500' /> : <Copy size={15} className='text-muted-foreground' />}</button>}
+          </div>
+        </ModalShell>
+      )}
+
+      {showDonationModal && (
+        <ModalShell onClose={() => !isStartingCheckout && setShowDonationModal(false)} title={`Apoiar ${ngo.name}`} icon={<Heart size={22} />} wide>
+          <label htmlFor='donation-amount' className='text-sm font-bold'>Valor destinado à ONG</label>
+          <div className='relative mt-2'><span className='absolute inset-y-0 left-4 flex items-center text-sm font-bold text-muted-foreground'>R$</span><input id='donation-amount' inputMode='decimal' value={donationAmount} onChange={(event) => setDonationAmount(event.target.value)} className='w-full rounded-lg border-2 border-border bg-secondary/45 py-3 pl-11 pr-4 text-lg font-bold outline-none focus:border-brand-blue' /></div>
+          <div className='mt-3 flex flex-wrap gap-2'>{[25, 50, 100, 250].map((value) => <button key={value} onClick={() => setDonationAmount(String(value))} className='rounded-full border border-border px-3 py-1.5 text-xs font-bold hover:border-brand-blue hover:text-brand-blue'>R$ {value}</button>)}</div>
+          <div className='mt-5 rounded-lg bg-secondary/60 p-4 text-sm'>
+            <div className='flex justify-between gap-4'><span className='text-muted-foreground'>Doação</span><strong>{formatBRL(amountCents)}</strong></div>
+            <div className='mt-2 flex justify-between gap-4'><span className='text-muted-foreground'>Taxa TranquiliCare (5%)</span><strong>{formatBRL(platformFeeCents)}</strong></div>
+            <div className='mt-3 flex justify-between border-t border-border pt-3 font-bold'><span>Total</span><span>{formatBRL(totalCents)}</span></div>
+          </div>
+          <p className='mt-4 text-xs leading-relaxed text-muted-foreground'>A doação é destinada integralmente à ONG. A taxa de 5% é adicionada ao valor final e o pagamento é processado pela Stripe.</p>
+          <button disabled={isStartingCheckout} onClick={startDonation} className='tc-button-3d mt-5 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold text-white disabled:opacity-60'>{isStartingCheckout ? <Loader2 size={18} className='animate-spin' /> : <CreditCard size={18} />}{isStartingCheckout ? 'Abrindo pagamento...' : 'Continuar para pagamento'}</button>
+        </ModalShell>
+      )}
+
+      <section className='border-b border-border pb-8'>
+        <div className='flex flex-col gap-7 md:flex-row md:items-center'>
+          <div className='relative w-fit shrink-0'>
+            <img src={ngo.image} className='h-36 w-36 rounded-full border-[5px] border-white object-cover shadow-[0_0_0_3px_hsl(var(--brand-blue))] md:h-40 md:w-40' alt={ngo.name} />
+            {ngo.verified && <span className='absolute bottom-1 right-0 grid h-11 w-11 place-items-center rounded-full border-4 border-white bg-brand-blue text-white' title='Organização verificada'><ShieldCheck size={19} /></span>}
+          </div>
+
+          <div className='min-w-0 flex-1'>
+            <div className='flex flex-wrap items-center gap-2'><p className='text-xs font-bold uppercase tracking-[0.16em] text-brand-blue'>{ownerMode ? 'Perfil da organização' : 'Organização social'}</p>{ngo.status === 'approved' && <span className='rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700'>Ativa</span>}</div>
+            <h1 className='mt-1 font-display text-4xl font-semibold leading-tight md:text-5xl'>{ngo.name}</h1>
+            <div className='mt-2 font-semibold text-muted-foreground'><BrandedText text={ngo.category} /></div>
+            <p className='mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base'>{ngo.description}</p>
+            <div className='mt-5 flex flex-wrap gap-3'>
+              {ownerMode ? <button onClick={onEditProfile} className='tc-button-3d inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white'><Pencil size={17} />Editar perfil</button> : <button onClick={() => setShowDonationModal(true)} className='tc-button-3d inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white'><Heart size={17} className='fill-current' />Apoiar agora</button>}
+              <button onClick={() => setShowContactModal(true)} className='inline-flex items-center gap-2 rounded-xl border-2 border-border bg-white px-5 py-2.5 text-sm font-bold transition-colors hover:border-brand-blue hover:text-brand-blue'><MessageCircle size={17} />Contato</button>
             </div>
           </div>
         </div>
-      )}
+      </section>
 
-      {/* Profile Header */}
-      <div className="flex flex-col sm:flex-row items-center gap-6 sm:gap-10 mb-8">
-        <div className="relative shrink-0">
-          <img src={ngo.image} className="w-28 h-28 sm:w-36 sm:h-36 rounded-full object-cover border-4 border-white shadow-xl" alt={ngo.name} />
-          {ngo.verified && (
-            <div className="absolute bottom-1 right-1 bg-brand-blue text-white p-1.5 rounded-full border-2 border-white shadow-sm">
-              <Check size={14} />
+      <section className='grid grid-cols-2 gap-3 border-b border-border py-7 md:grid-cols-3'>
+        <button onClick={() => setActiveTab('historias')} className='min-w-0 rounded-lg border-2 border-border p-4 text-left transition-colors hover:border-brand-blue'><span className='flex items-center justify-between text-sm font-bold'>Histórias <ChevronRight size={18} /></span><strong className='mt-2 block text-3xl'>{ngo.posts?.length || 0}</strong><span className='text-xs text-muted-foreground'>impactos publicados</span></button>
+        <button onClick={() => setShowGoalModal(true)} className='min-w-0 rounded-lg border-2 border-border p-4 text-left transition-colors hover:border-brand-blue'><span className='flex items-center justify-between gap-2 text-sm font-bold'>Meta atual <Target size={18} className='shrink-0 text-brand-blue' /></span><strong className='mt-2 block break-words text-lg sm:text-xl'>Em andamento</strong><span className='text-xs text-muted-foreground'>ver objetivo da causa</span></button>
+        <div className='col-span-2 min-w-0 rounded-lg border-2 border-border p-4 md:col-span-1'><span className='flex items-center justify-between text-sm font-bold'>Transparência <ShieldCheck size={18} className='text-emerald-500' /></span><strong className='mt-2 block text-xl'>{ngo.verified ? 'Verificada' : 'Em análise'}</strong><span className='text-xs text-muted-foreground'>status na plataforma</span></div>
+      </section>
+
+      <div className='sticky top-16 z-20 -mx-4 border-b border-border bg-white/95 px-4 backdrop-blur md:static md:mx-0 md:px-0'>
+        <div className='flex overflow-x-auto'>
+          {tabs.map((tab) => <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`relative min-w-[112px] flex-1 px-4 py-4 text-sm font-bold transition-colors ${activeTab === tab.id ? 'text-brand-blue' : 'text-muted-foreground hover:text-brand-ink'}`}>{tab.label}{activeTab === tab.id && <motion.span layoutId={`ngo-tab-${ngo.id}`} className='absolute inset-x-4 bottom-0 h-0.5 bg-brand-blue' />}</button>)}
+        </div>
+      </div>
+
+      <AnimatePresence mode='wait'>
+        <motion.div key={activeTab} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -5 }} transition={{ duration: 0.2 }} className='pt-7'>
+          {activeTab === 'impacto' && (
+            <div className='grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]'>
+              <section>
+                <div className='mb-4'><p className='text-xs font-bold uppercase tracking-[0.14em] text-brand-blue'>Atualizações</p><h2 className='font-display text-2xl font-semibold'>Impacto que ganhou forma</h2></div>
+                {latestPost ? <button onClick={() => setZoomedPost(latestPost)} className='group grid w-full overflow-hidden rounded-lg border-2 border-border bg-white text-left sm:grid-cols-[240px_1fr]'><div className='relative aspect-[4/3] overflow-hidden sm:aspect-auto'><PostMedia post={latestPost} /><span className='absolute left-3 top-3 rounded-full bg-brand-ink/75 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur'>História recente</span></div><div className='flex flex-col justify-center p-5 md:p-7'><Sparkles className='text-brand-yellow' size={22} /><h3 className='mt-3 font-display text-2xl font-semibold'>Veja como o apoio virou ação</h3><p className='mt-2 text-sm leading-6 text-muted-foreground'>{latestPost.caption || 'Uma nova história de impacto foi compartilhada pela organização.'}</p><span className='mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-brand-blue'>Abrir história <ChevronRight size={17} /></span></div></button> : <EmptyStories ownerMode={ownerMode} />}
+              </section>
+              <aside className='space-y-5'>
+                <section><h2 className='mb-3 font-display text-xl font-semibold'>Objetivo atual</h2><button onClick={() => setShowGoalModal(true)} className='w-full rounded-lg bg-brand-yellow p-5 text-left'><Target size={23} /><p className='mt-3 line-clamp-3 font-bold leading-6'>{ngo.goal}</p><span className='mt-4 inline-flex items-center gap-1 text-xs font-bold'>Ver meta completa <ChevronRight size={15} /></span></button></section>
+                <section className='rounded-lg border-2 border-border p-5'><h2 className='font-display text-xl font-semibold'>Conecte-se</h2><p className='mt-2 text-sm leading-6 text-muted-foreground'>Acompanhe as atualizações e fale diretamente com a equipe.</p><button onClick={() => setShowContactModal(true)} className='mt-4 inline-flex items-center gap-2 text-sm font-bold text-brand-blue'>Ver canais de contato <ChevronRight size={16} /></button></section>
+              </aside>
             </div>
           )}
-        </div>
 
-        <div className="flex-1 text-center sm:text-left space-y-3">
-          <div className="flex items-center justify-center sm:justify-start gap-4">
-            <h2 className="text-xl font-semibold text-gray-800">{ngo.name.replace(/\s+/g, '').toLowerCase()}</h2>
-          </div>
+          {activeTab === 'historias' && (
+            <section><div className='mb-5'><p className='text-xs font-bold uppercase tracking-[0.14em] text-brand-blue'>Galeria</p><h2 className='font-display text-2xl font-semibold'>Histórias da organização</h2></div>{ngo.posts?.length ? <div className='grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5'>{ngo.posts.map((post) => <button key={post.id} onClick={() => setZoomedPost(post)} className='group relative aspect-square overflow-hidden rounded-lg bg-secondary text-left'><PostMedia post={post} /><span className='absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-3 pt-10 text-xs font-semibold text-white opacity-100 md:opacity-0 md:transition-opacity md:group-hover:opacity-100'>{post.caption || 'Abrir história'}</span></button>)}</div> : <EmptyStories ownerMode={ownerMode} />}</section>
+          )}
 
-          <div className="flex gap-8 justify-center sm:justify-start text-sm">
-            <div>
-              <span className="font-bold">{ngo.posts?.length || 0}</span> histórias
+          {activeTab === 'sobre' && (
+            <div className='grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]'>
+              <section><p className='text-xs font-bold uppercase tracking-[0.14em] text-brand-blue'>Quem somos</p><h2 className='mt-1 font-display text-2xl font-semibold'>Sobre {ngo.name}</h2><p className='mt-4 max-w-3xl text-base leading-7 text-muted-foreground'>{ngo.description}</p><div className='mt-7 border-l-4 border-brand-yellow pl-5'><p className='text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground'>Nosso foco agora</p><p className='mt-2 font-semibold leading-7'>{ngo.goal}</p></div></section>
+              <aside className='rounded-lg border-2 border-border p-5'><h3 className='font-bold'>Informações</h3><dl className='mt-4 space-y-4 text-sm'><div><dt className='text-muted-foreground'>Categoria</dt><dd className='font-semibold'>{ngo.category}</dd></div><div><dt className='text-muted-foreground'>Verificação</dt><dd className='font-semibold'>{ngo.verified ? 'Concluída' : 'Em análise'}</dd></div><div><dt className='text-muted-foreground'>Contato</dt><dd className='truncate font-semibold'>{ngo.email}</dd></div></dl></aside>
             </div>
-            <button
-              onClick={() => setShowGoalModal(true)}
-              className="text-brand-blue hover:text-blue-600 font-medium cursor-pointer transition-colors flex items-center gap-1"
-            >
-              <Target size={14} />
-              <span className="truncate max-w-[150px]">Nossa meta</span>
-            </button>
-          </div>
-
-          <div className="space-y-1 text-center sm:text-left">
-            <h1 className="font-bold text-sm">{ngo.name}</h1>
-            <div className="text-sm text-gray-500 font-medium mb-1">
-              <BrandedText text={ngo.category} />
-            </div>
-
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{ngo.description}</p>
-            <div className="flex flex-wrap gap-2 mt-2">
-              <button
-                onClick={() => setShowContactModal(true)}
-                className="flex items-center justify-center sm:justify-start gap-2 text-white bg-brand-blue hover:bg-blue-600 font-bold text-sm px-4 py-2 rounded-xl transition-colors shadow-sm"
-              >
-                <MessageCircle size={16} />
-                <span>Contato</span>
-              </button>
-
-              <button
-                onClick={() => toast('Doações estarão disponíveis em breve ✨')}
-                className="flex items-center justify-center sm:justify-start gap-2 text-white bg-brand-blue hover:bg-blue-600 font-bold text-sm px-4 py-2 rounded-xl transition-colors shadow-sm"
-              >
-                <Heart size={16} className="fill-white" />
-                <span>Apoiar</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="border-t border-gray-200 mb-8">
-        <div className="flex justify-center -mt-px">
-          <button className="flex items-center gap-1.5 py-4 text-xs font-bold uppercase tracking-wider border-t border-gray-800 text-gray-800">
-            <Grid size={14} />
-            Histórias
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-1 md:gap-6">
-        {ngo.posts && ngo.posts.length > 0 ? (
-          ngo.posts.map((post) => (
-            <div
-              key={post.id}
-              onClick={() => setZoomedPost(post)}
-              className="aspect-square relative group cursor-pointer overflow-hidden bg-gray-100 rounded-lg sm:rounded-2xl"
-            >
-              {post.type === 'image' ? (
-                <img src={post.url} className="w-full h-full object-cover transition-all group-hover:scale-110" alt="História" />
-              ) : (
-                <div className="relative w-full h-full">
-                  <video src={post.url} className="w-full h-full object-cover" preload="metadata" />
-                  <div className="absolute top-2 right-2 text-white drop-shadow-md">
-                    <VideoIcon size={20} />
-                  </div>
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Play size={32} className="text-white fill-white" />
-                  </div>
-                </div>
-              )}
-            </div>
-          ))
-        ) : (
-          <div className="col-span-full py-20 text-center text-gray-300 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-100">
-            <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-sm">
-              <Camera size={32} className="text-gray-200" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-400">Sem histórias no momento</h3>
-          </div>
-        )}
-      </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 };
+
+const PostMedia: React.FC<{ post: NGOPost }> = ({ post }) => post.type === 'image'
+  ? <img src={post.url} className='h-full w-full object-cover transition-transform duration-500 group-hover:scale-105' alt='História de impacto' />
+  : <div className='relative h-full w-full'><video src={post.url} className='h-full w-full object-cover' preload='metadata' /><VideoIcon className='absolute right-3 top-3 text-white drop-shadow' size={20} /><span className='absolute inset-0 grid place-items-center bg-black/15'><Play className='fill-white text-white' size={32} /></span></div>;
+
+const EmptyStories: React.FC<{ ownerMode: boolean }> = ({ ownerMode }) => (
+  <div className='rounded-lg border-2 border-dashed border-border px-6 py-14 text-center'><LayoutGrid className='mx-auto text-brand-blue/35' size={34} /><h3 className='mt-3 font-display text-xl font-semibold'>As histórias aparecerão aqui</h3><p className='mx-auto mt-2 max-w-md text-sm text-muted-foreground'>{ownerMode ? 'Quando a publicação de impacto estiver disponível, você poderá mostrar à comunidade como cada apoio foi utilizado.' : 'Esta organização ainda não publicou atualizações de impacto.'}</p></div>
+);
+
+interface ModalShellProps {
+  title: string;
+  icon: React.ReactNode;
+  children: React.ReactNode;
+  onClose: () => void;
+  wide?: boolean;
+}
+
+const ModalShell: React.FC<ModalShellProps> = ({ title, icon, children, onClose, wide }) => (
+  <div className='fixed inset-0 z-[110] grid place-items-center bg-brand-ink/70 p-4 backdrop-blur-sm' onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+    <motion.div initial={{ opacity: 0, y: 18, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} className={`w-full overflow-hidden rounded-lg bg-white shadow-2xl ${wide ? 'max-w-md' : 'max-w-sm'}`}>
+      <div className='flex items-center justify-between bg-brand-ink px-5 py-4 text-white'><div className='flex items-center gap-2.5'><span className='text-brand-yellow'>{icon}</span><h3 className='font-display text-xl font-semibold'>{title}</h3></div><button onClick={onClose} className='grid h-9 w-9 place-items-center rounded-full bg-white text-brand-blue' aria-label='Fechar'><X size={19} /></button></div>
+      <div className='p-5 md:p-6'>{children}</div>
+    </motion.div>
+  </div>
+);
 
 export default NGOProfile;

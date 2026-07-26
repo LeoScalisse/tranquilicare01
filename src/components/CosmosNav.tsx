@@ -102,7 +102,7 @@ const CosmosNav: React.FC<CosmosNavProps> = ({ items }) => {
   // of ancestor backdrop-filter/transform (e.g. the header's backdrop-blur).
   return createPortal(
     <div
-      className="md:hidden fixed left-1/2 z-50 -translate-x-1/2"
+      className="fixed left-1/2 z-50 -translate-x-1/2 md:hidden"
       style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
     >
       <LayoutGroup id="cosmos-nav">

@@ -1,20 +1,21 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check, HandCoins, HandHeart, Heart, Loader2, Pencil, ShieldCheck, X } from 'lucide-react';
-import { toast } from 'sonner';
-import { updateUser } from '@/lib/auth';
+import { HandCoins, HandHeart, Heart, ShieldCheck } from 'lucide-react';
 import {
   COMMUNITY_STEPS,
   PERSONAL_STEPS,
   ProgressRing,
+  DonationRow,
   formatBRL,
   nextMilestone,
   useCountUp,
-  useDonationRows,
+  useDonationImpact,
 } from '@/lib/impact';
-import RotatingHeadline from './RotatingHeadline';
+import DonationCardCelebration from './DonationCardCelebration';
+import LoggedOutHero from './LoggedOutHero';
 
 interface ImpactDashboardProps {
+  userId: string | null;
   userName: string | null;
   userEmail: string | null;
   isLoggedIn: boolean;
@@ -22,7 +23,11 @@ interface ImpactDashboardProps {
   ownedNgoId: string | null;
   verifiedCount: number;
   onLogin: () => void;
-  onNameUpdated?: (name: string) => void;
+  onExplore: () => void;
+  onStories: () => void;
+  celebratingDonation?: DonationRow | null;
+  celebrationPhase: 'idle' | 'card' | 'dialog';
+  onDonationAnimationComplete: () => void;
 }
 
 /** Tesla-style live number: re-pops softly every time the target grows. */
@@ -55,67 +60,72 @@ const cardVariants = {
 };
 
 const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
+  userId,
   userName,
   userEmail,
   isLoggedIn,
   accountType,
   ownedNgoId,
   verifiedCount,
-  onNameUpdated,
+  onExplore,
+  onStories,
+  celebratingDonation = null,
+  celebrationPhase,
+  onDonationAnimationComplete,
 }) => {
-  const rows = useDonationRows(userEmail);
+  const { rows, communityTotal, communityDonationCount } = useDonationImpact(
+    userId,
+    userEmail,
+    celebratingDonation,
+  );
   const isNgoAccount = isLoggedIn && accountType === 'ngo';
+  const [releasedDonationId, setReleasedDonationId] = useState<string | null>(null);
 
-  // Editable username (logged-in greeting).
-  const [displayName, setDisplayName] = useState(userName ?? '');
-  const [editingName, setEditingName] = useState(false);
-  const [nameDraft, setNameDraft] = useState('');
-  const [savingName, setSavingName] = useState(false);
-
-  useEffect(() => {
-    setDisplayName(userName ?? '');
-  }, [userName]);
-
-  const startEditName = () => {
-    setNameDraft(displayName);
-    setEditingName(true);
-  };
-
-  const saveName = async () => {
-    const trimmed = nameDraft.trim();
-    setSavingName(true);
-    try {
-      await updateUser({ name: trimmed });
-      setDisplayName(trimmed);
-      setEditingName(false);
-      onNameUpdated?.(trimmed);
-      toast.success('Nome atualizado!');
-    } catch {
-      toast.error('Não foi possível salvar o nome.');
-    } finally {
-      setSavingName(false);
-    }
-  };
-
-  const { communityTotal, personalTotal, receivedTotal } = useMemo(() => {
-    let community = 0;
+  const { personalTotal, receivedTotal } = useMemo(() => {
     let personal = 0;
     let received = 0;
     for (const d of rows) {
-      community += d.amount || 0;
       if (userEmail && d.donor_email === userEmail) personal += d.amount || 0;
       if (ownedNgoId && d.ngo_id === ownedNgoId) received += d.amount || 0;
     }
-    return { communityTotal: community, personalTotal: personal, receivedTotal: received };
+    return { personalTotal: personal, receivedTotal: received };
   }, [rows, userEmail, ownedNgoId]);
 
+  useEffect(() => {
+    if (celebratingDonation) setReleasedDonationId(null);
+  }, [celebratingDonation]);
+
+  const releasePersonalImpact = useCallback(() => {
+    if (celebratingDonation) setReleasedDonationId(celebratingDonation.id);
+  }, [celebratingDonation]);
+
+  const holdPersonalDonation = Boolean(
+    celebratingDonation
+    && celebratingDonation.donor_id === userId
+    && releasedDonationId !== celebratingDonation.id,
+  );
+  const displayedPersonalTotal = holdPersonalDonation
+    ? Math.max(0, personalTotal - (celebratingDonation?.amount ?? 0))
+    : personalTotal;
+
   const communityMilestone = nextMilestone(communityTotal, COMMUNITY_STEPS);
-  const personalMilestone = nextMilestone(personalTotal, PERSONAL_STEPS);
+  const personalMilestone = nextMilestone(displayedPersonalTotal, PERSONAL_STEPS);
   const receivedMilestone = nextMilestone(receivedTotal, PERSONAL_STEPS);
   const communityValue = useCountUp(communityTotal);
-  const personalValue = useCountUp(personalTotal);
+  const personalValue = useCountUp(displayedPersonalTotal);
   const receivedValue = useCountUp(receivedTotal);
-  const firstName = displayName.trim().split(' ')[0] || null;
+  const firstName = userName?.trim().split(' ')[0] || null;
+
+  if (!isLoggedIn) {
+    return (
+      <LoggedOutHero
+        communityTotal={communityTotal}
+        communityDonationCount={communityDonationCount}
+        onExplore={onExplore}
+        onStories={onStories}
+      />
+    );
+  }
 
   return (
     <section className="relative overflow-hidden">
@@ -127,64 +137,9 @@ const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
-          {isLoggedIn ? (
-            editingName ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <input
-                  autoFocus
-                  value={nameDraft}
-                  onChange={(e) => setNameDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') saveName();
-                    if (e.key === 'Escape') setEditingName(false);
-                  }}
-                  placeholder="Seu nome de usuário"
-                  maxLength={40}
-                  className="font-display text-2xl md:text-4xl font-semibold text-brand-ink bg-transparent border-b-2 border-brand-blue outline-none placeholder:text-muted-foreground/40 min-w-0 flex-1 max-w-md"
-                />
-                <button
-                  onClick={saveName}
-                  disabled={savingName}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-blue text-white shadow-md hover:-translate-y-0.5 transition-transform disabled:opacity-50"
-                  aria-label="Salvar nome"
-                >
-                  {savingName ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
-                </button>
-                <button
-                  onClick={() => setEditingName(false)}
-                  className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-muted-foreground hover:text-brand-ink transition-colors"
-                  aria-label="Cancelar"
-                >
-                  <X size={18} />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-3">
-                <h1 className="font-display text-3xl md:text-5xl font-semibold leading-tight">
-                  {firstName ? (
-                    // Name registered → show the name, no generic time-greeting.
-                    <span className="text-brand-ink">Olá, {firstName}</span>
-                  ) : (
-                    // No name yet → keep the generic greeting as a friendly fallback.
-                    <>
-                      <span className="text-brand-ink">Olá,</span>{' '}
-                      <span className="text-muted-foreground/60">{getGreeting()}</span>
-                    </>
-                  )}
-                </h1>
-                <button
-                  onClick={startEditName}
-                  className="group flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground hover:bg-brand-blue/10 hover:text-brand-blue transition-colors"
-                  aria-label={firstName ? 'Editar seu nome' : 'Adicionar seu nome'}
-                  title={firstName ? 'Editar seu nome' : 'Adicionar seu nome'}
-                >
-                  <Pencil size={16} />
-                </button>
-              </div>
-            )
-          ) : (
-            <RotatingHeadline className="font-display text-3xl md:text-5xl font-semibold leading-tight text-brand-ink min-h-[2.5rem] md:min-h-[3.75rem]" />
-          )}
+          <h1 className="font-display text-3xl md:text-5xl font-semibold leading-tight">
+            {firstName ? <span className="text-brand-ink">Olá, {firstName}</span> : <><span className="text-brand-ink">Olá,</span>{' '}<span className="text-muted-foreground/60">{getGreeting()}</span></>}
+          </h1>
         </motion.div>
 
         <div className={`grid gap-4 md:gap-5 mt-8 ${isLoggedIn ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
@@ -213,6 +168,9 @@ const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
               <p className="text-xs text-muted-foreground mt-1">
                 Rumo a <span className="font-bold text-brand-ink">{formatBRL(communityMilestone)}</span>
               </p>
+              <p className="mt-1 text-xs font-semibold text-brand-blue">
+                {communityDonationCount} {communityDonationCount === 1 ? 'doação confirmada' : 'doações confirmadas'}
+              </p>
             </div>
           </motion.div>
 
@@ -223,21 +181,31 @@ const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
               variants={cardVariants}
               initial="hidden"
               animate="show"
-              className="bg-brand-blue rounded-3xl p-6 shadow-lg shadow-brand-blue/30 text-white flex items-center gap-5"
+              data-donation-card-target
+              className="relative isolate overflow-hidden bg-brand-blue rounded-3xl p-6 shadow-lg shadow-brand-blue/30 text-white flex items-center gap-5"
             >
-              <ProgressRing
-                percent={(personalTotal / personalMilestone) * 100}
-                trackClass="text-white/20"
-                barClass="text-brand-yellow"
-                label="Progresso das suas doações"
+              <DonationCardCelebration
+                active={Boolean(celebratingDonation) && celebrationPhase === 'card'}
+                amountCents={celebratingDonation?.amount ?? 0}
+                celebrationKey={celebratingDonation?.id ?? null}
+                onValueRelease={releasePersonalImpact}
+                onComplete={onDonationAnimationComplete}
               />
-              <div className="min-w-0">
+              <div className="relative z-20 shrink-0">
+                <ProgressRing
+                  percent={(displayedPersonalTotal / personalMilestone) * 100}
+                  trackClass="text-white/20"
+                  barClass="text-brand-yellow"
+                  label="Progresso das suas doações"
+                />
+              </div>
+              <div className="relative z-20 min-w-0">
                 <p className="text-sm font-semibold text-blue-50 flex items-center gap-1.5 mb-1">
                   <Heart size={16} className="text-brand-yellow fill-brand-yellow" />
                   Suas doações
                 </p>
                 <p className="font-display text-2xl md:text-3xl font-semibold truncate">
-                  <LiveValue target={personalTotal} value={personalValue} />
+                  <LiveValue target={displayedPersonalTotal} value={personalValue} />
                 </p>
                 <p className="text-xs text-blue-100 mt-1">
                   Próximo marco: <span className="font-bold text-white">{formatBRL(personalMilestone)}</span>

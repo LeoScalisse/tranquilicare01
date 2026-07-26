@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { supabase } from './supabase';
 
 /**
  * Shared donation-impact primitives used by both the home dashboard
@@ -11,10 +12,20 @@ import { motion } from 'framer-motion';
  */
 
 export interface DonationRow {
+  id: string;
   amount: number;
+  donor_id: string | null;
   donor_email: string | null;
   created_at: string;
   ngo_id?: string | null;
+  stripe_checkout_session_id?: string | null;
+}
+
+export interface DonationImpact {
+  rows: DonationRow[];
+  communityTotal: number;
+  communityDonationCount: number;
+  isLive: boolean;
 }
 
 // Milestone ladders (in reais) — the meters chase the next round number.
@@ -94,17 +105,17 @@ export const devDonationRows = (userEmail: string | null): DonationRow[] => {
   const DAY = 86_400_000;
   const mine: DonationRow[] = userEmail
     ? [
-        { amount: 5000, donor_email: userEmail, created_at: new Date(now).toISOString() },
-        { amount: 3500, donor_email: userEmail, created_at: new Date(now - DAY).toISOString() },
-        { amount: 2500, donor_email: userEmail, created_at: new Date(now - 2 * DAY).toISOString() },
-        { amount: 7500, donor_email: userEmail, created_at: new Date(now - 5 * DAY).toISOString() },
+        { id: 'dev-mine-1', amount: 5000, donor_id: 'dev-user', donor_email: userEmail, created_at: new Date(now).toISOString() },
+        { id: 'dev-mine-2', amount: 3500, donor_id: 'dev-user', donor_email: userEmail, created_at: new Date(now - DAY).toISOString() },
+        { id: 'dev-mine-3', amount: 2500, donor_id: 'dev-user', donor_email: userEmail, created_at: new Date(now - 2 * DAY).toISOString() },
+        { id: 'dev-mine-4', amount: 7500, donor_id: 'dev-user', donor_email: userEmail, created_at: new Date(now - 5 * DAY).toISOString() },
       ]
     : [];
   const mineSum = mine.reduce((s, d) => s + d.amount, 0);
   const community: DonationRow[] = [
-    { amount: 500000, donor_email: 'ana@example.com', created_at: new Date(now - 3 * DAY).toISOString() },
-    { amount: 420000, donor_email: 'bruno@example.com', created_at: new Date(now - 6 * DAY).toISOString() },
-    { amount: 1284700 - 500000 - 420000 - mineSum, donor_email: 'carla@example.com', created_at: new Date(now - DAY).toISOString() },
+    { id: 'dev-community-1', amount: 500000, donor_id: null, donor_email: 'ana@example.com', created_at: new Date(now - 3 * DAY).toISOString() },
+    { id: 'dev-community-2', amount: 420000, donor_id: null, donor_email: 'bruno@example.com', created_at: new Date(now - 6 * DAY).toISOString() },
+    { id: 'dev-community-3', amount: 1284700 - 500000 - 420000 - mineSum, donor_id: null, donor_email: 'carla@example.com', created_at: new Date(now - DAY).toISOString() },
   ];
   return [...mine, ...community];
 };
@@ -115,8 +126,173 @@ export const devDonationRows = (userEmail: string | null): DonationRow[] => {
  * streaks, and the week strip. When a real backend returns, fetch here instead
  * — every screen consumes this hook, so the figures stay identical everywhere.
  */
-export const useDonationRows = (userEmail: string | null): DonationRow[] =>
-  useMemo(() => devDonationRows(userEmail), [userEmail]);
+type DonationDatabaseRow = {
+  id: string;
+  donor_id: string | null;
+  ngo_id: string | null;
+  amount_cents: number;
+  created_at: string;
+  stripe_checkout_session_id: string | null;
+  status: 'pending' | 'succeeded' | 'failed' | 'refunded';
+};
+
+type ImpactStatsRow = {
+  donated_amount_cents: number;
+  donation_count: number;
+};
+
+const donationFromDatabase = (
+  row: DonationDatabaseRow,
+  userEmail: string | null,
+): DonationRow => ({
+  id: row.id,
+  amount: Number(row.amount_cents) || 0,
+  donor_id: row.donor_id,
+  donor_email: userEmail,
+  created_at: row.created_at,
+  ngo_id: row.ngo_id,
+  stripe_checkout_session_id: row.stripe_checkout_session_id,
+});
+
+const upsertDonation = (rows: DonationRow[], donation: DonationRow): DonationRow[] => {
+  const index = rows.findIndex((row) => row.id === donation.id);
+  if (index === -1) return [donation, ...rows];
+  const next = [...rows];
+  next[index] = donation;
+  return next;
+};
+
+/**
+ * One source for every impact number:
+ * - public, anonymous aggregate for the platform-wide counter;
+ * - RLS-protected rows for the signed-in donor;
+ * - Postgres Changes subscriptions for both.
+ */
+export const useDonationImpact = (
+  userId: string | null,
+  userEmail: string | null,
+  confirmedDonation?: DonationRow | null,
+): DonationImpact => {
+  const fallbackRows = useMemo(() => devDonationRows(userEmail), [userEmail]);
+  const [rows, setRows] = useState<DonationRow[]>(supabase ? [] : fallbackRows);
+  const [communityTotal, setCommunityTotal] = useState(() =>
+    supabase ? 0 : fallbackRows.reduce((sum, row) => sum + row.amount, 0),
+  );
+  const [communityDonationCount, setCommunityDonationCount] = useState(() =>
+    supabase ? 0 : fallbackRows.length,
+  );
+  const channelKey = useRef(`impact-${crypto.randomUUID()}`);
+
+  useEffect(() => {
+    if (supabase) return;
+    setRows(fallbackRows);
+    setCommunityTotal(fallbackRows.reduce((sum, row) => sum + row.amount, 0));
+    setCommunityDonationCount(fallbackRows.length);
+  }, [fallbackRows]);
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    let active = true;
+    setRows([]);
+
+    const statsChannel = supabase
+      .channel(`${channelKey.current}-platform`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'platform_impact_stats' },
+        (payload) => {
+          const next = payload.new as ImpactStatsRow;
+          setCommunityTotal(Number(next.donated_amount_cents) || 0);
+          setCommunityDonationCount(Number(next.donation_count) || 0);
+        },
+      )
+      .subscribe();
+
+    const donationChannel = userId
+      ? supabase
+          .channel(`${channelKey.current}-personal`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'donations',
+              filter: `donor_id=eq.${userId}`,
+            },
+            (payload) => {
+              const next = payload.new as DonationDatabaseRow | undefined;
+              const previous = payload.old as Partial<DonationDatabaseRow> | undefined;
+
+              if (payload.eventType === 'DELETE') {
+                if (previous?.id) setRows((current) => current.filter((row) => row.id !== previous.id));
+                return;
+              }
+              if (!next?.id) return;
+              if (next.status !== 'succeeded') {
+                setRows((current) => current.filter((row) => row.id !== next.id));
+                return;
+              }
+              setRows((current) => upsertDonation(current, donationFromDatabase(next, userEmail)));
+            },
+          )
+          .subscribe()
+      : null;
+
+    void supabase
+      .from('platform_impact_stats')
+      .select('donated_amount_cents, donation_count')
+      .eq('singleton', true)
+      .maybeSingle<ImpactStatsRow>()
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error) {
+          console.error('Could not load platform impact totals:', error);
+          return;
+        }
+        setCommunityTotal(Number(data?.donated_amount_cents) || 0);
+        setCommunityDonationCount(Number(data?.donation_count) || 0);
+      });
+
+    if (userId) {
+      void supabase
+        .from('donations')
+        .select('id, donor_id, ngo_id, amount_cents, created_at, stripe_checkout_session_id, status')
+        .eq('status', 'succeeded')
+        .order('created_at', { ascending: false })
+        .then(({ data, error }) => {
+          if (!active) return;
+          if (error) {
+            console.error('Could not load personal donation history:', error);
+            return;
+          }
+          setRows(
+            ((data ?? []) as DonationDatabaseRow[]).map((row) =>
+              donationFromDatabase(row, userEmail),
+            ),
+          );
+        });
+    }
+
+    return () => {
+      active = false;
+      void supabase.removeChannel(statsChannel);
+      if (donationChannel) void supabase.removeChannel(donationChannel);
+    };
+  }, [userId, userEmail]);
+
+  useEffect(() => {
+    if (!confirmedDonation || confirmedDonation.donor_id !== userId) return;
+    setRows((current) => upsertDonation(current, confirmedDonation));
+  }, [confirmedDonation, userId]);
+
+  return {
+    rows,
+    communityTotal,
+    communityDonationCount,
+    isLive: Boolean(supabase),
+  };
+};
 
 /** Animated count-up; finishes instantly when the user prefers reduced motion. */
 export const useCountUp = (target: number, duration = 1400): number => {

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -7,6 +7,8 @@ import {
   signIn,
   signUp,
   signInWithGoogle,
+  verifyEmailCode,
+  resendSignupCode,
   canUseGoogle,
   defaultDestForAccount,
   needsProfileSetup,
@@ -97,6 +99,77 @@ const GoogleG: React.FC<{ size?: number }> = ({ size = 19 }) => (
   </svg>
 );
 
+type VerificationCodeInputProps = {
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+};
+
+const CODE_LENGTH = 8;
+
+const VerificationCodeInput: React.FC<VerificationCodeInputProps> = ({ value, onChange, disabled }) => {
+  const refs = useRef<Array<HTMLInputElement | null>>([]);
+  const digits = Array.from({ length: CODE_LENGTH }, (_, index) => value[index] ?? '');
+
+  const emit = (nextDigits: string[]) => onChange(nextDigits.join('').replace(/\D/g, '').slice(0, CODE_LENGTH));
+
+  const focusInput = (index: number) => refs.current[index]?.focus();
+
+  const setDigit = (index: number, raw: string) => {
+    const digit = raw.replace(/\D/g, '').slice(-1);
+    const next = [...digits];
+    next[index] = digit;
+    emit(next);
+    if (digit && index < CODE_LENGTH - 1) focusInput(index + 1);
+  };
+
+  const handleKeyDown = (index: number, event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Backspace' && !digits[index] && index > 0) {
+      event.preventDefault();
+      const next = [...digits];
+      next[index - 1] = '';
+      emit(next);
+      focusInput(index - 1);
+    }
+    if (event.key === 'ArrowLeft' && index > 0) focusInput(index - 1);
+    if (event.key === 'ArrowRight' && index < CODE_LENGTH - 1) focusInput(index + 1);
+  };
+
+  const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
+    const pasted = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, CODE_LENGTH);
+    if (!pasted) return;
+    event.preventDefault();
+    onChange(pasted);
+    focusInput(Math.min(pasted.length, CODE_LENGTH) - 1);
+  };
+
+  return (
+    <div className="flex items-center justify-center gap-1 sm:gap-2" aria-label="Codigo de verificacao de 8 digitos">
+      {digits.map((digit, index) => (
+        <React.Fragment key={index}>
+          {index === 4 && <span className="mx-0 h-px w-3 rounded-full bg-border sm:mx-1 sm:w-5" aria-hidden="true" />}
+          <input
+            ref={(node) => {
+              refs.current[index] = node;
+            }}
+            type="text"
+            inputMode="numeric"
+            autoComplete={index === 0 ? 'one-time-code' : 'off'}
+            pattern="[0-9]*"
+            maxLength={1}
+            disabled={disabled}
+            value={digit}
+            onChange={(event) => setDigit(index, event.target.value)}
+            onKeyDown={(event) => handleKeyDown(index, event)}
+            onPaste={handlePaste}
+            className={`mx-0 h-9 w-8 max-w-[190px] rounded-[10px] border-0 bg-secondary p-2.5 text-center text-xl font-bold text-brand-ink outline-none transition-all duration-500 ease-out focus:w-14 focus:rotate-0 focus:bg-white focus:ring-2 focus:ring-brand-blue/45 focus:shadow-sm disabled:opacity-60 sm:h-11 sm:w-11 sm:focus:w-[86px] ${digit ? 'rotate-0' : 'rotate-90'}`}
+            aria-label={`Digito ${index + 1}`}
+          />
+        </React.Fragment>
+      ))}
+    </div>
+  );
+};
 /* -------------------------------------------------------------------------- */
 /*  Unified auth form — login + signup, identical for both roles              */
 /* -------------------------------------------------------------------------- */
@@ -116,6 +189,9 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
   /** Set when the account was created but e-mail confirmation is required, so
    *  there's no session to navigate with yet. */
   const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [confirmationCode, setConfirmationCode] = useState('');
+  const [verifyingCode, setVerifyingCode] = useState(false);
+  const [resendingCode, setResendingCode] = useState(false);
 
   const validateSignup = () => {
     if (mode !== 'signup') return true;
@@ -135,7 +211,16 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
     const raw = err instanceof Error ? err.message.toLowerCase() : '';
     if (raw.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
     if (raw.includes('email not confirmed')) return 'Confirme seu e-mail antes de entrar.';
+    if (raw.includes('invalid-code')) return 'Digite o codigo de 8 digitos enviado por email.';
+    if (raw.includes('token has expired') || raw.includes('otp') || raw.includes('invalid token'))
+      return 'Codigo invalido ou expirado. Confira o email ou solicite um novo codigo.';
     if (raw.includes('already registered')) return 'Esse e-mail já tem conta. Tente entrar.';
+    if (raw.includes('email address not authorized'))
+      return 'O email de teste do Supabase nao esta autorizado. Configure um SMTP proprio ou autorize este endereco.';
+    if (raw.includes('rate limit') || raw.includes('too many requests'))
+      return 'Limite de envio atingido. Aguarde alguns minutos e tente reenviar o codigo.';
+    if (raw.includes('smtp') || raw.includes('error sending confirmation email') || raw.includes('email provider'))
+      return 'O Supabase nao conseguiu enviar o email. Confira o SMTP e os logs de Auth.';
     if (raw.includes('supabase-disabled') || raw.includes('google-unavailable'))
       return 'Login com Google ainda não está ativo — falta configurar o Supabase.';
     return 'Erro ao processar. Tente novamente.';
@@ -173,7 +258,9 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
       } else {
         const { user, needsEmailConfirmation } = await signUp(email, name, password, role);
         if (needsEmailConfirmation) {
+          setConfirmationCode('');
           setAwaitingConfirmation(true);
+          toast.success('Enviamos um codigo de verificacao para seu email.');
           return;
         }
         toast.success(role === 'ngo' ? 'Organização cadastrada com sucesso!' : 'Conta criada com sucesso!');
@@ -188,30 +275,104 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
     }
   };
 
+  const handleVerifyCode = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (confirmationCode.length !== CODE_LENGTH) {
+      toast.error('Digite o codigo de 8 digitos enviado por email.');
+      return;
+    }
+
+    setVerifyingCode(true);
+    try {
+      const user = await verifyEmailCode(email, confirmationCode, role);
+      toast.success('Email confirmado com sucesso!');
+      const dest = defaultDestForAccount(user.accountType);
+      goAfterAuth(needsProfileSetup(user) ? `${dest}?setup=1` : dest);
+    } catch (err) {
+      console.error('Email verification error:', err);
+      toast.error(messageFor(err));
+    } finally {
+      setVerifyingCode(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    setResendingCode(true);
+    try {
+      await resendSignupCode(email);
+      setConfirmationCode('');
+      toast.success('Enviamos um novo codigo para seu email.');
+    } catch (err) {
+      console.error('Resend verification code error:', err);
+      toast.error(messageFor(err));
+    } finally {
+      setResendingCode(false);
+    }
+  };
+
   const { Icon } = cfg;
 
   if (awaitingConfirmation) {
     return (
-      <div className="w-full text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-blue/10">
-          <MailCheck className="text-brand-blue" size={26} />
+      <div className="w-full">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-blue/10">
+            <MailCheck className="text-brand-blue" size={24} />
+          </div>
+          <div>
+            <h2 className="font-display text-2xl font-semibold text-brand-ink">Verifique seu email</h2>
+            <p className="text-sm text-muted-foreground">Enviamos um codigo para sua caixa de entrada.</p>
+          </div>
         </div>
-        <h2 className="font-display text-2xl font-semibold text-brand-ink">Confirme seu e-mail</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Enviamos um link para <span className="font-bold text-brand-ink">{email}</span>. Abra-o para
-          ativar sua conta.
-        </p>
-        <button
-          type="button"
-          onClick={() => setAwaitingConfirmation(false)}
-          className="mt-6 text-sm font-bold text-brand-blue hover:underline"
-        >
-          Voltar
-        </button>
+
+        <form onSubmit={handleVerifyCode} className="space-y-4">
+          <div className="rounded-2xl bg-secondary px-4 py-3 text-sm text-muted-foreground">
+            Codigo enviado para <span className="font-bold text-brand-ink">{email}</span>
+          </div>
+
+          <div className="space-y-2">
+            <label className={labelClass}>
+              <MailCheck size={17} className="text-brand-blue" />
+              Codigo de verificacao
+            </label>
+            <VerificationCodeInput
+              value={confirmationCode}
+              onChange={setConfirmationCode}
+              disabled={verifyingCode}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={verifyingCode || confirmationCode.length !== CODE_LENGTH}
+            className={`tc-button-3d btn-shine w-full py-3.5 ${cfg.submitBg} text-white rounded-2xl font-bold shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2`}
+          >
+            {verifyingCode ? <Loader2 size={19} className="animate-spin" /> : null}
+            Confirmar codigo
+          </button>
+        </form>
+
+        <div className="mt-5 flex flex-col gap-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
+          <button
+            type="button"
+            onClick={() => setAwaitingConfirmation(false)}
+            className="text-sm font-bold text-muted-foreground hover:text-brand-ink"
+          >
+            Voltar
+          </button>
+          <button
+            type="button"
+            onClick={handleResendCode}
+            disabled={resendingCode}
+            className="inline-flex items-center justify-center gap-2 text-sm font-bold text-brand-blue hover:underline disabled:opacity-50"
+          >
+            {resendingCode ? <Loader2 size={15} className="animate-spin" /> : null}
+            Reenviar codigo
+          </button>
+        </div>
       </div>
     );
   }
-
   return (
     <div className="w-full">
       <div className="flex items-center gap-2.5 mb-1">
@@ -314,7 +475,7 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
         <button
           type="submit"
           disabled={loading}
-          className={`btn-shine w-full py-3.5 ${cfg.submitBg} text-white rounded-2xl font-bold shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 flex items-center justify-center gap-2`}
+          className={`tc-button-3d btn-shine w-full py-3.5 ${cfg.submitBg} text-white rounded-2xl font-bold shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2`}
         >
           {loading ? <Loader2 size={19} className="animate-spin" /> : null}
           {mode === 'login' ? 'Entrar' : role === 'ngo' ? 'Cadastrar organização' : 'Criar conta'}
@@ -428,6 +589,7 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
     isLoggedIn: false,
     onHome: () => navigate('/'),
     onApoiar: () => navigate('/?view=marketplace'),
+    onStories: () => navigate('/?view=stories'),
     onPerfil: () => setSide('donor'),
   });
 

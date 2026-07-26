@@ -1,43 +1,36 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { getUser, updateUser, signOut, authReady, onAuthChange, AppUser } from '@/lib/auth';
-import { BrandedText } from '../utils';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ProgressRing,
-  useCountUp,
-  useDonationRows,
-  formatBRL,
-  computeStreak,
-  weekStrip,
-} from '@/lib/impact';
-import {
+  ArrowLeft,
+  Award,
   Camera,
   Check,
+  ChevronRight,
   Flame,
   Gift,
   Heart,
   Loader2,
   LogOut,
   Mail,
-  Plus,
+  Pencil,
   Save,
-  ShoppingBag,
+  ShieldCheck,
   Sparkles,
+  Target,
   User as UserIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { authReady, getUser, onAuthChange, signOut, updateUser, AppUser } from '@/lib/auth';
+import { computeStreak, formatBRL, useCountUp, useDonationImpact, weekStrip } from '@/lib/impact';
+import { demoNgos } from '@/data/demoNgos';
 import logo from '@/assets/logo.png';
+import WalletCard from '@/components/WalletCard';
+import AppBottomNav from '@/components/AppBottomNav';
 
-const WEEKDAY_INITIAL = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 const DAY_MS = 86_400_000;
-
-/** The avatar persists in user_metadata, which rides inside the auth JWT and
- *  the Authorization header on every request. A large data URL there can push
- *  the header past common ~8KB proxy limits and break auth. So we cap the
- *  encoded string well under that budget, stepping down size/quality until it
- *  fits. */
 const AVATAR_MAX_CHARS = 4000;
+const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
 const resizeToDataUrl = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -48,29 +41,20 @@ const resizeToDataUrl = (file: File): Promise<string> =>
         const canvas = document.createElement('canvas');
         canvas.width = size;
         canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) return null;
+        const context = canvas.getContext('2d');
+        if (!context) return null;
         const scale = Math.max(size / img.width, size / img.height);
-        const w = img.width * scale;
-        const h = img.height * scale;
-        ctx.drawImage(img, (size - w) / 2, (size - h) / 2, w, h);
+        const width = img.width * scale;
+        const height = img.height * scale;
+        context.drawImage(img, (size - width) / 2, (size - height) / 2, width, height);
         return canvas.toDataURL('image/jpeg', quality);
       };
 
       URL.revokeObjectURL(url);
-
-      // Try progressively smaller/cheaper encodings until under the JWT budget.
-      const attempts: Array<[number, number]> = [
-        [128, 0.72],
-        [128, 0.55],
-        [96, 0.6],
-        [96, 0.45],
-        [72, 0.5],
-      ];
-      for (const [size, quality] of attempts) {
-        const out = encode(size, quality);
-        if (out && out.length <= AVATAR_MAX_CHARS) {
-          resolve(out);
+      for (const [size, quality] of [[128, 0.72], [128, 0.55], [96, 0.6], [96, 0.45], [72, 0.5]] as Array<[number, number]>) {
+        const output = encode(size, quality);
+        if (output && output.length <= AVATAR_MAX_CHARS) {
+          resolve(output);
           return;
         }
       }
@@ -95,32 +79,41 @@ const DonorProfile: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(isSetup);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const rows = useDonationRows(email || null);
+  const { rows } = useDonationImpact(user?.id ?? null, email || null);
+  const mine = useMemo(() => rows.filter((row) => row.donor_id === user?.id || row.donor_email === email), [rows, user?.id, email]);
 
   const stats = useMemo(() => {
-    const mine = email ? rows.filter((r) => r.donor_email === email) : [];
-    const total = mine.reduce((sum, r) => sum + (r.amount || 0), 0);
-    const since = Date.now() - 7 * DAY_MS;
+    const total = mine.reduce((sum, row) => sum + (row.amount || 0), 0);
+    const weekStart = Date.now() - 7 * DAY_MS;
     const week = mine
-      .filter((r) => new Date(r.created_at).getTime() >= since)
-      .reduce((sum, r) => sum + (r.amount || 0), 0);
-    const dates = mine.map((r) => r.created_at);
+      .filter((row) => new Date(row.created_at).getTime() >= weekStart)
+      .reduce((sum, row) => sum + (row.amount || 0), 0);
+    const dates = mine.map((row) => row.created_at);
     return {
       total,
       week,
       count: mine.length,
       streak: computeStreak(dates),
       strip: weekStrip(dates),
+      causeCount: new Set(mine.map((row) => row.ngo_id).filter(Boolean)).size,
     };
-  }, [rows, email]);
+  }, [mine]);
 
   const animatedTotal = useCountUp(stats.total);
+  const supportedNgos = useMemo(() => {
+    const ids = [...new Set(mine.map((row) => row.ngo_id).filter((id): id is string => Boolean(id)))];
+    return ids.map((id) => demoNgos.find((ngo) => ngo.id === id)).filter((ngo): ngo is (typeof demoNgos)[number] => Boolean(ngo));
+  }, [mine]);
 
-  // Wait for the session to hydrate before deciding there's no user — with
-  // Supabase, getUser() is null for the first tick and refreshing this page
-  // would otherwise bounce a logged-in donor back to the login screen.
+  const recentDonations = useMemo(() => [...mine].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5), [mine]);
+  const completeness = useMemo(() => {
+    const checks = [Boolean(name.trim()), Boolean(avatarUrl), stats.count > 0];
+    return Math.round((checks.filter(Boolean).length / checks.length) * 100);
+  }, [name, avatarUrl, stats.count]);
+
   useEffect(() => {
     let alive = true;
     authReady.then(() => {
@@ -128,6 +121,10 @@ const DonorProfile: React.FC = () => {
       const current = getUser();
       if (!current) {
         navigate('/donor/auth', { replace: true });
+        return;
+      }
+      if (current.accountType === 'ngo') {
+        navigate('/ngo/profile', { replace: true });
         return;
       }
       setUser(current);
@@ -142,19 +139,12 @@ const DonorProfile: React.FC = () => {
     };
   }, [navigate]);
 
-  // Signing out from another tab (or the nav) must not leave this page open.
   useEffect(
-    () =>
-      onAuthChange((next) => {
-        if (!next) navigate('/donor/auth', { replace: true });
-      }),
+    () => onAuthChange((next) => {
+      if (!next) navigate('/donor/auth', { replace: true });
+    }),
     [navigate],
   );
-
-  const completeness = useMemo(() => {
-    const checks = [Boolean(name.trim()), Boolean(avatarUrl), stats.count > 0];
-    return Math.round((checks.filter(Boolean).length / checks.length) * 100);
-  }, [name, avatarUrl, stats.count]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -164,14 +154,12 @@ const DonorProfile: React.FC = () => {
       return;
     }
     try {
-      const dataUrl = await resizeToDataUrl(file);
-      setAvatarUrl(dataUrl);
+      setAvatarUrl(await resizeToDataUrl(file));
       setDirty(true);
-    } catch (err) {
-      const message = err instanceof Error && err.message === 'too-large'
+    } catch (error) {
+      toast.error(error instanceof Error && error.message === 'too-large'
         ? 'Imagem muito pesada. Tente uma foto mais simples.'
-        : 'Não foi possível processar a imagem.';
-      toast.error(message);
+        : 'Não foi possível processar a imagem.');
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
@@ -180,14 +168,14 @@ const DonorProfile: React.FC = () => {
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
-
     try {
       await updateUser({ name: name.trim(), avatar: avatarUrl });
       setDirty(false);
-      if (isSetup) navigate('/donor/profile', { replace: true }); // drop the setup banner
+      setEditingProfile(false);
+      if (isSetup) navigate('/donor/profile', { replace: true });
       toast.success('Perfil atualizado!');
-    } catch (err) {
-      console.error('Error updating donor profile:', err);
+    } catch (error) {
+      console.error('Error updating donor profile:', error);
       toast.error('Erro ao atualizar perfil.');
     } finally {
       setSaving(false);
@@ -200,300 +188,160 @@ const DonorProfile: React.FC = () => {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="animate-spin text-brand-blue" size={36} />
-      </div>
-    );
+    return <div className='min-h-screen bg-background grid place-items-center'><Loader2 className='animate-spin text-brand-blue' size={36} /></div>;
   }
 
   const firstName = name.trim().split(' ')[0] || 'você';
+  const achievementRows = [
+    { title: 'Primeiro impacto', detail: 'Faça sua primeira doação', current: Math.min(stats.count, 1), target: 1, icon: Heart, color: 'bg-rose-100 text-rose-500' },
+    { title: 'Chama solidária', detail: 'Doe em 3 dias consecutivos', current: Math.min(stats.streak, 3), target: 3, icon: Flame, color: 'bg-orange-100 text-orange-500' },
+    { title: 'Apoiador constante', detail: 'Complete 10 doações', current: Math.min(stats.count, 10), target: 10, icon: Award, color: 'bg-brand-yellow/25 text-brand-ink' },
+  ];
 
   return (
-    <div className="relative min-h-screen bg-background overflow-hidden pb-24 md:pb-12">
-      <div className="aurora opacity-50" aria-hidden="true" />
-
-      <div className="relative z-10 max-w-3xl mx-auto px-4 py-6 md:py-8">
-        {/* Top bar */}
-        <div className="flex items-center justify-between mb-8">
-          <button onClick={() => navigate('/')} className="flex items-center gap-2.5 group">
-            <img src={logo} alt="TranquiliCare" className="w-10 h-10 rounded-xl shadow-md transition-transform group-hover:-rotate-6" />
-            <span className="font-display text-xl font-semibold text-brand-ink">
-              Tranquili<span className="text-brand-blue">Care</span>
-            </span>
+    <div className='min-h-screen bg-white pb-24 text-brand-ink md:pb-12'>
+      <AppBottomNav activeKey='perfil' user={user} />
+      <header className='sticky top-0 z-40 border-b border-border bg-white/95 backdrop-blur'>
+        <div className='mx-auto flex h-16 max-w-6xl items-center justify-between px-4'>
+          <button onClick={() => navigate('/')} className='flex items-center gap-2.5' aria-label='Voltar para o início'>
+            <ArrowLeft className='h-5 w-5 text-muted-foreground md:hidden' />
+            <img src={logo} alt='' className='h-9 w-9 rounded-lg shadow-sm' />
+            <span className='hidden font-display text-lg font-semibold sm:inline'>Tranquili<span className='text-brand-blue'>Care</span></span>
           </button>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2.5 bg-white/80 backdrop-blur text-muted-foreground hover:text-red-500 rounded-full border border-border shadow-sm font-bold text-sm transition-colors"
-          >
-            <LogOut size={17} />
-            Sair
-          </button>
+          <div className='flex items-center gap-2'>
+            <button onClick={() => setEditingProfile((current) => !current)} className='tc-button-3d inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold text-white'>
+              <Pencil size={16} />
+              <span className='hidden sm:inline'>Editar perfil</span>
+              <span className='sm:hidden'>Editar</span>
+            </button>
+            <button onClick={handleLogout} className='flex h-10 w-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500' aria-label='Sair'>
+              <LogOut size={18} />
+            </button>
+          </div>
         </div>
+      </header>
 
-        {/* Fresh account (usually straight from Google) — nudge personalization */}
+      <main className='mx-auto max-w-6xl px-4 py-7 md:py-10'>
         {isSetup && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6 flex items-start gap-3 rounded-2xl border border-brand-blue/20 bg-brand-blue/5 p-4"
-          >
-            <Sparkles size={20} className="mt-0.5 shrink-0 text-brand-blue" />
-            <div>
-              <p className="font-display text-base font-semibold text-brand-ink">
-                Conta criada! Bora deixar seu perfil com a sua cara?
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Escolha uma foto e confirme seu nome logo abaixo — leva 10 segundos.
-              </p>
-            </div>
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className='mb-7 flex items-start gap-3 rounded-lg border border-brand-blue/25 bg-brand-blue/5 p-4'>
+            <Sparkles className='mt-0.5 shrink-0 text-brand-blue' size={20} />
+            <div><p className='font-bold'>Sua conta está pronta, {firstName}.</p><p className='text-sm text-muted-foreground'>Adicione uma foto e confirme seu nome para completar o perfil.</p></div>
           </motion.div>
         )}
 
-        {/* Identity */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="flex flex-col sm:flex-row items-center sm:items-end gap-5 mb-8 text-center sm:text-left"
-        >
-          <div className="relative">
-            <ProgressRing
-              percent={completeness}
-              trackClass="text-brand-blue/15"
-              barClass="text-brand-blue"
-              label={`Perfil ${completeness}% completo`}
-              size={128}
-              stroke={6}
-            >
-              <div className="h-[104px] w-[104px] rounded-full overflow-hidden bg-secondary shadow-inner">
-                {avatarUrl ? (
-                  <img src={avatarUrl} alt={name || 'Avatar'} className="h-full w-full object-cover" />
-                ) : (
-                  <div className="h-full w-full flex items-center justify-center bg-gradient-to-br from-brand-blue/20 to-brand-yellow/20">
-                    <UserIcon size={44} className="text-brand-blue" />
-                  </div>
-                )}
+        <section className='border-b border-border pb-8'>
+          <div className='flex flex-col items-center gap-6 text-center sm:flex-row sm:items-center sm:text-left'>
+            <div className='relative shrink-0'>
+              <div className='h-36 w-36 overflow-hidden rounded-full border-[5px] border-brand-blue bg-secondary shadow-sm md:h-40 md:w-40'>
+                {avatarUrl ? <img src={avatarUrl} alt={name || 'Avatar'} className='h-full w-full object-cover' /> : <div className='grid h-full w-full place-items-center bg-brand-blue/10'><UserIcon size={54} className='text-brand-blue' /></div>}
               </div>
-            </ProgressRing>
-
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="absolute bottom-1 right-1 flex h-10 w-10 items-center justify-center rounded-full bg-brand-blue text-white shadow-lg ring-4 ring-background transition-transform hover:scale-110"
-              aria-label="Trocar foto de perfil"
-            >
-              <Camera size={17} />
-            </button>
-            <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-brand-ink px-2.5 py-0.5 text-[11px] font-bold text-white shadow">
-              {completeness}%
-            </span>
-            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
-          </div>
-
-          <div className="flex-1 min-w-0 pb-1">
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand-blue mb-1 flex items-center justify-center sm:justify-start gap-1.5">
-              <Sparkles size={13} className="text-brand-yellow fill-brand-yellow" />
-              Perfil do doador
-            </p>
-            <h1 className="font-display text-3xl md:text-4xl font-semibold text-brand-ink leading-tight truncate">
-              <BrandedText text={name || 'Bem-vindo(a)'} />
-            </h1>
-            <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white/80 backdrop-blur border border-border px-3 py-1 text-sm font-medium text-muted-foreground">
-              <Mail size={14} className="text-brand-blue" />
-              {email}
-            </span>
-          </div>
-        </motion.div>
-
-        {/* Hero value card — total donated (Plum-style) */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-          className="relative overflow-hidden rounded-3xl bg-brand-blue p-6 md:p-7 text-white shadow-xl shadow-brand-blue/30 mb-4"
-        >
-          <div className="absolute -top-10 -right-8 h-40 w-40 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
-          <div className="relative flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-semibold text-blue-50 flex items-center gap-1.5">
-                <Heart size={16} className="text-brand-yellow fill-brand-yellow" />
-                Seu total doado
-              </p>
-              <p className="font-display text-4xl md:text-5xl font-semibold mt-2 tracking-tight">
-                {formatBRL(animatedTotal)}
-              </p>
-              <p className="text-sm text-blue-100 mt-2">
-                {stats.week > 0 ? (
-                  <>▲ {formatBRL(stats.week)} nos últimos 7 dias</>
-                ) : (
-                  <>Em {stats.count} {stats.count === 1 ? 'doação' : 'doações'}</>
-                )}
-              </p>
-            </div>
-            <button
-              onClick={() => navigate('/?view=marketplace')}
-              className="btn-shine shrink-0 inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-brand-blue shadow-md hover:-translate-y-0.5 transition-transform"
-            >
-              <Plus size={16} />
-              Doar
-            </button>
-          </div>
-        </motion.div>
-
-        {/* Stat grid — credits + streak */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.14, ease: [0.22, 1, 0.36, 1] }}
-            className="rounded-3xl bg-card border border-border p-5 shadow-sm"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-yellow/20">
-                <Gift size={22} className="text-brand-ink" />
-              </div>
-              <button
-                onClick={() => toast('Créditos de doação chegam em breve ✨')}
-                className="flex h-7 w-7 items-center justify-center rounded-full bg-secondary text-brand-blue hover:bg-brand-blue hover:text-white transition-colors"
-                aria-label="Adicionar créditos"
-              >
-                <Plus size={15} />
+              <button onClick={() => fileInputRef.current?.click()} className='absolute right-1 top-2 flex h-10 w-10 items-center justify-center rounded-full border-4 border-white bg-brand-blue text-white shadow-md' aria-label='Trocar foto'>
+                <Camera size={17} />
               </button>
+              <span className='absolute bottom-1 right-0 flex h-11 w-11 items-center justify-center rounded-full border-4 border-white bg-brand-ink text-white' title={`${completeness}% completo`}>
+                <ShieldCheck size={18} />
+              </span>
+              <input ref={fileInputRef} type='file' accept='image/*' className='hidden' onChange={handleFileSelect} />
             </div>
-            <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Créditos</p>
-            <p className="font-display text-2xl font-semibold text-brand-ink">{credits}</p>
-          </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            className="rounded-3xl bg-card border border-border p-5 shadow-sm"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-100">
-              <Flame size={22} className={stats.streak > 0 ? 'text-orange-500' : 'text-orange-300'} />
-            </div>
-            <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Sequência</p>
-            <p className="font-display text-2xl font-semibold text-brand-ink">
-              {stats.streak} {stats.streak === 1 ? 'dia' : 'dias'}
-            </p>
-          </motion.div>
-        </div>
-
-        {/* Week strip (Peloton-style) */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.26, ease: [0.22, 1, 0.36, 1] }}
-          className="rounded-3xl bg-card border border-border p-5 md:p-6 shadow-sm mb-4"
-        >
-          <p className="font-display text-lg font-semibold text-brand-ink mb-1">
-            {stats.streak > 0 ? (
-              <>Você tem uma sequência de {stats.streak} {stats.streak === 1 ? 'dia' : 'dias'} 🔥</>
-            ) : (
-              <>Comece sua sequência de generosidade</>
-            )}
-          </p>
-          <p className="text-sm text-muted-foreground mb-5">
-            {stats.streak > 0
-              ? `Continue firme, ${firstName} — cada dia conta.`
-              : 'Uma doação hoje acende a chama. Bora começar?'}
-          </p>
-          <div className="flex items-center justify-between gap-1.5">
-            {stats.strip.map((day, i) => (
-              <div key={i} className="flex flex-col items-center gap-2">
-                <div
-                  className={`flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-full border-2 transition-colors ${
-                    day.donated
-                      ? 'border-brand-blue bg-brand-blue text-white'
-                      : day.isToday
-                        ? 'border-brand-blue/40 border-dashed bg-brand-blue/5 text-brand-blue'
-                        : 'border-border bg-secondary text-transparent'
-                  }`}
-                >
-                  {day.donated ? <Check size={16} strokeWidth={3} /> : <Heart size={14} className={day.isToday ? 'text-brand-blue/50' : 'text-border'} />}
-                </div>
-                <span className={`text-xs font-bold ${day.isToday ? 'text-brand-ink' : 'text-muted-foreground'}`}>
-                  {WEEKDAY_INITIAL[day.date.getDay()]}
-                </span>
+            <div className='min-w-0 flex-1'>
+              <p className='text-xs font-bold uppercase tracking-[0.16em] text-brand-blue'>Perfil do doador</p>
+              <h1 className='mt-1 font-display text-4xl font-semibold leading-tight md:text-5xl'>{name || 'Bem-vindo(a)'}</h1>
+              <p className='mt-1 text-sm text-muted-foreground'>{email}</p>
+              <div className='mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground sm:justify-start'>
+                <span className='flex items-center gap-1.5'><Heart size={16} className='text-brand-blue' /> {stats.count} apoios realizados</span>
+                <span className='flex items-center gap-1.5'><Target size={16} className='text-brand-blue' /> {stats.causeCount} causas apoiadas</span>
               </div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Edit form */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.32, ease: [0.22, 1, 0.36, 1] }}
-          className="rounded-3xl bg-card border border-border p-6 shadow-sm mb-4"
-        >
-          <h2 className="font-display text-lg font-semibold text-brand-ink mb-4">Seus dados</h2>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-bold text-brand-ink">
-                <UserIcon size={17} className="text-brand-blue" />
-                Nome de usuário
-              </label>
-              <input
-                type="text"
-                value={name}
-                onChange={(event) => {
-                  setName(event.target.value);
-                  setDirty(true);
-                }}
-                className="w-full px-4 py-3.5 bg-secondary border-2 border-transparent focus:border-brand-blue focus:bg-white rounded-2xl outline-none transition-all"
-                placeholder="Como podemos te chamar?"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm font-bold text-brand-ink">
-                <Mail size={17} className="text-brand-blue" />
-                E-mail
-              </label>
-              <input
-                type="email"
-                value={email}
-                disabled
-                className="w-full px-4 py-3.5 bg-muted text-muted-foreground border-2 border-transparent rounded-2xl outline-none cursor-not-allowed"
-              />
-              <p className="text-xs text-muted-foreground pl-1">O e-mail de acesso não pode ser alterado.</p>
-            </div>
-
-            <button
-              onClick={handleSave}
-              disabled={saving || !dirty}
-              className="btn-shine w-full sm:w-auto px-6 py-3.5 bg-brand-blue text-white rounded-2xl font-bold shadow-lg shadow-brand-blue/25 hover:-translate-y-0.5 transition-all disabled:opacity-40 disabled:hover:translate-y-0 flex items-center justify-center gap-2"
-            >
-              {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-              {dirty ? 'Salvar alterações' : 'Tudo salvo'}
-            </button>
-          </div>
-        </motion.div>
-
-        {/* CTA */}
-        <motion.button
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.38, ease: [0.22, 1, 0.36, 1] }}
-          onClick={() => navigate('/?view=marketplace')}
-          className="group w-full rounded-3xl bg-brand-yellow p-5 shadow-lg shadow-brand-yellow/30 flex items-center justify-between text-left transition-transform hover:-translate-y-0.5"
-        >
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/60">
-              <ShoppingBag size={22} className="text-brand-ink" />
-            </div>
-            <div>
-              <p className="font-display text-lg font-semibold text-brand-ink">Explorar causas</p>
-              <p className="text-sm text-brand-ink/70">Encontre ONGs verificadas para apoiar</p>
             </div>
           </div>
-          <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-ink text-white transition-transform group-hover:translate-x-1">
-            <Plus size={18} />
+        </section>
+
+        <AnimatePresence initial={false}>
+          {editingProfile && (
+            <motion.section initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className='overflow-hidden border-b border-border'>
+              <div className='grid gap-4 py-6 md:grid-cols-[1fr_1fr_auto] md:items-end'>
+                <label className='text-sm font-bold'>Nome<input value={name} onChange={(event) => { setName(event.target.value); setDirty(true); }} className='mt-2 w-full rounded-lg border-2 border-border px-4 py-3 outline-none focus:border-brand-blue' /></label>
+                <label className='text-sm font-bold'>E-mail<input value={email} disabled className='mt-2 w-full rounded-lg border-2 border-border bg-muted px-4 py-3 text-muted-foreground' /></label>
+                <button onClick={handleSave} disabled={saving || !dirty} className='tc-button-3d inline-flex h-12 items-center justify-center gap-2 rounded-xl px-5 font-bold text-white disabled:opacity-45'>
+                  {saving ? <Loader2 size={18} className='animate-spin' /> : <Save size={18} />}
+                  {dirty ? 'Salvar' : 'Salvo'}
+                </button>
+              </div>
+            </motion.section>
+          )}
+        </AnimatePresence>
+
+        <div className='mt-8 grid gap-9 lg:grid-cols-[minmax(0,1fr)_320px]'>
+          <div className='space-y-9'>
+            <section>
+              <div className='mb-4 flex items-end justify-between'><div><p className='text-xs font-bold uppercase tracking-[0.14em] text-brand-blue'>Seu impacto</p><h2 className='font-display text-2xl font-semibold'>Estatísticas</h2></div><button onClick={() => navigate('/?view=marketplace')} className='text-sm font-bold text-brand-blue hover:underline'>Fazer uma doação</button></div>
+              <div className='grid grid-cols-2 gap-3 md:grid-cols-4'>
+                {[
+                  { label: 'Total doado', value: formatBRL(animatedTotal), icon: Heart, color: 'text-brand-blue' },
+                  { label: 'Doações', value: String(stats.count), icon: Gift, color: 'text-rose-500' },
+                  { label: 'Sequência', value: `${stats.streak} ${stats.streak === 1 ? 'dia' : 'dias'}`, icon: Flame, color: 'text-orange-500' },
+                  { label: 'Créditos', value: String(credits), icon: Sparkles, color: 'text-amber-500' },
+                ].map((stat) => (
+                  <div key={stat.label} className='min-w-0 rounded-lg border-2 border-border p-4'>
+                    <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                    <p className='mt-3 truncate text-lg font-bold md:text-xl'>{stat.value}</p>
+                    <p className='text-xs text-muted-foreground'>{stat.label}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+
+            <section>
+              <h2 className='mb-4 font-display text-2xl font-semibold'>Conquistas</h2>
+              <div className='overflow-hidden rounded-lg border-2 border-border'>
+                {achievementRows.map((achievement, index) => {
+                  const progress = (achievement.current / achievement.target) * 100;
+                  return (
+                    <div key={achievement.title} className={`flex gap-4 p-4 md:p-5 ${index ? 'border-t border-border' : ''}`}>
+                      <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-lg ${achievement.color}`}><achievement.icon size={25} /></div>
+                      <div className='min-w-0 flex-1'>
+                        <div className='flex items-center justify-between gap-3'><div><p className='font-bold'>{achievement.title}</p><p className='text-sm text-muted-foreground'>{achievement.detail}</p></div><span className='shrink-0 text-xs font-bold text-muted-foreground'>{achievement.current}/{achievement.target}</span></div>
+                        <div className='mt-3 h-2 overflow-hidden rounded-full bg-secondary'><motion.div className='h-full rounded-full bg-brand-yellow' initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 0.8, ease: EASE_OUT }} /></div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section>
+              <h2 className='mb-4 font-display text-2xl font-semibold'>Atividade recente</h2>
+              <div className='overflow-hidden rounded-lg border-2 border-border'>
+                {recentDonations.length ? recentDonations.map((donation, index) => {
+                  const ngo = demoNgos.find((item) => item.id === donation.ngo_id);
+                  return <div key={donation.id} className={`flex items-center gap-3 p-4 ${index ? 'border-t border-border' : ''}`}><img src={ngo?.image || logo} alt='' className='h-11 w-11 rounded-lg object-cover' /><div className='min-w-0 flex-1'><p className='truncate font-bold'>{ngo?.name || 'Causa apoiada'}</p><p className='text-xs text-muted-foreground'>{new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(donation.created_at))}</p></div><span className='font-bold text-brand-blue'>{formatBRL(donation.amount)}</span></div>;
+                }) : <div className='p-7 text-center'><Heart className='mx-auto text-brand-blue/35' /><p className='mt-2 font-bold'>Seu primeiro apoio começa aqui</p><button onClick={() => navigate('/?view=marketplace')} className='mt-2 text-sm font-bold text-brand-blue'>Explorar causas</button></div>}
+              </div>
+            </section>
           </div>
-        </motion.button>
-      </div>
+
+          <aside className='space-y-5'>
+            <section>
+              <h2 className='mb-4 font-display text-xl font-semibold'>Sua semana</h2>
+              <div className='rounded-lg border-2 border-border p-4'>
+                <div className='flex justify-between gap-1'>
+                  {stats.strip.map((day) => <div key={day.date.toISOString()} className='flex flex-col items-center gap-2'><span className={`grid h-8 w-8 place-items-center rounded-full border-2 ${day.donated ? 'border-brand-blue bg-brand-blue text-white' : day.isToday ? 'border-dashed border-brand-blue/50 text-brand-blue' : 'border-border text-border'}`}>{day.donated ? <Check size={14} /> : <Heart size={12} />}</span><span className='text-[10px] font-bold text-muted-foreground'>{['D','S','T','Q','Q','S','S'][day.date.getDay()]}</span></div>)}
+                </div>
+                <p className='mt-4 text-sm text-muted-foreground'>{stats.week > 0 ? `${formatBRL(stats.week)} apoiados nos últimos 7 dias.` : 'Uma nova doação inicia sua sequência.'}</p>
+              </div>
+            </section>
+
+            <section>
+              <h2 className='mb-4 font-display text-xl font-semibold'>Causas apoiadas</h2>
+              <div className='overflow-hidden rounded-lg border-2 border-border'>
+                {supportedNgos.length ? supportedNgos.slice(0, 4).map((ngo, index) => <button key={ngo.id} onClick={() => navigate('/?view=marketplace')} className={`flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-secondary/60 ${index ? 'border-t border-border' : ''}`}><img src={ngo.image} alt='' className='h-10 w-10 rounded-lg object-cover' /><span className='min-w-0 flex-1'><span className='block truncate text-sm font-bold'>{ngo.name}</span><span className='block text-xs text-muted-foreground'>{ngo.category}</span></span><ChevronRight size={17} className='text-muted-foreground' /></button>) : <div className='p-6 text-center text-sm text-muted-foreground'>As organizações que você apoiar aparecerão aqui.</div>}
+              </div>
+            </section>
+
+            <WalletCard credits={credits} onAddCredits={(amount) => toast.info(`A recarga de ${amount} créditos será liberada após a implantação do ledger seguro.`)} />
+          </aside>
+        </div>
+      </main>
     </div>
   );
 };

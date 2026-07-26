@@ -10,12 +10,23 @@ export interface AppUser {
   accountType: AccountType;
 }
 
+/** Fields the user is allowed to edit directly from the browser. */
+export type EditableUserProfile = Partial<Pick<AppUser, 'name' | 'avatar'>>;
+
 export type Listener = (user: AppUser | null) => void;
 
 /** Result of an email signup: with e-mail confirmation ON, Supabase creates the
- *  account but returns no session — the UI has to say "check your inbox"
+ *  account but returns no session, so the UI has to say "check your inbox"
  *  instead of navigating. */
 export interface SignUpResult {
   user: AppUser | null;
   needsEmailConfirmation: boolean;
 }
+
+export type VerifyEmailCode = (
+  email: string,
+  code: string,
+  accountType?: AccountType,
+) => Promise<AppUser>;
+
+export type ResendSignupCode = (email: string) => Promise<void>;

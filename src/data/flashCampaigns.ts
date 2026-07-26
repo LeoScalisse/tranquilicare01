@@ -20,7 +20,6 @@ const campaignImage = (title: string, from: string, to: string) =>
   `);
 
 const DAY = 1000 * 60 * 60 * 24;
-const HOUR = 1000 * 60 * 60;
 const now = Date.now();
 
 // Money is stored in cents across the app (formatBRL divides by 100).
@@ -33,42 +32,10 @@ export const flashCampaigns: FlashCampaign[] = [
     ngoId: 'demo-abraco-sereno',
     ngoName: 'Abraço Sereno',
     category: 'Saúde Mental',
+    description: 'Ajude a preparar 40 kits de inverno até 30 de julho.',
     image: campaignImage('Inverno Acolhedor', '#38b6ff', '#0369a1'),
     raised: reais(3200),
     goal: reais(5000),
-    endsAt: now + 3 * DAY + 4 * HOUR,
-  },
-  {
-    id: 'flash-comida-na-mesa',
-    title: 'Comida na Mesa',
-    ngoId: 'demo-maos-que-acolhem',
-    ngoName: 'Mãos que Acolhem',
-    category: 'Social',
-    image: campaignImage('Comida na Mesa', '#f59e0b', '#b45309'),
-    raised: reais(8400),
-    goal: reais(10000),
-    endsAt: now + 1 * DAY + 6 * HOUR,
-  },
-  {
-    id: 'flash-resgate-urgente',
-    title: 'Resgate Urgente',
-    ngoId: 'demo-patas-do-bem',
-    ngoName: 'Patas do Bem',
-    category: 'Pets',
-    image: campaignImage('Resgate Urgente', '#db2777', '#9d174d'),
-    raised: reais(1500),
-    goal: reais(4000),
-    endsAt: now + 5 * DAY,
-  },
-  {
-    id: 'flash-terapia-para-todos',
-    title: 'Terapia para Todos',
-    ngoId: 'demo-mente-em-flor',
-    ngoName: 'Mente em Flor',
-    category: 'Saúde Mental',
-    image: campaignImage('Terapia para Todos', '#7c3aed', '#4c1d95'),
-    raised: reais(6700),
-    goal: reais(8000),
-    endsAt: now + 18 * HOUR,
+    endsAt: now + 3 * DAY + 60 * 60 * 1000,
   },
 ];

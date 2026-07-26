@@ -1,89 +1,195 @@
 /**
  * Supabase-backed auth.
  *
- * Design note: the UI calls `getUser()` synchronously all over the place, but a
- * Supabase session hydrates asynchronously on page load. So we keep an
- * in-memory cache fed by `onAuthStateChange`, and export `ready` — a promise
- * that resolves once the first session check has landed. Screens that redirect
- * on "no user" MUST await `ready` first, otherwise a refresh bounces a
- * logged-in user to the login page.
+ * The UI reads `getUser()` synchronously, while Supabase restores the session
+ * asynchronously. This module keeps a small in-memory cache and exposes `ready`
+ * so redirecting screens can wait before deciding that nobody is signed in.
  *
- * The account type (donor / ngo) lives in `user_metadata.account_type`. That
- * avoids a migration we can't run yet; move it to a `profiles` table when the
- * data layer lands (metadata isn't queryable or joinable).
+ * Profile reads/writes prefer `public.profiles` (RLS-protected) when the schema
+ * exists, and fall back to auth metadata while the backend is still being set
+ * up. Keep credits, verification, payments and privileges in protected tables
+ * or server-side code, never in client-writable metadata.
  */
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import type { AccountType, AppUser, Listener, SignUpResult } from './authTypes';
+import type {
+  AccountType,
+  AppUser,
+  EditableUserProfile,
+  Listener,
+  SignUpResult,
+} from './authTypes';
 
-/** Google is a full-page redirect, so the chosen role can't live in React
- *  state — it has to survive leaving the app entirely. */
+/** Google is a full-page redirect, so the chosen role has to survive leaving
+ *  the app entirely. */
 const PENDING_ROLE_KEY = 'tc-pending-account-type';
+const EMAIL_CODE_LENGTH = 8;
+
+const PROFILE_SELECT = 'id,email,name,avatar_url,credits,account_type';
+const OPTIONAL_SCHEMA_CODES = new Set(['42P01', '42703', 'PGRST202', 'PGRST205']);
+const warnedOptionalSchema = new Set<string>();
+
+type ProfileRow = {
+  id: string;
+  email: string | null;
+  name: string | null;
+  avatar_url: string | null;
+  credits: number | null;
+  account_type: string | null;
+};
 
 const listeners = new Set<Listener>();
 let cached: AppUser | null = null;
+let pendingRoleWrite: Promise<User> | null = null;
 
 const client = () => {
   if (!supabase) throw new Error('supabase-disabled');
   return supabase;
 };
 
-const toAppUser = (user: User): AppUser => {
+const isAccountType = (value: unknown): value is AccountType =>
+  value === 'donor' || value === 'ngo';
+
+const accountTypeFrom = (value: unknown): AccountType =>
+  isAccountType(value) ? value : 'donor';
+
+const safeText = (value: unknown): string => (typeof value === 'string' ? value : '');
+
+const safeCredits = (value: unknown): number => {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+};
+
+const logOptionalSchemaIssue = (where: string, error: { code?: string; message?: string }) => {
+  if (!import.meta.env.DEV || warnedOptionalSchema.has(where)) return;
+  warnedOptionalSchema.add(where);
+  const detail = error.code ? `${error.code}: ${error.message ?? ''}` : error.message;
+  console.info(`[TranquiliCare] Supabase profiles not ready for ${where}; using metadata fallback. ${detail ?? ''}`);
+};
+
+const isOptionalSchemaIssue = (error: { code?: string } | null): boolean =>
+  Boolean(error?.code && OPTIONAL_SCHEMA_CODES.has(error.code));
+
+const readPendingRole = (): AccountType | null => {
+  const raw = localStorage.getItem(PENDING_ROLE_KEY);
+  if (!raw) return null;
+  if (isAccountType(raw)) return raw;
+  localStorage.removeItem(PENDING_ROLE_KEY);
+  return null;
+};
+
+const publish = (user: AppUser | null) => {
+  cached = user;
+  listeners.forEach((listener) => listener(cached));
+};
+
+const fromMetadata = (user: User): AppUser => {
   const meta = user.user_metadata ?? {};
   return {
     id: user.id,
     email: user.email ?? '',
     // Google fills `full_name` / `avatar_url`; our own forms write `name` /
-    // `avatar`. Prefer ours so an edit in the profile page wins.
-    name: (meta.name as string) || (meta.full_name as string) || '',
-    avatar: (meta.avatar as string) || (meta.avatar_url as string) || null,
-    credits: Number(meta.credits ?? 0),
-    accountType: (meta.account_type as AccountType) || 'donor',
+    // `avatar`. Prefer ours so a profile edit wins.
+    name: safeText(meta.name) || safeText(meta.full_name),
+    avatar: safeText(meta.avatar) || safeText(meta.avatar_url) || null,
+    // Temporary compatibility until credits move fully to a protected table.
+    credits: safeCredits(meta.credits),
+    accountType: accountTypeFrom(meta.account_type),
   };
 };
 
-const publish = (session: Session | null) => {
-  cached = session?.user ? toAppUser(session.user) : null;
-  listeners.forEach((l) => l(cached));
+const fromProfile = (profile: ProfileRow, user: User): AppUser => ({
+  id: user.id,
+  email: profile.email || user.email || '',
+  name: profile.name || '',
+  avatar: profile.avatar_url || null,
+  credits: safeCredits(profile.credits),
+  accountType: accountTypeFrom(profile.account_type),
+});
+
+const loadAppUser = async (user: User): Promise<AppUser> => {
+  const fallback = fromMetadata(user);
+  const { data, error } = await client()
+    .from('profiles')
+    .select(PROFILE_SELECT)
+    .eq('id', user.id)
+    .maybeSingle<ProfileRow>();
+
+  if (error) {
+    if (isOptionalSchemaIssue(error)) logOptionalSchemaIssue('profile-load', error);
+    else console.error('Could not load profile:', error);
+    return fallback;
+  }
+
+  return data ? fromProfile(data, user) : fallback;
+};
+
+const updateProfileRole = async (accountType: AccountType): Promise<void> => {
+  const { error } = await client().rpc('set_initial_account_type', {
+    next_account_type: accountType,
+  });
+  if (!error) return;
+  if (isOptionalSchemaIssue(error)) logOptionalSchemaIssue('account-type-rpc', error);
+  else console.error('Could not persist profile account type:', error);
 };
 
 /**
- * After a Google redirect there's no form to read the role from, so pick up
+ * After a Google redirect there is no form to read the role from, so pick up
  * whatever the user chose before leaving and persist it on the account.
- *
- * Runs on BOTH session paths (`getSession` on boot and the `SIGNED_IN` event) —
- * whichever wins the race post-redirect. Idempotent: it clears the pending
- * value and no-ops when the account already carries the role, so the
- * `USER_UPDATED` event its own `updateUser` triggers can't loop.
  */
-const applyPendingRole = async (user: User) => {
-  const pending = localStorage.getItem(PENDING_ROLE_KEY) as AccountType | null;
-  if (!pending) return;
-  localStorage.removeItem(PENDING_ROLE_KEY);
-  if (user.user_metadata?.account_type === pending) return;
-  const { data, error } = await client().auth.updateUser({ data: { account_type: pending } });
-  if (error) {
-    console.error('Could not persist account type:', error);
+const applyPendingRole = async (user: User): Promise<User> => {
+  const pending = readPendingRole();
+  if (!pending) return user;
+  if (accountTypeFrom(user.user_metadata?.account_type) === pending) {
+    await updateProfileRole(pending);
+    localStorage.removeItem(PENDING_ROLE_KEY);
+    return user;
+  }
+
+  pendingRoleWrite ??= (async () => {
+    const [{ data, error }] = await Promise.all([
+      client().auth.updateUser({ data: { account_type: pending } }),
+      updateProfileRole(pending),
+    ]);
+    if (error) {
+      console.error('Could not persist account type:', error);
+      return user;
+    }
+    localStorage.removeItem(PENDING_ROLE_KEY);
+    return data.user ?? user;
+  })();
+
+  try {
+    return await pendingRoleWrite;
+  } finally {
+    pendingRoleWrite = null;
+  }
+};
+
+const syncSession = async (session: Session | null): Promise<void> => {
+  if (!session?.user) {
+    publish(null);
     return;
   }
-  if (data.user) publish({ user: data.user } as Session);
+  const user = await applyPendingRole(session.user);
+  publish(await loadAppUser(user));
 };
 
 export const ready: Promise<void> = (async () => {
   if (!supabase) return;
   try {
-    const { data } = await supabase.auth.getSession();
-    publish(data.session);
-    if (data.session?.user) await applyPendingRole(data.session.user);
+    const { data, error } = await supabase.auth.getSession();
+    if (error) throw error;
+    await syncSession(data.session);
   } catch (err) {
     console.error('Could not restore session:', err);
+    publish(null);
   }
 })();
 
 if (supabase) {
   supabase.auth.onAuthStateChange((_event, session) => {
-    publish(session);
-    if (session?.user) void applyPendingRole(session.user);
+    void syncSession(session);
   });
 }
 
@@ -104,9 +210,10 @@ export const signIn = async (
   const { data, error } = await client().auth.signInWithPassword({ email, password });
   if (error) throw error;
   if (!data.user) throw new Error('no-user');
-  // The role comes from the account, not from which form was used — signing in
-  // must never silently reclassify an organization as a donor.
-  return toAppUser(data.user);
+  // The role comes from the account, not from which form was used.
+  const user = await loadAppUser(data.user);
+  publish(user);
+  return user;
 };
 
 export const signUp = async (
@@ -115,8 +222,9 @@ export const signUp = async (
   password: string,
   accountType: AccountType = 'donor',
 ): Promise<SignUpResult> => {
+  const normalizedEmail = email.trim();
   const { data, error } = await client().auth.signUp({
-    email,
+    email: normalizedEmail,
     password,
     options: {
       data: { name: name.trim(), account_type: accountType, credits: 0 },
@@ -126,11 +234,44 @@ export const signUp = async (
   if (error) throw error;
   // Account created but no session => e-mail confirmation is ON.
   if (!data.session) return { user: null, needsEmailConfirmation: true };
-  return { user: data.user ? toAppUser(data.user) : null, needsEmailConfirmation: false };
+  const user = data.user ? await loadAppUser(data.user) : null;
+  publish(user);
+  return { user, needsEmailConfirmation: false };
+};
+
+export const verifyEmailCode = async (
+  email: string,
+  code: string,
+  _accountType: AccountType = 'donor',
+): Promise<AppUser> => {
+  const token = code.replace(/\D/g, '');
+  if (token.length !== EMAIL_CODE_LENGTH) throw new Error('invalid-code');
+
+  const { data, error } = await client().auth.verifyOtp({
+    email: email.trim(),
+    token,
+    // Confirm signup OTPs use the email verification type in Supabase Auth.
+    type: 'email',
+  });
+  if (error) throw error;
+  if (!data.user) throw new Error('no-user');
+
+  const user = await loadAppUser(data.user);
+  publish(user);
+  return user;
+};
+
+export const resendSignupCode = async (email: string): Promise<void> => {
+  const { error } = await client().auth.resend({
+    type: 'signup',
+    email: email.trim(),
+    options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+  });
+  if (error) throw error;
 };
 
 export const signInWithGoogle = async (accountType: AccountType = 'donor'): Promise<void> => {
-  localStorage.setItem(PENDING_ROLE_KEY, accountType);
+  localStorage.setItem(PENDING_ROLE_KEY, accountTypeFrom(accountType));
   const { error } = await client().auth.signInWithOAuth({
     provider: 'google',
     options: { redirectTo: `${window.location.origin}/auth/callback` },
@@ -148,18 +289,39 @@ export const signOut = async (): Promise<void> => {
   publish(null);
 };
 
-export const updateUser = async (
-  patch: Partial<Omit<AppUser, 'id' | 'email'>>,
-): Promise<AppUser | null> => {
-  const data: Record<string, unknown> = {};
-  if (patch.name !== undefined) data.name = patch.name;
-  if (patch.avatar !== undefined) data.avatar = patch.avatar;
-  if (patch.credits !== undefined) data.credits = patch.credits;
-  if (patch.accountType !== undefined) data.account_type = patch.accountType;
+export const updateUser = async (patch: EditableUserProfile): Promise<AppUser | null> => {
+  const metadata: Record<string, unknown> = {};
+  const profile: Record<string, unknown> = {};
 
-  const { data: result, error } = await client().auth.updateUser({ data });
+  if (patch.name !== undefined) {
+    const name = patch.name.trim();
+    metadata.name = name;
+    profile.name = name;
+  }
+  if (patch.avatar !== undefined) {
+    metadata.avatar = patch.avatar;
+    profile.avatar_url = patch.avatar;
+  }
+  if (Object.keys(metadata).length === 0) return cached;
+
+  const { data: result, error } = await client().auth.updateUser({ data: metadata });
   if (error) throw error;
   if (!result.user) return null;
-  publish({ user: result.user } as Session);
-  return cached;
+
+  const userId = result.user.id;
+  const { data: updatedProfile, error: profileError } = await client()
+    .from('profiles')
+    .update(profile)
+    .eq('id', userId)
+    .select(PROFILE_SELECT)
+    .maybeSingle<ProfileRow>();
+
+  if (profileError) {
+    if (isOptionalSchemaIssue(profileError)) logOptionalSchemaIssue('profile-update', profileError);
+    else console.error('Could not update profile row:', profileError);
+  }
+
+  const user = updatedProfile ? fromProfile(updatedProfile, result.user) : await loadAppUser(result.user);
+  publish(user);
+  return user;
 };

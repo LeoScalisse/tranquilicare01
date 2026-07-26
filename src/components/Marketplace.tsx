@@ -139,14 +139,13 @@ const FlashCampaignCard: React.FC<{ campaign: FlashCampaign; onOpen: (c: FlashCa
 }) => {
   const { done, days, hours, minutes } = useCountdown(campaign.endsAt);
   const pct = Math.min(100, Math.round((campaign.raised / campaign.goal) * 100));
-  const urgent = !done && days < 1;
   const timeLabel = done
     ? 'Encerrada'
     : days >= 1
-      ? `${days}d ${hours}h`
+      ? `Faltam ${days} ${days === 1 ? 'dia' : 'dias'}`
       : hours >= 1
-        ? `${hours}h ${minutes}m`
-        : `${minutes}m`;
+        ? `Faltam ${hours}h ${minutes}m`
+        : `Faltam ${minutes}m`;
 
   return (
     <div
@@ -169,9 +168,7 @@ const FlashCampaignCard: React.FC<{ campaign: FlashCampaign; onOpen: (c: FlashCa
           Relâmpago
         </span>
         <span
-          className={`absolute right-3 top-3 flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold shadow-sm backdrop-blur ${
-            done ? 'bg-gray-500/90 text-white' : urgent ? 'bg-red-500/95 text-white' : 'bg-brand-ink/85 text-white'
-          }`}
+          className={`absolute right-3 top-3 flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold shadow-sm backdrop-blur ${done ? 'bg-gray-500/90 text-white' : 'bg-brand-ink/85 text-white'}`}
         >
           <Clock size={13} />
           {timeLabel}
@@ -179,8 +176,9 @@ const FlashCampaignCard: React.FC<{ campaign: FlashCampaign; onOpen: (c: FlashCa
       </div>
 
       <div className="pt-3">
-        <h3 className="line-clamp-1 font-display text-[15px] font-semibold text-brand-ink">{campaign.title}</h3>
-        <p className="text-sm text-muted-foreground">{campaign.ngoName}</p>
+        <h3 className="line-clamp-1 font-display text-xl font-semibold text-brand-ink">{campaign.title}</h3>
+        <p className="mt-0.5 text-sm font-semibold text-muted-foreground">Por {campaign.ngoName}</p>
+        <p className="mt-2 line-clamp-2 text-sm leading-5 text-muted-foreground">{campaign.description}</p>
 
         <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-secondary">
           <div
@@ -189,11 +187,10 @@ const FlashCampaignCard: React.FC<{ campaign: FlashCampaign; onOpen: (c: FlashCa
           />
         </div>
         <div className="mt-1.5 flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">
-            <span className="font-bold text-brand-ink">{formatBRL(campaign.raised)}</span> de {formatBRL(campaign.goal)}
-          </span>
+          <span className="font-semibold text-brand-ink">{formatBRL(campaign.raised)} de {formatBRL(campaign.goal)}</span>
           <span className="font-bold text-brand-blue">{pct}%</span>
         </div>
+        <span className="mt-4 inline-flex items-center gap-1.5 text-sm font-bold text-brand-blue">Conhecer a campanha <ChevronRight size={16} /></span>
       </div>
     </div>
   );
@@ -294,7 +291,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
       <div className={`${embedded ? 'mb-6' : 'mb-8'} space-y-5`}>
         <div className="px-1 space-y-2">
           <h2 className={`font-display font-semibold text-brand-ink ${embedded ? 'text-2xl md:text-3xl' : 'text-3xl md:text-4xl'}`}>
-            Causas esperando <em className="text-brand-blue">por você</em>
+            Descubra causas que <em className="text-brand-blue">combinam com você</em>
           </h2>
           {!embedded && (
             <p className="text-muted-foreground max-w-xl">

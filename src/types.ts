@@ -57,6 +57,7 @@ export interface FlashCampaign {
   ngoId?: string;
   ngoName: string;
   category: string;
+  description: string;
   image: string;
   raised: number;
   goal: number;
@@ -67,5 +68,6 @@ export interface FlashCampaign {
 export enum View {
   HOME = 'HOME',
   MARKETPLACE = 'MARKETPLACE',
+  STORIES = 'STORIES',
   NGO_PROFILE = 'NGO_PROFILE',
 }

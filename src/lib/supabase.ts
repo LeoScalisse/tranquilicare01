@@ -1,29 +1,55 @@
 /**
- * Supabase client — created only when the project keys are present.
+ * Supabase client, created only when the public project keys are present and
+ * well formed.
  *
- * The app must stay fully usable before the backend is configured, so this
- * exports `null` instead of throwing when the env vars are missing. Everything
- * downstream branches on `isSupabaseEnabled` and falls back to the local mock
- * (see `authLocal.ts`).
+ * The app must stay usable before the backend is configured, so this exports
+ * `null` instead of throwing when env vars are missing. Everything downstream
+ * branches on `isSupabaseEnabled` and falls back to the local mock.
  */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL?.trim();
-// Supabase renamed "anon key" to "publishable key" in the new dashboard —
-// accept either so the .env keeps working whichever name you copied.
-const key = (
-  import.meta.env.VITE_SUPABASE_ANON_KEY ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
-)?.trim();
+const clean = (value: unknown): string =>
+  typeof value === 'string' ? value.trim() : '';
 
-export const isSupabaseEnabled = Boolean(url && key);
+const isHttpUrl = (value: string): boolean => {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' || (import.meta.env.DEV && url.protocol === 'http:');
+  } catch {
+    return false;
+  }
+};
+
+const url = clean(import.meta.env.VITE_SUPABASE_URL);
+// Supabase renamed "anon key" to "publishable key" in newer dashboard copy.
+const key = clean(
+  import.meta.env.VITE_SUPABASE_ANON_KEY ?? import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+);
+
+const missingUrl = !url;
+const missingKey = !key;
+const invalidUrl = Boolean(url && !isHttpUrl(url));
+
+export const supabaseConfigError =
+  missingUrl && missingKey
+    ? 'missing-env'
+    : missingUrl
+      ? 'missing-url'
+      : missingKey
+        ? 'missing-key'
+        : invalidUrl
+          ? 'invalid-url'
+          : null;
+
+export const isSupabaseEnabled = supabaseConfigError === null;
 
 export const supabase: SupabaseClient | null = isSupabaseEnabled
-  ? createClient(url as string, key as string, {
+  ? createClient(url, key, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        // Required for the Google redirect: reads the code out of the URL on
-        // return and exchanges it for a session.
+        // Required for OAuth/PKCE redirects: reads the code from the callback
+        // URL and exchanges it for a session.
         detectSessionInUrl: true,
         flowType: 'pkce',
       },
@@ -31,8 +57,8 @@ export const supabase: SupabaseClient | null = isSupabaseEnabled
   : null;
 
 if (!isSupabaseEnabled && import.meta.env.DEV) {
-  console.info(
-    '[TranquiliCare] Supabase não configurado — rodando com o login local (mock). ' +
-      'Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env para ativar.',
-  );
+  const hint = supabaseConfigError === 'missing-env'
+    ? 'Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY no .env para ativar.'
+    : `Config Supabase invalida (${supabaseConfigError}). Confira o .env.`;
+  console.info(`[TranquiliCare] Supabase desativado - rodando com login local. ${hint}`);
 }

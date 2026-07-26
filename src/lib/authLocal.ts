@@ -1,11 +1,11 @@
 /**
- * Local auth MOCK — no backend, no real password validation.
+ * Local auth mock: no backend, no real password validation.
  *
  * Used only while Supabase is unconfigured, so the logged-in experience (home
  * greeting, donor profile, streaks) keeps working out of the box. `auth.ts`
  * picks this or the Supabase backend at import time.
  */
-import type { AccountType, AppUser, Listener } from './authTypes';
+import type { AccountType, AppUser, EditableUserProfile, Listener } from './authTypes';
 
 const KEY = 'tc-user';
 const listeners = new Set<Listener>();
@@ -32,7 +32,7 @@ const write = (user: AppUser | null): void => {
     if (user) localStorage.setItem(KEY, JSON.stringify(user));
     else localStorage.removeItem(KEY);
   } catch {
-    /* storage unavailable — session simply won't persist */
+    /* storage unavailable; session simply will not persist */
   }
   listeners.forEach((l) => l(user));
 };
@@ -80,15 +80,24 @@ export const signUp = async (
   return user;
 };
 
+export const verifyEmailCode = async (
+  email: string,
+  _code: string,
+  accountType: AccountType = 'donor',
+): Promise<AppUser> => {
+  const existing = read();
+  if (existing?.email === email) return existing;
+  return signIn(email, '', accountType);
+};
+
+export const resendSignupCode = async (): Promise<void> => {};
 export const signInWithGoogle = async (): Promise<never> => {
   throw new Error('google-unavailable');
 };
 
 export const signOut = async (): Promise<void> => write(null);
 
-export const updateUser = async (
-  patch: Partial<Omit<AppUser, 'id' | 'email'>>,
-): Promise<AppUser | null> => {
+export const updateUser = async (patch: EditableUserProfile): Promise<AppUser | null> => {
   const current = read();
   if (!current) return null;
   const next: AppUser = { ...current, ...patch };
