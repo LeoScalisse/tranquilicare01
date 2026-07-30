@@ -153,7 +153,7 @@ const SphereImageGrid: React.FC<SphereImageGridProps> = ({
             onClick={() => { if (!movedRef.current) onImageSelect(image); }}
             className={`absolute overflow-hidden rounded-full transition-[filter,box-shadow] duration-300 hover:brightness-110 focus:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/45 ${
               isTransparent
-                ? 'border-2 border-white bg-white shadow-[0_12px_30px_rgba(23,37,84,0.18)]'
+                ? 'border-2 border-white bg-background shadow-[0_12px_30px_rgba(23,37,84,0.18)]'
                 : 'border border-white/25 bg-[#111315] shadow-[0_8px_26px_rgba(0,0,0,0.65)]'
             }`}
             style={{

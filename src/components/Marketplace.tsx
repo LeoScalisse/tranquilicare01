@@ -4,6 +4,11 @@ import { NGO, FlashCampaign } from '../types';
 import { Search, Star, HeartHandshake, ChevronRight, Clock, Zap } from 'lucide-react';
 import LoveHeart from '@/components/ui/love-heart';
 import { flashCampaigns } from '@/data/flashCampaigns';
+import {
+  getNgoCategorySectionTitle,
+  getNgoCategoryTheme,
+  NGO_CATEGORY_ORDER,
+} from '@/data/ngoCategories';
 import { formatBRL } from '@/lib/impact';
 
 const SEARCH_PLACEHOLDERS = [
@@ -13,18 +18,6 @@ const SEARCH_PLACEHOLDERS = [
   'Busque por saúde mental',
   'Busque por impacto social',
 ];
-
-// Friendly, exploration-first section titles per category (Airbnb-style rows).
-const SECTION_TITLES: Record<string, string> = {
-  'Saúde Mental': 'Cuidando da mente',
-  Social: 'Impacto social pertinho de você',
-  Pets: 'Amigos de quatro patas',
-  'Meio Ambiente': 'Cuidando do planeta',
-  Outros: 'Outras causas para abraçar',
-};
-const sectionTitle = (cat: string) => SECTION_TITLES[cat] ?? `Causas de ${cat}`;
-
-const CATEGORY_ORDER = ['Saúde Mental', 'Social', 'Pets', 'Meio Ambiente', 'Outros'];
 
 const FAV_KEY = 'tc-favorites';
 const loadFavorites = (): Set<string> => {
@@ -48,25 +41,6 @@ interface MarketplaceProps {
  * each card; `chipText`/`chipBg` drive the neumorphic filter chips (chipBg is
  * the pastel fill shown when a chip is pressed/sunken).
  */
-const getCategoryTheme = (cat: string) => {
-  switch (cat) {
-    case 'Todas':
-      return { text: 'text-brand-ink', bg: 'bg-secondary', border: 'border-border', chipText: 'text-brand-ink', chipBg: 'bg-secondary' };
-    case 'Saúde Mental':
-      return { text: 'text-pink-600', bg: 'bg-pink-100', border: 'border-pink-200', chipText: 'text-pink-600', chipBg: 'bg-pink-100' };
-    case 'Social':
-      return { text: 'text-sky-600', bg: 'bg-sky-100', border: 'border-sky-200', chipText: 'text-sky-600', chipBg: 'bg-sky-100' };
-    case 'Pets':
-      return { text: 'text-orange-600', bg: 'bg-orange-100', border: 'border-orange-200', chipText: 'text-orange-600', chipBg: 'bg-orange-100' };
-    case 'Meio Ambiente':
-      return { text: 'text-emerald-600', bg: 'bg-emerald-100', border: 'border-emerald-200', chipText: 'text-emerald-600', chipBg: 'bg-emerald-100' };
-    case 'Outros':
-      return { text: 'text-violet-600', bg: 'bg-violet-100', border: 'border-violet-200', chipText: 'text-violet-600', chipBg: 'bg-violet-100' };
-    default:
-      return { text: 'text-slate-600', bg: 'bg-slate-100', border: 'border-slate-200', chipText: 'text-slate-600', chipBg: 'bg-slate-100' };
-  }
-};
-
 /** Airbnb-style card content: image + save-heart, then name + colored category pill. */
 const NgoCardContent: React.FC<{
   ngo: NGO;
@@ -74,7 +48,7 @@ const NgoCardContent: React.FC<{
   onToggleSave: (id: string) => void;
   compact?: boolean;
 }> = ({ ngo, saved, onToggleSave, compact = false }) => {
-  const theme = getCategoryTheme(ngo.category);
+  const theme = getNgoCategoryTheme(ngo.category);
   const storiesCount = ngo.posts?.length ?? 0;
 
   return (
@@ -163,7 +137,7 @@ const FlashCampaignCard: React.FC<{ campaign: FlashCampaign; onOpen: (c: FlashCa
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
-        <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-brand-yellow px-2.5 py-1 text-xs font-bold text-brand-ink shadow-sm">
+        <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-brand-yellow px-2.5 py-1 text-xs font-bold text-white shadow-sm">
           <Zap size={13} className="fill-brand-ink" />
           Relâmpago
         </span>
@@ -225,7 +199,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
 
   const categories = useMemo(() => {
     const present = Array.from(new Set(ngos.map((n) => n.category)));
-    const ordered = [...CATEGORY_ORDER.filter((c) => present.includes(c)), ...present.filter((c) => !CATEGORY_ORDER.includes(c))];
+    const ordered = [...NGO_CATEGORY_ORDER.filter((c) => present.includes(c)), ...present.filter((c) => !NGO_CATEGORY_ORDER.includes(c))];
     return ['Todas', ...ordered];
   }, [ngos]);
 
@@ -253,7 +227,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
     const leftovers: NGO[] = [];
     for (const cat of categories.filter((c) => c !== 'Todas')) {
       const items = ngos.filter((n) => n.category === cat);
-      if (items.length >= 2) rows.push({ key: cat, title: sectionTitle(cat), items, category: cat });
+      if (items.length >= 2) rows.push({ key: cat, title: getNgoCategorySectionTitle(cat), items, category: cat });
       else leftovers.push(...items);
     }
     return { rows: embedded ? rows.slice(0, 2) : rows, leftovers };
@@ -274,7 +248,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
 
   const EmptyState = () => (
     <div className="py-16 flex flex-col items-center">
-      <div className="bg-white border border-border rounded-3xl p-10 max-w-2xl text-center shadow-sm">
+      <div className="bg-background border border-border rounded-3xl p-10 max-w-2xl text-center shadow-sm">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-yellow/20">
           <HeartHandshake className="h-8 w-8 text-brand-ink/60" />
         </div>
@@ -301,7 +275,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
         </div>
 
         {/* Search — rotating placeholder while empty */}
-        <div className="relative max-w-2xl bg-white border border-border rounded-full shadow-sm transition-all focus-within:ring-4 focus-within:ring-brand-blue/15 focus-within:border-brand-blue">
+        <div className="relative max-w-2xl bg-background border border-border rounded-full shadow-sm transition-all focus-within:ring-4 focus-within:ring-brand-blue/15 focus-within:border-brand-blue">
           <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
             <Search className="h-5 w-5 text-brand-blue" />
           </div>
@@ -335,7 +309,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
             stays pressed; the others stay projected out (raised drop shadow). */}
         <div className="flex items-center gap-3 overflow-x-auto px-1 py-3 -mx-1 no-scrollbar">
           {categories.map((cat) => {
-            const theme = getCategoryTheme(cat);
+            const theme = getNgoCategoryTheme(cat);
             const selected = selectedCategory === cat;
             return (
               <button
@@ -346,7 +320,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
                 className={`shrink-0 rounded-full px-5 py-2.5 text-sm font-bold whitespace-nowrap transition-all duration-300 ${theme.chipText} ${
                   selected
                     ? `${theme.chipBg} shadow-[inset_3px_3px_7px_rgba(16,42,67,0.20),inset_-3px_-3px_7px_rgba(255,255,255,0.75)]`
-                    : 'bg-white shadow-[4px_4px_10px_rgba(16,42,67,0.12),-4px_-4px_10px_rgba(255,255,255,0.95)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-[inset_3px_3px_6px_rgba(16,42,67,0.16)]'
+                    : 'bg-background shadow-[4px_4px_10px_rgba(16,42,67,0.12),-4px_-4px_10px_rgba(255,255,255,0.95)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-[inset_3px_3px_6px_rgba(16,42,67,0.16)]'
                 }`}
               >
                 {cat}

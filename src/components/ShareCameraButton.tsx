@@ -50,7 +50,7 @@ const ShareCameraButton: React.FC<ShareCameraButtonProps> = ({
         toPng(target, {
           cacheBust: true,
           pixelRatio: Math.min(window.devicePixelRatio || 1, 2),
-          backgroundColor: '#ffffff',
+          backgroundColor: '#e9fcff',
           filter: (node) => !(node instanceof HTMLElement && node.dataset.shareExclude === 'true'),
         }),
         wait(reducedMotion ? 0 : 680),
@@ -93,7 +93,7 @@ const ShareCameraButton: React.FC<ShareCameraButtonProps> = ({
         <AnimatePresence>
           {animating && (
             <motion.span
-              className='absolute left-1/2 top-[17px] z-0 flex h-[42px] w-[46px] flex-col rounded-md bg-white p-1 shadow-[0_6px_16px_rgba(15,42,65,0.22),inset_0_0_0_2px_#eef3f6]'
+              className='absolute left-1/2 top-[17px] z-0 flex h-[42px] w-[46px] flex-col rounded-md bg-background p-1 shadow-[0_6px_16px_rgba(15,42,65,0.22),inset_0_0_0_2px_#eef3f6]'
               initial={{ x: '-50%', y: -5, opacity: 0, rotate: 0 }}
               animate={{ x: '-50%', y: 31, opacity: 1, rotate: 5 }}
               exit={{ x: '-50%', y: 22, opacity: 0, rotate: 2, scale: 0.9 }}
@@ -101,7 +101,7 @@ const ShareCameraButton: React.FC<ShareCameraButtonProps> = ({
             >
               <span className='relative block h-[27px] w-full overflow-hidden rounded-sm bg-brand-blue'>
                 <span className='absolute bottom-0 left-0 h-3 w-full bg-brand-yellow [clip-path:polygon(0_100%,45%_20%,65%_65%,100%_15%,100%_100%)]' />
-                <span className='absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-white/80' />
+                <span className='absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-background/80' />
               </span>
               <span className='mt-1 block h-0.5 w-3/5 rounded-full bg-slate-200' />
               <span className='mt-1 block h-0.5 w-2/5 rounded-full bg-slate-200' />
@@ -123,10 +123,10 @@ const ShareCameraButton: React.FC<ShareCameraButtonProps> = ({
           />
 
           <span className='absolute left-1/2 top-1/2 flex h-8 w-8 -translate-x-1/2 -translate-y-[34%] items-center justify-center overflow-hidden rounded-full border-4 border-[#1685c4] bg-brand-ink shadow-[0_4px_8px_rgba(15,42,65,0.35),inset_0_2px_5px_rgba(0,0,0,0.45)]'>
-            <span className='absolute left-[18%] top-[13%] h-2 w-3 -rotate-[25deg] rounded-full bg-white/20' />
+            <span className='absolute left-[18%] top-[13%] h-2 w-3 -rotate-[25deg] rounded-full bg-background/20' />
             {animating && (
               <motion.span
-                className='absolute inset-0 rounded-full bg-white'
+                className='absolute inset-0 rounded-full bg-background'
                 initial={{ opacity: 1, scale: 0.12 }}
                 animate={{ opacity: [1, 0.8, 0], scale: [0.12, 1.45, 2] }}
                 transition={{ duration: reducedMotion ? 0.01 : 0.4, ease: EASE_OUT }}

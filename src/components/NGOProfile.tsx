@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Check,
   ChevronRight,
@@ -24,10 +24,15 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { NGO, NGOPost } from '../types';
-import { BrandedText } from '../utils';
 import { getUser } from '@/lib/auth';
 import { createDonationCheckout } from '@/lib/donations';
 import { formatBRL } from '@/lib/impact';
+import { getNgoCategory, getNgoCategoryTheme } from '@/data/ngoCategories';
+import {
+  saveDiscoveryOrigin,
+  VERIFICATION_DISCOVERY_PATH,
+} from '@/lib/discoveryNavigation';
+import DonationAmountWheel from '@/components/ui/donation-amount-wheel';
 
 type ProfileTab = 'impacto' | 'historias' | 'sobre';
 
@@ -39,19 +44,25 @@ interface NGOProfileProps {
 
 const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditProfile }) => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<ProfileTab>('impacto');
   const [showContactModal, setShowContactModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showDonationModal, setShowDonationModal] = useState(false);
-  const [donationAmount, setDonationAmount] = useState('100');
+  const [donationAmount, setDonationAmount] = useState(100);
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [zoomedPost, setZoomedPost] = useState<NGOPost | null>(null);
   const [copiedPhone, setCopiedPhone] = useState(false);
+  const categoryDefinition = getNgoCategory(ngo.category);
+  const categoryTheme = getNgoCategoryTheme(ngo.category);
+  const sealTriggerId = `ngo-verification-seal-${ngo.id}`;
 
-  const amountCents = useMemo(() => {
-    const amount = Number(donationAmount.replace(',', '.').trim());
-    return Number.isFinite(amount) && amount > 0 ? Math.round(amount * 100) : 0;
-  }, [donationAmount]);
+  const amountCents = useMemo(
+    () => Number.isFinite(donationAmount) && donationAmount > 0
+      ? Math.round(donationAmount * 100)
+      : 0,
+    [donationAmount],
+  );
   const platformFeeCents = Math.round(amountCents * 0.05);
   const totalCents = amountCents + platformFeeCents;
 
@@ -90,6 +101,16 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
     window.setTimeout(() => setCopiedPhone(false), 2000);
   };
 
+  const openVerificationDiscovery = () => {
+    saveDiscoveryOrigin(window.location, sealTriggerId);
+    navigate(VERIFICATION_DISCOVERY_PATH, {
+      state: {
+        hasDiscoveryOrigin: true,
+        backgroundLocation: location,
+      },
+    });
+  };
+
   const instagramUrl = `https://www.instagram.com/${ngo.instagram.replace(/^@/, '')}`;
   const latestPost = ngo.posts?.[0];
   const tabs: Array<{ id: ProfileTab; label: string }> = [
@@ -103,7 +124,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
       <AnimatePresence>
         {zoomedPost && (
           <motion.div className='fixed inset-0 z-[120] grid place-items-center bg-brand-ink/90 p-4 backdrop-blur-md' initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setZoomedPost(null)}>
-            <button onClick={() => setZoomedPost(null)} className='absolute right-5 top-5 grid h-11 w-11 place-items-center rounded-full bg-white text-brand-blue shadow-lg' aria-label='Fechar história'><X size={21} /></button>
+            <button onClick={() => setZoomedPost(null)} className='absolute right-5 top-5 grid h-11 w-11 place-items-center rounded-full bg-background text-brand-blue shadow-lg' aria-label='Fechar história'><X size={21} /></button>
             <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.96 }} className={`relative w-full overflow-hidden rounded-lg bg-black shadow-2xl ${zoomedPost.type === 'video' ? 'max-w-sm' : 'max-w-lg'}`} style={{ aspectRatio: zoomedPost.type === 'video' ? '9/16' : '4/5' }} onClick={(event) => event.stopPropagation()}>
               {zoomedPost.type === 'video' ? <video src={zoomedPost.url} className='h-full w-full object-contain' controls autoPlay playsInline /> : <img src={zoomedPost.url} className='h-full w-full object-contain' alt='História ampliada' />}
               <div className='absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-5 pt-16 text-white'>
@@ -130,9 +151,16 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
 
       {showDonationModal && (
         <ModalShell onClose={() => !isStartingCheckout && setShowDonationModal(false)} title={`Apoiar ${ngo.name}`} icon={<Heart size={22} />} wide>
-          <label htmlFor='donation-amount' className='text-sm font-bold'>Valor destinado à ONG</label>
-          <div className='relative mt-2'><span className='absolute inset-y-0 left-4 flex items-center text-sm font-bold text-muted-foreground'>R$</span><input id='donation-amount' inputMode='decimal' value={donationAmount} onChange={(event) => setDonationAmount(event.target.value)} className='w-full rounded-lg border-2 border-border bg-secondary/45 py-3 pl-11 pr-4 text-lg font-bold outline-none focus:border-brand-blue' /></div>
-          <div className='mt-3 flex flex-wrap gap-2'>{[25, 50, 100, 250].map((value) => <button key={value} onClick={() => setDonationAmount(String(value))} className='rounded-full border border-border px-3 py-1.5 text-xs font-bold hover:border-brand-blue hover:text-brand-blue'>R$ {value}</button>)}</div>
+          <p className='mb-4 text-sm font-bold'>Valor destinado à ONG</p>
+          <DonationAmountWheel
+            id='donation-amount'
+            value={donationAmount}
+            onValueChange={setDonationAmount}
+            min={5}
+            max={100_000}
+            step={5}
+            label='Valor destinado à ONG'
+          />
           <div className='mt-5 rounded-lg bg-secondary/60 p-4 text-sm'>
             <div className='flex justify-between gap-4'><span className='text-muted-foreground'>Doação</span><strong>{formatBRL(amountCents)}</strong></div>
             <div className='mt-2 flex justify-between gap-4'><span className='text-muted-foreground'>Taxa TranquiliCare (5%)</span><strong>{formatBRL(platformFeeCents)}</strong></div>
@@ -147,17 +175,30 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
         <div className='flex flex-col gap-7 md:flex-row md:items-center'>
           <div className='relative w-fit shrink-0'>
             <img src={ngo.image} className='h-36 w-36 rounded-full border-[5px] border-white object-cover shadow-[0_0_0_3px_hsl(var(--brand-blue))] md:h-40 md:w-40' alt={ngo.name} />
-            {ngo.verified && <span className='absolute bottom-1 right-0 grid h-11 w-11 place-items-center rounded-full border-4 border-white bg-brand-blue text-white' title='Organização verificada'><ShieldCheck size={19} /></span>}
+            {ngo.verified && categoryDefinition && (
+              <button
+                id={sealTriggerId}
+                type='button'
+                onClick={openVerificationDiscovery}
+                className='absolute -bottom-1 -right-4 grid h-14 w-14 place-items-center rounded-full transition-transform duration-200 hover:-translate-y-0.5 hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-brand-blue md:-right-5 md:h-16 md:w-16'
+                aria-label={`Conhecer a verificação da categoria ${categoryDefinition.label}`}
+                title={`Selo verificado de ${categoryDefinition.label}`}
+              >
+                <img src={categoryDefinition.sealSrc} alt='' className='h-full w-full object-contain drop-shadow-[0_6px_12px_rgba(15,36,60,0.2)]' />
+              </button>
+            )}
           </div>
 
           <div className='min-w-0 flex-1'>
             <div className='flex flex-wrap items-center gap-2'><p className='text-xs font-bold uppercase tracking-[0.16em] text-brand-blue'>{ownerMode ? 'Perfil da organização' : 'Organização social'}</p>{ngo.status === 'approved' && <span className='rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-bold text-emerald-700'>Ativa</span>}</div>
             <h1 className='mt-1 font-display text-4xl font-semibold leading-tight md:text-5xl'>{ngo.name}</h1>
-            <div className='mt-2 font-semibold text-muted-foreground'><BrandedText text={ngo.category} /></div>
-            <p className='mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base'>{ngo.description}</p>
+            <div className={`mt-2 inline-flex rounded-full border px-3 py-1 text-sm font-bold ${categoryTheme.bg} ${categoryTheme.border} ${categoryTheme.text}`}>
+              {ngo.category}
+            </div>
+            <p className='font-narrative mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base'>{ngo.description}</p>
             <div className='mt-5 flex flex-wrap gap-3'>
               {ownerMode ? <button onClick={onEditProfile} className='tc-button-3d inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white'><Pencil size={17} />Editar perfil</button> : <button onClick={() => setShowDonationModal(true)} className='tc-button-3d inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white'><Heart size={17} className='fill-current' />Apoiar agora</button>}
-              <button onClick={() => setShowContactModal(true)} className='inline-flex items-center gap-2 rounded-xl border-2 border-border bg-white px-5 py-2.5 text-sm font-bold transition-colors hover:border-brand-blue hover:text-brand-blue'><MessageCircle size={17} />Contato</button>
+              <button onClick={() => setShowContactModal(true)} className='inline-flex items-center gap-2 rounded-xl border-2 border-border bg-background px-5 py-2.5 text-sm font-bold transition-colors hover:border-brand-blue hover:text-brand-blue'><MessageCircle size={17} />Contato</button>
             </div>
           </div>
         </div>
@@ -169,7 +210,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
         <div className='col-span-2 min-w-0 rounded-lg border-2 border-border p-4 md:col-span-1'><span className='flex items-center justify-between text-sm font-bold'>Transparência <ShieldCheck size={18} className='text-emerald-500' /></span><strong className='mt-2 block text-xl'>{ngo.verified ? 'Verificada' : 'Em análise'}</strong><span className='text-xs text-muted-foreground'>status na plataforma</span></div>
       </section>
 
-      <div className='sticky top-16 z-20 -mx-4 border-b border-border bg-white/95 px-4 backdrop-blur md:static md:mx-0 md:px-0'>
+      <div className='sticky top-16 z-20 -mx-4 border-b border-border bg-background/95 px-4 backdrop-blur md:static md:mx-0 md:px-0'>
         <div className='flex overflow-x-auto'>
           {tabs.map((tab) => <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`relative min-w-[112px] flex-1 px-4 py-4 text-sm font-bold transition-colors ${activeTab === tab.id ? 'text-brand-blue' : 'text-muted-foreground hover:text-brand-ink'}`}>{tab.label}{activeTab === tab.id && <motion.span layoutId={`ngo-tab-${ngo.id}`} className='absolute inset-x-4 bottom-0 h-0.5 bg-brand-blue' />}</button>)}
         </div>
@@ -181,11 +222,11 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
             <div className='grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]'>
               <section>
                 <div className='mb-4'><p className='text-xs font-bold uppercase tracking-[0.14em] text-brand-blue'>Atualizações</p><h2 className='font-display text-2xl font-semibold'>Impacto que ganhou forma</h2></div>
-                {latestPost ? <button onClick={() => setZoomedPost(latestPost)} className='group grid w-full overflow-hidden rounded-lg border-2 border-border bg-white text-left sm:grid-cols-[240px_1fr]'><div className='relative aspect-[4/3] overflow-hidden sm:aspect-auto'><PostMedia post={latestPost} /><span className='absolute left-3 top-3 rounded-full bg-brand-ink/75 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur'>História recente</span></div><div className='flex flex-col justify-center p-5 md:p-7'><Sparkles className='text-brand-yellow' size={22} /><h3 className='mt-3 font-display text-2xl font-semibold'>Veja como o apoio virou ação</h3><p className='mt-2 text-sm leading-6 text-muted-foreground'>{latestPost.caption || 'Uma nova história de impacto foi compartilhada pela organização.'}</p><span className='mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-brand-blue'>Abrir história <ChevronRight size={17} /></span></div></button> : <EmptyStories ownerMode={ownerMode} />}
+                {latestPost ? <button onClick={() => setZoomedPost(latestPost)} className='group grid w-full overflow-hidden rounded-lg border-2 border-border bg-background text-left sm:grid-cols-[240px_1fr]'><div className='relative aspect-[4/3] overflow-hidden sm:aspect-auto'><PostMedia post={latestPost} /><span className='absolute left-3 top-3 rounded-full bg-brand-ink/75 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur'>História recente</span></div><div className='flex flex-col justify-center p-5 md:p-7'><Sparkles className='text-brand-yellow' size={22} /><h3 className='mt-3 font-display text-2xl font-semibold'>Veja como o apoio virou ação</h3><p className='font-narrative mt-2 text-sm leading-6 text-muted-foreground'>{latestPost.caption || 'Uma nova história de impacto foi compartilhada pela organização.'}</p><span className='mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-brand-blue'>Abrir história <ChevronRight size={17} /></span></div></button> : <EmptyStories ownerMode={ownerMode} />}
               </section>
               <aside className='space-y-5'>
-                <section><h2 className='mb-3 font-display text-xl font-semibold'>Objetivo atual</h2><button onClick={() => setShowGoalModal(true)} className='w-full rounded-lg bg-brand-yellow p-5 text-left'><Target size={23} /><p className='mt-3 line-clamp-3 font-bold leading-6'>{ngo.goal}</p><span className='mt-4 inline-flex items-center gap-1 text-xs font-bold'>Ver meta completa <ChevronRight size={15} /></span></button></section>
-                <section className='rounded-lg border-2 border-border p-5'><h2 className='font-display text-xl font-semibold'>Conecte-se</h2><p className='mt-2 text-sm leading-6 text-muted-foreground'>Acompanhe as atualizações e fale diretamente com a equipe.</p><button onClick={() => setShowContactModal(true)} className='mt-4 inline-flex items-center gap-2 text-sm font-bold text-brand-blue'>Ver canais de contato <ChevronRight size={16} /></button></section>
+                <section><h2 className='mb-3 font-display text-xl font-semibold'>Objetivo atual</h2><button onClick={() => setShowGoalModal(true)} className='w-full rounded-lg bg-brand-yellow p-5 text-left text-white'><Target size={23} /><p className='mt-3 line-clamp-3 font-bold leading-6'>{ngo.goal}</p><span className='mt-4 inline-flex items-center gap-1 text-xs font-bold'>Ver meta completa <ChevronRight size={15} /></span></button></section>
+                <section className='rounded-lg border-2 border-border p-5'><h2 className='font-display text-xl font-semibold'>Conecte-se</h2><p className='font-narrative mt-2 text-sm leading-6 text-muted-foreground'>Acompanhe as atualizações e fale diretamente com a equipe.</p><button onClick={() => setShowContactModal(true)} className='mt-4 inline-flex items-center gap-2 text-sm font-bold text-brand-blue'>Ver canais de contato <ChevronRight size={16} /></button></section>
               </aside>
             </div>
           )}
@@ -196,7 +237,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
 
           {activeTab === 'sobre' && (
             <div className='grid gap-8 lg:grid-cols-[minmax(0,1fr)_320px]'>
-              <section><p className='text-xs font-bold uppercase tracking-[0.14em] text-brand-blue'>Quem somos</p><h2 className='mt-1 font-display text-2xl font-semibold'>Sobre {ngo.name}</h2><p className='mt-4 max-w-3xl text-base leading-7 text-muted-foreground'>{ngo.description}</p><div className='mt-7 border-l-4 border-brand-yellow pl-5'><p className='text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground'>Nosso foco agora</p><p className='mt-2 font-semibold leading-7'>{ngo.goal}</p></div></section>
+              <section><p className='text-xs font-bold uppercase tracking-[0.14em] text-brand-blue'>Quem somos</p><h2 className='mt-1 font-display text-2xl font-semibold'>Sobre {ngo.name}</h2><p className='font-narrative mt-4 max-w-3xl text-base leading-7 text-muted-foreground'>{ngo.description}</p><div className='mt-7 border-l-4 border-brand-yellow pl-5'><p className='text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground'>Nosso foco agora</p><p className='font-narrative mt-2 font-medium leading-7'>{ngo.goal}</p></div></section>
               <aside className='rounded-lg border-2 border-border p-5'><h3 className='font-bold'>Informações</h3><dl className='mt-4 space-y-4 text-sm'><div><dt className='text-muted-foreground'>Categoria</dt><dd className='font-semibold'>{ngo.category}</dd></div><div><dt className='text-muted-foreground'>Verificação</dt><dd className='font-semibold'>{ngo.verified ? 'Concluída' : 'Em análise'}</dd></div><div><dt className='text-muted-foreground'>Contato</dt><dd className='truncate font-semibold'>{ngo.email}</dd></div></dl></aside>
             </div>
           )}
@@ -211,7 +252,7 @@ const PostMedia: React.FC<{ post: NGOPost }> = ({ post }) => post.type === 'imag
   : <div className='relative h-full w-full'><video src={post.url} className='h-full w-full object-cover' preload='metadata' /><VideoIcon className='absolute right-3 top-3 text-white drop-shadow' size={20} /><span className='absolute inset-0 grid place-items-center bg-black/15'><Play className='fill-white text-white' size={32} /></span></div>;
 
 const EmptyStories: React.FC<{ ownerMode: boolean }> = ({ ownerMode }) => (
-  <div className='rounded-lg border-2 border-dashed border-border px-6 py-14 text-center'><LayoutGrid className='mx-auto text-brand-blue/35' size={34} /><h3 className='mt-3 font-display text-xl font-semibold'>As histórias aparecerão aqui</h3><p className='mx-auto mt-2 max-w-md text-sm text-muted-foreground'>{ownerMode ? 'Quando a publicação de impacto estiver disponível, você poderá mostrar à comunidade como cada apoio foi utilizado.' : 'Esta organização ainda não publicou atualizações de impacto.'}</p></div>
+  <div className='rounded-lg border-2 border-dashed border-border px-6 py-14 text-center'><LayoutGrid className='mx-auto text-brand-blue/35' size={34} /><h3 className='mt-3 font-display text-xl font-semibold'>As histórias aparecerão aqui</h3><p className='font-narrative mx-auto mt-2 max-w-md text-sm text-muted-foreground'>{ownerMode ? 'Quando a publicação de impacto estiver disponível, você poderá mostrar à comunidade como cada apoio foi utilizado.' : 'Esta organização ainda não publicou atualizações de impacto.'}</p></div>
 );
 
 interface ModalShellProps {
@@ -224,8 +265,8 @@ interface ModalShellProps {
 
 const ModalShell: React.FC<ModalShellProps> = ({ title, icon, children, onClose, wide }) => (
   <div className='fixed inset-0 z-[110] grid place-items-center bg-brand-ink/70 p-4 backdrop-blur-sm' onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-    <motion.div initial={{ opacity: 0, y: 18, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} className={`w-full overflow-hidden rounded-lg bg-white shadow-2xl ${wide ? 'max-w-md' : 'max-w-sm'}`}>
-      <div className='flex items-center justify-between bg-brand-ink px-5 py-4 text-white'><div className='flex items-center gap-2.5'><span className='text-brand-yellow'>{icon}</span><h3 className='font-display text-xl font-semibold'>{title}</h3></div><button onClick={onClose} className='grid h-9 w-9 place-items-center rounded-full bg-white text-brand-blue' aria-label='Fechar'><X size={19} /></button></div>
+    <motion.div initial={{ opacity: 0, y: 18, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} className={`w-full overflow-hidden rounded-lg bg-background shadow-2xl ${wide ? 'max-w-md' : 'max-w-sm'}`}>
+      <div className='flex items-center justify-between bg-brand-ink px-5 py-4 text-white'><div className='flex items-center gap-2.5'><span className='text-brand-yellow'>{icon}</span><h3 className='font-display text-xl font-semibold'>{title}</h3></div><button onClick={onClose} className='grid h-9 w-9 place-items-center rounded-full bg-background text-brand-blue' aria-label='Fechar'><X size={19} /></button></div>
       <div className='p-5 md:p-6'>{children}</div>
     </motion.div>
   </div>

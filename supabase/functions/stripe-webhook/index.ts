@@ -1,4 +1,3 @@
-/* eslint-disable no-undef */
 import Stripe from 'npm:stripe@18.5.0';
 import { createClient } from 'npm:@supabase/supabase-js@2.53.0';
 
@@ -52,14 +51,6 @@ Deno.serve(async (request) => {
     return json({ error: 'Invalid signature' }, 400);
   }
 
-  const { error: eventInsertError } = await adminClient.from('stripe_webhook_events').insert({
-    id: event.id,
-    event_type: event.type,
-  });
-
-  if (eventInsertError?.code === '23505') return json({ received: true });
-  if (eventInsertError) return json({ error: 'Could not record event' }, 500);
-
   try {
     if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
       const session = event.data.object as Stripe.Checkout.Session;
@@ -85,6 +76,17 @@ Deno.serve(async (request) => {
     console.error('Could not process Stripe event', event.id, error);
     return json({ error: 'Could not process event' }, 500);
   }
+
+  // Record the event only after the donation update succeeds. If a transient
+  // database error occurs above, Stripe will retry the event instead of seeing
+  // a duplicate row and treating an unfinished donation as complete.
+  const { error: eventInsertError } = await adminClient.from('stripe_webhook_events').insert({
+    id: event.id,
+    event_type: event.type,
+  });
+
+  if (eventInsertError?.code === '23505') return json({ received: true });
+  if (eventInsertError) return json({ error: 'Could not record event' }, 500);
 
   return json({ received: true });
 });

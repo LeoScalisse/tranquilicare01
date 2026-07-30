@@ -153,7 +153,7 @@ const DonationThankYouDialog: React.FC<Props> = ({ open, amountCents, ngoName, o
                           initial={{ opacity: 0, scale: 0.7, rotate: -20 }}
                           animate={{ opacity: 1, scale: 1, rotate: 0 }}
                           transition={{ duration: reducedMotion ? 0.01 : 0.28, ease: EASE_OUT }}
-                          className='absolute inset-0 flex items-center justify-center rounded-full bg-white text-brand-blue shadow-lg transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue focus-visible:ring-offset-2 focus-visible:ring-offset-[#075d91]'
+                          className='absolute inset-0 flex items-center justify-center rounded-full bg-background text-brand-blue shadow-lg transition-colors hover:bg-blue-50 hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue focus-visible:ring-offset-2 focus-visible:ring-offset-[#075d91]'
                           aria-label='Fechar agradecimento'
                         >
                           <X className='h-5 w-5' strokeWidth={2.5} />

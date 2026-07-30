@@ -199,9 +199,9 @@ const DonorProfile: React.FC = () => {
   ];
 
   return (
-    <div className='min-h-screen bg-white pb-24 text-brand-ink md:pb-12'>
+    <div className='min-h-screen bg-background pb-24 text-brand-ink md:pb-12'>
       <AppBottomNav activeKey='perfil' user={user} />
-      <header className='sticky top-0 z-40 border-b border-border bg-white/95 backdrop-blur'>
+      <header className='sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur'>
         <div className='mx-auto flex h-16 max-w-6xl items-center justify-between px-4'>
           <button onClick={() => navigate('/')} className='flex items-center gap-2.5' aria-label='Voltar para o início'>
             <ArrowLeft className='h-5 w-5 text-muted-foreground md:hidden' />

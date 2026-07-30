@@ -25,6 +25,8 @@ interface ImpactDashboardProps {
   onLogin: () => void;
   onExplore: () => void;
   onStories: () => void;
+  onVerificationDiscovery: () => void;
+  onDonationDiscovery: () => void;
   celebratingDonation?: DonationRow | null;
   celebrationPhase: 'idle' | 'card' | 'dialog';
   onDonationAnimationComplete: () => void;
@@ -69,6 +71,8 @@ const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
   verifiedCount,
   onExplore,
   onStories,
+  onVerificationDiscovery,
+  onDonationDiscovery,
   celebratingDonation = null,
   celebrationPhase,
   onDonationAnimationComplete,
@@ -123,6 +127,8 @@ const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
         communityDonationCount={communityDonationCount}
         onExplore={onExplore}
         onStories={onStories}
+        onVerificationDiscovery={onVerificationDiscovery}
+        onDonationDiscovery={onDonationDiscovery}
       />
     );
   }
@@ -220,7 +226,7 @@ const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
               variants={cardVariants}
               initial="hidden"
               animate="show"
-              className="bg-brand-yellow rounded-3xl p-6 shadow-lg shadow-brand-yellow/40 text-brand-ink flex items-center gap-5"
+              className="bg-brand-yellow rounded-3xl p-6 shadow-lg shadow-brand-yellow/40 text-white flex items-center gap-5"
             >
               <ProgressRing
                 percent={(receivedTotal / receivedMilestone) * 100}
@@ -255,7 +261,7 @@ const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
             animate="show"
             className="bg-brand-ink rounded-3xl p-6 shadow-lg text-white flex items-center gap-5"
           >
-            <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-2xl bg-white/10">
+            <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-2xl bg-background/10">
               <ShieldCheck size={34} className="text-brand-yellow" />
             </div>
             <div className="min-w-0">

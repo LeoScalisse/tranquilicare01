@@ -1,9 +1,19 @@
-/* eslint-disable no-undef */
 import Stripe from 'npm:stripe@18.5.0';
 import { createClient } from 'npm:@supabase/supabase-js@2.53.0';
 
+const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
+const supabaseUrl = Deno.env.get('SUPABASE_URL');
+const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
+const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+const appUrl = Deno.env.get('APP_URL');
+const appOrigin = Deno.env.get('APP_ORIGIN') ?? appUrl;
+
+if (!stripeSecret || !supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey || !appUrl || !appOrigin) {
+  throw new Error('Missing payment function environment variables');
+}
+
 const corsHeaders = {
-  'Access-Control-Allow-Origin': Deno.env.get('APP_ORIGIN') ?? '*',
+  'Access-Control-Allow-Origin': appOrigin,
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
@@ -15,16 +25,6 @@ const json = (body: Record<string, unknown>, status = 200) =>
   });
 
 const fail = (message: string, status = 400) => json({ error: message }, status);
-
-const stripeSecret = Deno.env.get('STRIPE_SECRET_KEY');
-const supabaseUrl = Deno.env.get('SUPABASE_URL');
-const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY');
-const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-const appUrl = Deno.env.get('APP_URL');
-
-if (!stripeSecret || !supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey || !appUrl) {
-  throw new Error('Missing payment function environment variables');
-}
 
 const stripe = new Stripe(stripeSecret);
 const userClient = createClient(supabaseUrl, supabaseAnonKey, {

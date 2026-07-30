@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion, type Variants } from 'framer-motion';
-import lottie, { type AnimationItem } from 'lottie-web';
+import type { AnimationItem } from 'lottie-web';
 
 /**
  * Rotating hero headline for the logged-out home. Three phrases, each with
@@ -62,6 +62,7 @@ const PHRASES: Token[][] = [
 const PHRASE_HOLDS = [11_500, 10_000, 10_000];
 
 const CHECK_DELAY_MS = 2_000; // "verificada" -> check swap
+const CHECK_SETTLE_MS = 2_500; // width shift, check draw and halo finish
 const HL1_DELAY_MS = 400; // yellow lights up "com a sua cara"
 const HL2_DELAY_MS = 5_000; // light starts traveling to "mude o mundo"
 
@@ -242,10 +243,13 @@ const LottieCheck: React.FC = () => {
     let anim: AnimationItem | undefined;
     let cancelled = false;
 
-    fetch('/check-recolored.json')
-      .then((r) => r.json())
-      .then((data) => {
+    Promise.all([
+      fetch('/check-recolored.json').then((response) => response.json()),
+      import('lottie-web'),
+    ])
+      .then(([data, lottieModule]) => {
         if (cancelled || !hostRef.current) return;
+        const lottie = lottieModule.default;
         anim = lottie.loadAnimation({
           container: hostRef.current,
           renderer: 'svg',
@@ -355,10 +359,18 @@ const CheckSlot: React.FC<{ text: string; checked: boolean; reduce: boolean }> =
 
 interface RotatingHeadlineProps {
   className?: string;
+  variant?: 'all' | 'verified-only';
+  verifiedLoopHoldMs?: number;
 }
 
-const RotatingHeadline: React.FC<RotatingHeadlineProps> = ({ className = '' }) => {
-  const [index, setIndex] = useState(0);
+const RotatingHeadline: React.FC<RotatingHeadlineProps> = ({
+  className = '',
+  variant = 'all',
+  verifiedLoopHoldMs = 20_000,
+}) => {
+  const verifiedOnly = variant === 'verified-only';
+  const [index, setIndex] = useState(verifiedOnly ? 1 : 0);
+  const [cycle, setCycle] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [checked, setChecked] = useState(false);
   const [travelStep, setTravelStep] = useState(0);
@@ -459,14 +471,23 @@ const RotatingHeadline: React.FC<RotatingHeadlineProps> = ({ className = '' }) =
     setDropletAt(-1);
     setJourney(null);
     return clearTimers;
-  }, [index]);
+  }, [cycle, index]);
 
   // Inner timeline starts only after the reveal completes, so the hold is
   // fully readable and the effects never race the entrance animation.
   const startInnerTimeline = () => {
     setRevealed(true);
+    const holdDuration = verifiedOnly
+      ? CHECK_DELAY_MS + CHECK_SETTLE_MS + verifiedLoopHoldMs
+      : PHRASE_HOLDS[index] ?? 10_000;
     timersRef.current.push(
-      setTimeout(() => setIndex((i) => (i + 1) % PHRASES.length), PHRASE_HOLDS[index] ?? 10_000),
+      setTimeout(() => {
+        if (verifiedOnly) {
+          setCycle((current) => current + 1);
+          return;
+        }
+        setIndex((current) => (current + 1) % PHRASES.length);
+      }, holdDuration),
     );
     if (index === 0 && !reduce) {
       // droplet drips out of the filled "100%" and hops to "ONG";
@@ -596,7 +617,7 @@ const RotatingHeadline: React.FC<RotatingHeadlineProps> = ({ className = '' }) =
       )}
       <AnimatePresence mode="wait">
         <motion.span
-          key={index}
+          key={`${index}-${cycle}`}
           variants={container}
           initial="hidden"
           animate="visible"

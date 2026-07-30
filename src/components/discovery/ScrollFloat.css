@@ -1,0 +1,30 @@
+.scroll-float {
+  margin: 0;
+  overflow: clip;
+  overflow-clip-margin: 0.22em;
+  padding-block: 0.16em;
+}
+
+.scroll-float-text {
+  display: inline;
+  white-space: normal;
+}
+
+.scroll-float-char {
+  display: inline-block;
+  padding-block: 0.04em;
+  will-change: opacity, transform;
+}
+
+.scroll-float-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-float-char {
+    opacity: 1 !important;
+    transform: none !important;
+    will-change: auto;
+  }
+}

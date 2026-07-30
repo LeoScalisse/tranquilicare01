@@ -32,7 +32,7 @@ const CompactItem: React.FC<{ item: CosmosNavItem }> = ({ item }) => (
     onClick={item.onClick}
     aria-label={item.label}
     whileTap={{ scale: 0.88 }}
-    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-white/25"
+    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-background/25"
   >
     {item.icon}
   </motion.button>
@@ -58,7 +58,7 @@ const ProminentPill: React.FC<{ item: CosmosNavItem }> = ({ item }) => (
     transition={SPRING}
     onClick={item.onClick}
     aria-label={item.label}
-    className={`flex items-center gap-2 rounded-full border border-white/60 bg-white/85 p-1.5 pr-4 text-brand-blue ${GLASS} ${RIM} active:scale-95`}
+    className={`flex items-center gap-2 rounded-full border border-white/60 bg-background/85 p-1.5 pr-4 text-brand-blue ${GLASS} ${RIM} active:scale-95`}
   >
     <motion.span
       initial={{ scale: 0.7, opacity: 0 }}

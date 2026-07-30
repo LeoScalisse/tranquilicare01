@@ -40,7 +40,7 @@ type Mode = 'login' | 'signup';
 const SPRING = { type: 'spring' as const, stiffness: 400, damping: 34 };
 
 const inputClass =
-  'w-full px-4 py-3.5 bg-secondary border-2 border-transparent focus:border-brand-blue focus:bg-white rounded-2xl outline-none transition-all';
+  'w-full px-4 py-3.5 bg-secondary border-2 border-transparent focus:border-brand-blue focus:bg-background rounded-2xl outline-none transition-all';
 const labelClass = 'flex items-center gap-2 text-sm font-bold text-brand-ink';
 
 interface RoleConfig {
@@ -162,7 +162,7 @@ const VerificationCodeInput: React.FC<VerificationCodeInputProps> = ({ value, on
             onChange={(event) => setDigit(index, event.target.value)}
             onKeyDown={(event) => handleKeyDown(index, event)}
             onPaste={handlePaste}
-            className={`mx-0 h-9 w-8 max-w-[190px] rounded-[10px] border-0 bg-secondary p-2.5 text-center text-xl font-bold text-brand-ink outline-none transition-all duration-500 ease-out focus:w-14 focus:rotate-0 focus:bg-white focus:ring-2 focus:ring-brand-blue/45 focus:shadow-sm disabled:opacity-60 sm:h-11 sm:w-11 sm:focus:w-[86px] ${digit ? 'rotate-0' : 'rotate-90'}`}
+            className={`mx-0 h-9 w-8 max-w-[190px] rounded-[10px] border-0 bg-secondary p-2.5 text-center text-xl font-bold text-brand-ink outline-none transition-all duration-500 ease-out focus:w-14 focus:rotate-0 focus:bg-background focus:ring-2 focus:ring-brand-blue/45 focus:shadow-sm disabled:opacity-60 sm:h-11 sm:w-11 sm:focus:w-[86px] ${digit ? 'rotate-0' : 'rotate-90'}`}
             aria-label={`Digito ${index + 1}`}
           />
         </React.Fragment>
@@ -391,7 +391,7 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
         type="button"
         onClick={handleGoogle}
         disabled={googleLoading}
-        className="w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl border-2 border-border bg-white font-bold text-brand-ink shadow-sm hover:border-brand-blue/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0"
+        className="w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl border-2 border-border bg-background font-bold text-brand-ink shadow-sm hover:border-brand-blue/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0"
       >
         {googleLoading ? <Loader2 size={19} className="animate-spin text-brand-blue" /> : <GoogleG />}
         Continuar com Google
@@ -412,14 +412,14 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
         <button
           type="button"
           onClick={() => setMode('login')}
-          className={`py-2 rounded-xl text-sm font-bold transition-all ${mode === 'login' ? 'bg-white text-brand-blue shadow-sm' : 'text-muted-foreground'}`}
+          className={`py-2 rounded-xl text-sm font-bold transition-all ${mode === 'login' ? 'bg-background text-brand-blue shadow-sm' : 'text-muted-foreground'}`}
         >
           Entrar
         </button>
         <button
           type="button"
           onClick={() => setMode('signup')}
-          className={`py-2 rounded-xl text-sm font-bold transition-all ${mode === 'signup' ? 'bg-white text-brand-blue shadow-sm' : 'text-muted-foreground'}`}
+          className={`py-2 rounded-xl text-sm font-bold transition-all ${mode === 'signup' ? 'bg-background text-brand-blue shadow-sm' : 'text-muted-foreground'}`}
         >
           Criar conta
         </button>
@@ -537,7 +537,7 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
             <img src={logo} alt="TranquiliCare" className="w-16 h-16 rounded-2xl shadow-xl mx-auto mb-6" />
             {isDonor ? (
               <>
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-bold mb-4">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-background/15 px-3 py-1 text-xs font-bold mb-4">
                   <Sparkles size={13} className="text-brand-yellow fill-brand-yellow" />
                   Para organizações
                 </div>
@@ -549,7 +549,7 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
                 </p>
                 <button
                   onClick={() => setSide('ngo')}
-                  className="inline-flex items-center gap-2 rounded-full border-2 border-white/40 px-6 py-3 font-bold text-sm hover:bg-white hover:text-brand-ink transition-colors"
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-white/40 px-6 py-3 font-bold text-sm hover:bg-background hover:text-brand-ink transition-colors"
                 >
                   Sou uma organização
                   <ArrowRight size={17} />
@@ -557,7 +557,7 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
               </>
             ) : (
               <>
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-bold mb-4">
+                <div className="inline-flex items-center gap-1.5 rounded-full bg-background/15 px-3 py-1 text-xs font-bold mb-4">
                   <Heart size={13} className="text-brand-yellow fill-brand-yellow" />
                   Para doadores
                 </div>
@@ -569,7 +569,7 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
                 </p>
                 <button
                   onClick={() => setSide('donor')}
-                  className="inline-flex items-center gap-2 rounded-full border-2 border-white/50 px-6 py-3 font-bold text-sm hover:bg-white hover:text-brand-blue transition-colors"
+                  className="inline-flex items-center gap-2 rounded-full border-2 border-white/50 px-6 py-3 font-bold text-sm hover:bg-background hover:text-brand-blue transition-colors"
                 >
                   <ArrowLeft size={17} />
                   Sou um doador

@@ -4,13 +4,13 @@
 
 @layer base {
   :root {
-    --background: 204 60% 99%;
+    --background: 188.18 100% 95.69%;
     --foreground: 213 45% 14%;
 
-    --card: 0 0% 100%;
+    --card: 188.18 100% 95.69%;
     --card-foreground: 213 45% 14%;
 
-    --popover: 0 0% 100%;
+    --popover: 188.18 100% 95.69%;
     --popover-foreground: 213 45% 14%;
 
     --primary: 199 100% 61%;
@@ -39,7 +39,7 @@
     --brand-blue-deep: 210 55% 18%;
     --brand-yellow: 48 100% 67%;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 188.18 100% 95.69%;
     --sidebar-foreground: 240 5.3% 26.1%;
     --sidebar-primary: 240 5.9% 10%;
     --sidebar-primary-foreground: 0 0% 98%;
@@ -95,7 +95,8 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Albert Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: Inter, 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
   }
 
   ::selection {
@@ -199,9 +200,14 @@
 
   /* Display typography helper */
   .font-display {
-    font-family: 'Fraunces', Georgia, serif;
-    font-optical-sizing: auto;
-    letter-spacing: -0.02em;
+    font-family: 'Albert Sans', Inter, 'Segoe UI', sans-serif;
+    letter-spacing: 0;
+  }
+
+  /* Calm sans-serif voice for storytelling and institutional explanations. */
+  .font-narrative {
+    font-family: 'Albert Sans', Inter, 'Segoe UI', sans-serif;
+    letter-spacing: 0;
   }
 }
 

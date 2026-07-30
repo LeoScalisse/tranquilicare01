@@ -34,8 +34,7 @@ function CircularCommandMenu({
   const [isOpen, setIsOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
 
-  const safeItems = items || []
-  const itemCount = safeItems.length
+  const itemCount = items.length
 
   // Cluster items within the spread angle, centered around startAngle
   const angleStep = itemCount > 1 ? spreadAngle / (itemCount - 1) : 0
@@ -57,21 +56,23 @@ function CircularCommandMenu({
           setActiveIndex((prev) => (prev - 1 + itemCount) % itemCount)
           break
         case "Enter":
+        {
           e.preventDefault()
-          const selectedItem = safeItems[activeIndex]
+          const selectedItem = items[activeIndex]
           if (selectedItem) {
             selectedItem.onClick?.()
             onSelect?.(selectedItem)
           }
           setIsOpen(false)
           break
+        }
         case "Escape":
           e.preventDefault()
           setIsOpen(false)
           break
       }
     },
-    [isOpen, activeIndex, safeItems, itemCount, onSelect],
+    [isOpen, activeIndex, items, itemCount, onSelect],
   )
 
   useEffect(() => {
@@ -94,7 +95,7 @@ function CircularCommandMenu({
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
           "relative z-20 flex h-10 w-10 items-center justify-center rounded-full",
-          "bg-white/10 backdrop-blur-xl border border-white/20 text-white shadow-xl",
+          "bg-background/10 backdrop-blur-xl border border-white/20 text-white shadow-xl",
           "hover:bg-brand-blue hover:scale-110 transition-all",
           "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background",
         )}
@@ -134,7 +135,7 @@ function CircularCommandMenu({
             className="absolute z-30"
             role="menu"
           >
-            {safeItems.map((item, index) => {
+            {items.map((item, index) => {
               const position = getItemPosition(index)
               const isActive = activeIndex === index
 

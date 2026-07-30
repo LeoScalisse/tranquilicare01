@@ -14,7 +14,7 @@ const WalletCard: React.FC<WalletCardProps> = ({ credits, onAddCredits }) => {
   const [selectedAmount, setSelectedAmount] = useState(100);
 
   return (
-    <motion.section layout className='relative overflow-hidden rounded-lg border-2 border-border bg-white shadow-[0_12px_34px_rgba(17,52,77,0.08)]'>
+    <motion.section layout className='relative overflow-hidden rounded-lg border-2 border-border bg-background shadow-[0_12px_34px_rgba(17,52,77,0.08)]'>
       <div className={`flex items-center justify-between gap-3 px-4 py-3.5 ${expanded ? 'border-b-2 border-border' : ''}`}>
         <div className='flex min-w-0 items-center gap-3'>
           <span className='grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-brand-blue/10 text-brand-blue'><WalletCards size={22} /></span>
@@ -32,7 +32,7 @@ const WalletCard: React.FC<WalletCardProps> = ({ credits, onAddCredits }) => {
               <div>
                 <div className='flex items-center justify-between gap-2'><h3 className='font-bold'>Forma de pagamento</h3><span className='inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600'><ShieldCheck size={14} />Stripe</span></div>
                 <div className='mt-3 flex items-center gap-3 rounded-lg bg-secondary/65 p-3'>
-                  <span className='grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white text-brand-blue'><CreditCard size={18} /></span>
+                  <span className='grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-background text-brand-blue'><CreditCard size={18} /></span>
                   <div className='min-w-0 flex-1'><p className='text-sm font-bold'>Checkout seguro</p><p className='text-xs text-muted-foreground'>Nenhum dado de cartão fica salvo no app.</p></div>
                   <Check size={17} className='shrink-0 text-emerald-500' />
                 </div>

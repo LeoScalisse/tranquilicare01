@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { View, NGO } from '../types';
 import { demoNgos } from '@/data/demoNgos';
 import { getUser, onAuthChange, authReady, signOut, defaultDestForAccount, AppUser } from '@/lib/auth';
@@ -13,6 +13,16 @@ import logo from '@/assets/logo.png';
 import { toast } from 'sonner';
 import { waitForDonationConfirmation } from '@/lib/donations';
 import type { DonationRow } from '@/lib/impact';
+import {
+  clearDiscoveryOrigin,
+  DONATION_DISCOVERY_PATH,
+  DONATION_DISCOVERY_TRIGGER_ID,
+  matchesDiscoveryOrigin,
+  readDiscoveryOrigin,
+  saveDiscoveryOrigin,
+  VERIFICATION_DISCOVERY_PATH,
+  VERIFICATION_DISCOVERY_TRIGGER_ID,
+} from '@/lib/discoveryNavigation';
 
 // No backend yet: the marketplace runs on the local demo dataset. This is the
 // seam where a real fetch returns once a new database is wired up.
@@ -20,6 +30,7 @@ const ngos: NGO[] = demoNgos;
 
 const TranquiliCareApp: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [currentView, setCurrentView] = useState<View>(View.HOME);
   const [viewingNGO, setViewingNGO] = useState<NGO | null>(null);
@@ -56,6 +67,52 @@ const TranquiliCareApp: React.FC = () => {
   const handleSelectNGO = (ngo: NGO) => {
     navigate(`/ong/${ngo.id}`);
   };
+
+  const handleVerificationDiscovery = useCallback(() => {
+    saveDiscoveryOrigin(window.location, VERIFICATION_DISCOVERY_TRIGGER_ID);
+    navigate(VERIFICATION_DISCOVERY_PATH, {
+      state: {
+        hasDiscoveryOrigin: true,
+        backgroundLocation: location,
+      },
+    });
+  }, [location, navigate]);
+
+  const handleDonationDiscovery = useCallback(() => {
+    saveDiscoveryOrigin(window.location, DONATION_DISCOVERY_TRIGGER_ID);
+    navigate(DONATION_DISCOVERY_PATH, {
+      state: {
+        hasDiscoveryOrigin: true,
+        backgroundLocation: location,
+      },
+    });
+  }, [location, navigate]);
+
+  useEffect(() => {
+    const origin = readDiscoveryOrigin();
+    if (!origin || !matchesDiscoveryOrigin(origin, window.location)) return;
+
+    let frame = 0;
+    let attempts = 0;
+    const restorePositionAndFocus = () => {
+      window.scrollTo({ top: origin.scrollY, behavior: 'auto' });
+      attempts += 1;
+
+      if (Math.abs(window.scrollY - origin.scrollY) > 2 && attempts < 5) {
+        frame = window.requestAnimationFrame(restorePositionAndFocus);
+        return;
+      }
+
+      document.getElementById(origin.focusId)?.focus({ preventScroll: true });
+      clearDiscoveryOrigin();
+    };
+
+    frame = window.requestAnimationFrame(() => {
+      frame = window.requestAnimationFrame(restorePositionAndFocus);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [location.hash, location.pathname, location.search]);
 
   useEffect(() => {
     if (requestedView === 'marketplace') setCurrentView(View.MARKETPLACE);
@@ -127,6 +184,8 @@ const TranquiliCareApp: React.FC = () => {
         onLogin={() => navigate('/donor/auth')}
         onExplore={() => setCurrentView(View.MARKETPLACE)}
         onStories={() => setCurrentView(View.STORIES)}
+        onVerificationDiscovery={handleVerificationDiscovery}
+        onDonationDiscovery={handleDonationDiscovery}
         celebratingDonation={confirmedDonation}
         celebrationPhase={celebrationPhase}
         onDonationAnimationComplete={handleDonationAnimationComplete}
@@ -151,7 +210,7 @@ const TranquiliCareApp: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 font-sans pb-28 md:pb-0">
+    <div className="min-h-screen bg-background text-gray-900 font-sans pb-28 md:pb-0">
       <Header
         currentView={currentView}
         setCurrentView={setCurrentView}

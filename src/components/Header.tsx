@@ -44,7 +44,7 @@ const Header: React.FC<HeaderProps> = ({
   });
 
   return (
-    <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-border/70">
+    <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/70">
       <div className="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between">
         <div
           className="flex items-center gap-2.5 cursor-pointer group"
@@ -105,11 +105,6 @@ const Header: React.FC<HeaderProps> = ({
           )}
         </nav>
 
-        <button className="md:hidden p-2 text-gray-500 hover:bg-gray-100 rounded-lg transition-colors">
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-          </svg>
-        </button>
       </div>
 
       <CosmosNav items={mobileNavItems} />

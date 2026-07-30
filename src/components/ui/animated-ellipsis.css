@@ -1,0 +1,53 @@
+.animated-ellipsis {
+  display: inline-flex;
+  height: 0.72em;
+  align-items: flex-end;
+  gap: 0.12em;
+  padding-inline: 0.06em;
+  vertical-align: baseline;
+}
+
+.animated-ellipsis__dot {
+  display: block;
+  width: 0.16em;
+  height: 0.16em;
+  transform-origin: center bottom;
+  border-radius: 999px;
+  background: currentColor;
+  animation: tc-ellipsis-jump 1.8s cubic-bezier(0.45, 0, 0.25, 1) infinite;
+}
+
+.animated-ellipsis__dot:nth-child(2) {
+  animation-delay: 160ms;
+}
+
+.animated-ellipsis__dot:nth-child(3) {
+  animation-delay: 320ms;
+}
+
+@keyframes tc-ellipsis-jump {
+  0%,
+  12%,
+  72%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  18% {
+    transform: translateY(0) scale(1.18, 0.84);
+  }
+  22% {
+    transform: translateY(0) scale(0.9, 1.1);
+  }
+  45% {
+    transform: translateY(-0.3em) scale(1);
+  }
+  68% {
+    transform: translateY(0) scale(1.16, 0.86);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animated-ellipsis__dot {
+    animation: none;
+  }
+}

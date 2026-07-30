@@ -1,25 +1,44 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowRight, HandCoins, HandHeart, Heart, Images, ShieldCheck, TrendingUp } from 'lucide-react';
+import { ArrowRight, HandCoins, HandHeart, Heart, Images, TrendingUp } from 'lucide-react';
 import { demoNgos } from '@/data/demoNgos';
+import {
+  DONATION_DISCOVERY_TRIGGER_ID,
+  VERIFICATION_DISCOVERY_TRIGGER_ID,
+} from '@/lib/discoveryNavigation';
 import { formatBRL, useCountUp } from '@/lib/impact';
 import SphereImageGrid, { SphereImage } from './ui/img-sphere';
+import SealRolodex from './discovery/SealRolodex';
 
 interface LoggedOutHeroProps {
   communityTotal: number;
   communityDonationCount: number;
   onExplore: () => void;
   onStories: () => void;
+  onVerificationDiscovery: () => void;
+  onDonationDiscovery: () => void;
 }
+
+const preloadVerificationDiscovery = () => {
+  void import('@/pages/VerificationDiscovery');
+};
+
+const preloadDonationDiscovery = () => {
+  void import('@/pages/DonationIntegrityDiscovery');
+};
 
 const LoggedOutHero: React.FC<LoggedOutHeroProps> = ({
   communityTotal,
   communityDonationCount,
   onExplore,
   onStories,
+  onVerificationDiscovery,
+  onDonationDiscovery,
 }) => {
   const reduceMotion = useReducedMotion();
   const [metricIndex, setMetricIndex] = useState(0);
+  const [openingDiscovery, setOpeningDiscovery] = useState(false);
+  const discoveryTimer = useRef<number>();
   const animatedTotal = useCountUp(communityTotal);
   const animatedCount = useCountUp(communityDonationCount, 700);
   const averageDonation = useCountUp(
@@ -80,11 +99,30 @@ const LoggedOutHero: React.FC<LoggedOutHeroProps> = ({
     return () => window.clearInterval(timer);
   }, []);
 
+  useEffect(() => () => {
+    if (discoveryTimer.current) window.clearTimeout(discoveryTimer.current);
+  }, []);
+
+  const openVerificationDiscovery = () => {
+    if (openingDiscovery) return;
+    preloadVerificationDiscovery();
+    if (reduceMotion) {
+      onVerificationDiscovery();
+      return;
+    }
+
+    setOpeningDiscovery(true);
+    discoveryTimer.current = window.setTimeout(() => {
+      setOpeningDiscovery(false);
+      onVerificationDiscovery();
+    }, 260);
+  };
+
   const activeMetric = metrics[metricIndex];
   const ActiveMetricIcon = activeMetric.Icon;
 
   return (
-    <section className='relative overflow-hidden border-b border-border/70 bg-white'>
+    <section className='relative overflow-hidden border-b border-border/70 bg-background'>
       <div className='mx-auto max-w-6xl px-4 pb-8 pt-10 sm:pt-14 lg:pb-10 lg:pt-16'>
         <div className='grid items-center gap-8 lg:grid-cols-[1.04fr_0.96fr] lg:gap-10'>
           <motion.div
@@ -93,17 +131,19 @@ const LoggedOutHero: React.FC<LoggedOutHeroProps> = ({
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className='relative z-10'
           >
-            <span className='inline-flex items-center gap-2 rounded-full bg-brand-blue/10 px-3 py-1.5 text-xs font-bold text-brand-ink'>
-              <ShieldCheck size={15} className='text-brand-blue' />
-              ONGs verificadas com cuidado
-            </span>
+            <SealRolodex
+              id={VERIFICATION_DISCOVERY_TRIGGER_ID}
+              opening={openingDiscovery}
+              onActivate={openVerificationDiscovery}
+              onPreload={preloadVerificationDiscovery}
+            />
             <h1 className='mt-5 max-w-2xl font-display text-4xl font-semibold leading-[1.05] text-brand-ink sm:text-5xl lg:text-[3.55rem]'>
               Encontre uma causa
               <em className='mt-1 block font-display font-semibold text-brand-blue'>
                 que combina com você
               </em>
             </h1>
-            <p className='mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg'>
+            <p className='font-narrative mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg'>
               Conheça organizações verificadas, descubra histórias reais e escolha como participar.
             </p>
             <div className='mt-7 flex flex-col gap-3 sm:flex-row'>
@@ -118,16 +158,25 @@ const LoggedOutHero: React.FC<LoggedOutHeroProps> = ({
               <button
                 type='button'
                 onClick={onStories}
-                className='inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-border bg-white px-6 py-3 text-sm font-bold text-brand-ink transition-colors hover:border-brand-blue hover:text-brand-blue'
+                className='inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-border bg-background px-6 py-3 text-sm font-bold text-brand-ink transition-colors hover:border-brand-blue hover:text-brand-blue'
               >
                 <Images size={18} />
                 Ver histórias reais
               </button>
             </div>
-            <p className='mt-6 flex items-center gap-2 text-sm font-semibold text-muted-foreground'>
+            <button
+              id={DONATION_DISCOVERY_TRIGGER_ID}
+              type='button'
+              onClick={onDonationDiscovery}
+              onPointerEnter={preloadDonationDiscovery}
+              onFocus={preloadDonationDiscovery}
+              className='group mt-6 flex items-center gap-2 rounded-lg text-left text-sm font-semibold text-muted-foreground transition-colors hover:text-brand-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue focus-visible:ring-offset-4'
+              aria-label='Descobrir como o valor escolhido chega à organização'
+            >
               <HandHeart size={19} className='text-brand-blue' />
               100% da doação escolhida é destinada à organização.
-            </p>
+              <ArrowRight size={15} className='text-brand-blue transition-transform group-hover:translate-x-1' aria-hidden='true' />
+            </button>
           </motion.div>
 
           <motion.div
@@ -160,7 +209,7 @@ const LoggedOutHero: React.FC<LoggedOutHeroProps> = ({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.55, delay: 0.24, ease: [0.22, 1, 0.36, 1] }}
-          className='mt-5 overflow-hidden rounded-lg border border-border bg-white shadow-[0_14px_40px_rgba(23,37,84,0.08)] sm:mt-7'
+          className='mt-5 overflow-hidden rounded-lg border border-border bg-background shadow-[0_14px_40px_rgba(23,37,84,0.08)] sm:mt-7'
         >
           <div className='grid min-h-[138px] items-center gap-4 px-5 py-5 sm:grid-cols-[220px_1fr_auto] sm:px-7'>
             <div>

@@ -26,3 +26,8 @@ dist-ssr
 # Local env (keys)
 .env
 .env.local
+
+# Local browser profiles and dev-server process markers created during checks.
+.stories-chrome-*/
+.chrome-codex-*/
+.tmp-*.pid
