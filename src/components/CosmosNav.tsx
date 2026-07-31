@@ -14,7 +14,7 @@ interface CosmosNavProps {
   items: CosmosNavItem[];
 }
 
-const SPRING = { type: 'spring' as const, stiffness: 380, damping: 34 };
+const SPRING = { duration: 0.34, ease: [0.22, 1, 0.36, 1] as const };
 
 // Frosted-glass look (from the reference): backdrop blur + saturation, a glass
 // rim built from inset white highlights, and a soft drop shadow — all in one

@@ -9,6 +9,7 @@ import {
 } from 'framer-motion';
 import longRoadImage from '@/assets/donation-long-road.webp';
 import DiscoveryScrollContext from './DiscoveryScrollContext';
+import StoryPunctuation from './StoryPunctuation';
 
 interface TrackBounds {
   start: number;
@@ -28,25 +29,25 @@ const DonationLongRoadScene: React.FC = () => {
     offset: ['start start', 'end end'],
   });
   const velocity = useVelocity(scrollYProgress);
-  const skewRaw = useTransform(velocity, [-0.45, 0.45], ['8deg', '-8deg']);
-  const skewX = useSpring(skewRaw, { mass: 2.5, stiffness: 360, damping: 48 });
+  const skewRaw = useTransform(velocity, [-0.45, 0.45], ['3deg', '-3deg']);
+  const skewX = useSpring(skewRaw, { mass: 1.4, stiffness: 180, damping: 30 });
   const xRaw = useTransform(
     scrollYProgress,
-    [0.25, 0.66],
+    [0.34, 0.7],
     [bounds.start, bounds.end],
   );
-  const x = useSpring(xRaw, { mass: 2.7, stiffness: 370, damping: 50 });
+  const x = useSpring(xRaw, { mass: 1.6, stiffness: 190, damping: 32 });
 
-  const introOpacity = useTransform(scrollYProgress, [0.02, 0.1, 0.25, 0.32], [0, 1, 1, 0]);
-  const introBlur = useTransform(scrollYProgress, [0.02, 0.1, 0.25, 0.32], ['blur(14px)', 'blur(0px)', 'blur(0px)', 'blur(14px)']);
-  const introY = useTransform(scrollYProgress, [0.02, 0.12, 0.3], [30, 0, -24]);
+  const introOpacity = useTransform(scrollYProgress, [0.02, 0.1, 0.32, 0.39], [0, 1, 1, 0]);
+  const introBlur = useTransform(scrollYProgress, [0.02, 0.1, 0.32, 0.39], ['blur(8px)', 'blur(0px)', 'blur(0px)', 'blur(8px)']);
+  const introY = useTransform(scrollYProgress, [0.02, 0.12, 0.36], [34, 0, -145]);
 
-  const wordOpacity = useTransform(scrollYProgress, [0.25, 0.32, 0.59, 0.67], [0, 1, 1, 0]);
-  const wordBlur = useTransform(scrollYProgress, [0.25, 0.32, 0.59, 0.67], ['blur(12px)', 'blur(0px)', 'blur(0px)', 'blur(12px)']);
+  const wordOpacity = useTransform(scrollYProgress, [0.32, 0.39, 0.63, 0.71], [0, 1, 1, 0]);
+  const wordBlur = useTransform(scrollYProgress, [0.32, 0.39, 0.63, 0.71], ['blur(7px)', 'blur(0px)', 'blur(0px)', 'blur(7px)']);
 
-  const outroOpacity = useTransform(scrollYProgress, [0.63, 0.72, 1], [0, 1, 1]);
-  const outroBlur = useTransform(scrollYProgress, [0.63, 0.74], ['blur(14px)', 'blur(0px)']);
-  const outroY = useTransform(scrollYProgress, [0.63, 0.76], [28, 0]);
+  const outroOpacity = useTransform(scrollYProgress, [0.68, 0.77, 1], [0, 1, 1]);
+  const outroBlur = useTransform(scrollYProgress, [0.68, 0.79], ['blur(8px)', 'blur(0px)']);
+  const outroY = useTransform(scrollYProgress, [0.68, 0.8], [28, 0]);
 
   useEffect(() => {
     const section = sectionRef.current;
@@ -76,9 +77,15 @@ const DonationLongRoadScene: React.FC = () => {
         <div className='mx-auto max-w-5xl text-center'>
           <p className='text-xs font-bold uppercase text-brand-yellow'>Parte II</p>
           <h2 className='mt-8 font-display text-5xl font-semibold leading-[1.08] sm:text-7xl'>
-            Mas entre a sua intenção e a organização existe um caminho looooooooooongo.
+            <StoryPunctuation className='text-brand-yellow'>
+              Mas entre a sua intenção e a organização existe um caminho loooooooooooooooongo.
+            </StoryPunctuation>
           </h2>
-          <p className='mt-8 font-narrative text-2xl'>E nem sempre esse caminho é visível.</p>
+          <p className='mt-8 font-narrative text-2xl'>
+            <StoryPunctuation className='text-brand-yellow'>
+              E nem sempre esse caminho é visível.
+            </StoryPunctuation>
+          </p>
         </div>
       </section>
     );
@@ -107,18 +114,20 @@ const DonationLongRoadScene: React.FC = () => {
         <motion.p
           aria-hidden='true'
           style={{ opacity: introOpacity, filter: introBlur, y: introY }}
-          className='absolute inset-x-5 top-1/2 mx-auto max-w-5xl -translate-y-1/2 text-center font-display text-5xl font-semibold leading-[1.08] sm:inset-x-8 sm:text-7xl lg:text-8xl'
+          className='absolute inset-x-5 top-[46%] mx-auto max-w-5xl -translate-y-1/2 text-center font-display text-5xl font-semibold leading-[1.08] sm:inset-x-8 sm:text-7xl lg:text-8xl'
         >
-          Mas entre a sua intenção e a organização existe um
+          <StoryPunctuation className='text-brand-yellow'>
+            Mas entre a sua intenção e a organização existe um
+          </StoryPunctuation>
         </motion.p>
 
         <motion.span
           ref={wordRef}
           aria-hidden='true'
           style={{ opacity: wordOpacity, filter: wordBlur, skewX, x }}
-          className='absolute top-1/2 inline-block -translate-y-1/2 whitespace-nowrap font-display text-6xl font-semibold leading-none text-brand-yellow will-change-transform sm:text-8xl lg:text-9xl'
+          className='absolute top-1/2 inline-block -translate-y-1/2 whitespace-nowrap font-display text-7xl font-semibold leading-none text-brand-yellow will-change-transform sm:text-9xl lg:text-[9rem]'
         >
-          looooooooooongo
+          loooooooooooooooongo
         </motion.span>
 
         <motion.div

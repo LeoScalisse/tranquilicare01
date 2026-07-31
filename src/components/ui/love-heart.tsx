@@ -21,7 +21,7 @@ const PARTICLES = 10;
  * Animated like / favourite heart.
  *
  * Mechanics are unchanged (controlled checkbox-style toggle), but the feedback
- * is the delightful part: the heart squashes then overshoots on a spring, an
+ * is the delightful part: the heart gives a restrained pulse, an
  * energy ring expands outward, and a ring of particles bursts and fades.
  * The burst only fires on the false -> true transition, so cards that load
  * already-favourited stay quiet. Honours prefers-reduced-motion.
@@ -48,8 +48,8 @@ const LoveHeart: React.FC<LoveHeartProps> = ({ checked, onChange, label, size = 
       onKeyDown={(e) => e.stopPropagation()}
       aria-pressed={checked}
       aria-label={label}
-      whileTap={{ scale: 0.82 }}
-      transition={{ type: 'spring', stiffness: 600, damping: 20 }}
+      whileTap={{ scale: 0.92 }}
+      transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
       className="relative grid h-10 w-10 place-items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
     >
       {/* Expanding energy ring — behind the heart, fires once per like */}
@@ -77,17 +77,17 @@ const LoveHeart: React.FC<LoveHeartProps> = ({ checked, onChange, label, size = 
         transition={{ duration: 0.3 }}
       />
 
-      {/* The heart itself: squash then overshoot on like */}
+      {/* The heart itself: a short pulse keeps the feedback clear and calm. */}
       <motion.svg
         viewBox="0 0 24 24"
         width={size}
         height={size}
         initial={false}
-        animate={reduced ? { scale: 1 } : { scale: checked ? [1, 0.8, 1.25, 1] : 1 }}
+        animate={reduced ? { scale: 1 } : { scale: checked ? [1, 0.9, 1.1, 1] : 1 }}
         transition={
           checked && !reduced
-            ? { duration: 0.5, times: [0, 0.18, 0.5, 1], ease: 'easeOut' }
-            : { type: 'spring', stiffness: 400, damping: 22 }
+            ? { duration: 0.42, times: [0, 0.22, 0.56, 1], ease: [0.22, 1, 0.36, 1] }
+            : { duration: 0.24, ease: [0.22, 1, 0.36, 1] }
         }
         className="relative drop-shadow-[0_1px_3px_rgba(0,0,0,0.4)]"
       >

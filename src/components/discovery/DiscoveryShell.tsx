@@ -150,7 +150,7 @@ const DiscoveryShell: React.FC<DiscoveryShellProps> = ({
           initial={reducedMotion ? { opacity: 0 } : { y: '100%' }}
           animate={reducedMotion ? { opacity: 1 } : { y: 0 }}
           exit={reducedMotion ? { opacity: 0 } : { y: '100%' }}
-          transition={{ duration: reducedMotion ? 0.01 : 0.72, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: reducedMotion ? 0.01 : 0.62, ease: [0.22, 1, 0.36, 1] }}
           onMouseDown={(event) => event.stopPropagation()}
         >
           {content}

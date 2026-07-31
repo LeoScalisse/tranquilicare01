@@ -43,7 +43,7 @@ const SealImpactPopover: React.FC<SealImpactPopoverProps> = ({ seal, onClose }) 
               initial={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 70, scale: 0.96 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={reducedMotion ? { opacity: 0 } : { opacity: 0, y: 50, scale: 0.97 }}
-              transition={{ type: 'spring', stiffness: 320, damping: 30 }}
+              transition={{ duration: 0.38, ease: [0.22, 1, 0.36, 1] }}
               className='pointer-events-auto relative w-full max-w-[34rem] rounded-xl border border-border bg-background p-5 text-left shadow-[0_24px_80px_rgba(12,45,67,0.24)] sm:p-6'
             >
               <div className='flex items-start gap-4'>

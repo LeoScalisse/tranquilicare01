@@ -30,8 +30,8 @@ export const AnimatedTooltip: React.FC<AnimatedTooltipProps> = ({
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const animationFrameRef = useRef<number>();
   const x = useMotionValue(0);
-  const rotate = useSpring(useTransform(x, [-100, 100], [-7, 7]), { stiffness: 120, damping: 18 });
-  const translateX = useSpring(useTransform(x, [-100, 100], [-18, 18]), { stiffness: 120, damping: 18 });
+  const rotate = useSpring(useTransform(x, [-100, 100], [-4, 4]), { stiffness: 95, damping: 22 });
+  const translateX = useSpring(useTransform(x, [-100, 100], [-14, 14]), { stiffness: 95, damping: 22 });
 
   const handlePointerMove = (event: React.PointerEvent<HTMLButtonElement>) => {
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
@@ -49,10 +49,10 @@ export const AnimatedTooltip: React.FC<AnimatedTooltipProps> = ({
             {hoveredId === item.id && (
               <motion.div
                 role='tooltip'
-                initial={{ opacity: 0, y: 14, scale: 0.88 }}
+                initial={{ opacity: 0, y: 10, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 10, scale: 0.9 }}
-                transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+                exit={{ opacity: 0, y: 7, scale: 0.98 }}
+                transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
                 style={{ translateX, rotate }}
                 className='pointer-events-none absolute bottom-[calc(100%+14px)] left-1/2 z-50 hidden w-64 -translate-x-1/2 rounded-lg border border-border bg-background px-4 py-3 text-left shadow-[0_18px_50px_rgba(16,48,69,0.18)] sm:block'
               >

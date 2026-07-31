@@ -38,6 +38,9 @@
     --brand-blue: 199 100% 61%;
     --brand-blue-deep: 210 55% 18%;
     --brand-yellow: 48 100% 67%;
+    --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --motion-fast: 180ms;
+    --motion-medium: 320ms;
 
     --sidebar-background: 188.18 100% 95.69%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -161,7 +164,7 @@
     width: 50%;
     transform: skewX(-20deg);
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
-    transition: left 0.7s ease;
+    transition: left 0.78s var(--motion-ease-out);
   }
   .btn-shine:hover::after {
     left: 125%;
@@ -175,7 +178,10 @@
       0 4px 0 #147da7,
       0 8px 16px rgba(15, 116, 163, 0.2);
     transform: translateZ(0);
-    transition: filter 0.2s ease, transform 0.12s ease, box-shadow 0.12s ease;
+    transition:
+      filter var(--motion-fast) var(--motion-ease-out),
+      transform var(--motion-fast) var(--motion-ease-out),
+      box-shadow var(--motion-fast) var(--motion-ease-out);
     touch-action: manipulation;
     user-select: none;
     -webkit-user-select: none;
@@ -188,7 +194,7 @@
       0 10px 18px rgba(15, 116, 163, 0.24);
   }
   .tc-button-3d:active:not(:disabled) {
-    transform: translateY(4px);
+    transform: translateY(2px);
     box-shadow:
       0 0 0 #147da7,
       0 3px 7px rgba(15, 116, 163, 0.18);

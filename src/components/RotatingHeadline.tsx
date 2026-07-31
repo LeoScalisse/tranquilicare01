@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence, useReducedMotion, type Variants } from 'framer-motion';
+import { motion, AnimatePresence, useInView, useReducedMotion, type Variants } from 'framer-motion';
 import type { AnimationItem } from 'lottie-web';
 
 /**
@@ -359,16 +359,22 @@ const CheckSlot: React.FC<{ text: string; checked: boolean; reduce: boolean }> =
 
 interface RotatingHeadlineProps {
   className?: string;
-  variant?: 'all' | 'verified-only';
+  variant?: 'all' | 'verified-only' | 'donation-only';
   verifiedLoopHoldMs?: number;
+  donationLoopHoldMs?: number;
+  startOnView?: boolean;
 }
 
 const RotatingHeadline: React.FC<RotatingHeadlineProps> = ({
   className = '',
   variant = 'all',
   verifiedLoopHoldMs = 20_000,
+  donationLoopHoldMs = 20_000,
+  startOnView = false,
 }) => {
   const verifiedOnly = variant === 'verified-only';
+  const donationOnly = variant === 'donation-only';
+  const singlePhrase = verifiedOnly || donationOnly;
   const [index, setIndex] = useState(verifiedOnly ? 1 : 0);
   const [cycle, setCycle] = useState(0);
   const [revealed, setRevealed] = useState(false);
@@ -379,6 +385,8 @@ const RotatingHeadline: React.FC<RotatingHeadlineProps> = ({
   const reduce = useReducedMotion() ?? false;
   const timersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(containerRef, { once: true, amount: 0.3 });
+  const canAnimate = !startOnView || isInView;
   const wordRefs = useRef<Array<HTMLElement | null>>([]);
 
   /** Measure every word once and compose the full hop path as keyframes. */
@@ -479,10 +487,12 @@ const RotatingHeadline: React.FC<RotatingHeadlineProps> = ({
     setRevealed(true);
     const holdDuration = verifiedOnly
       ? CHECK_DELAY_MS + CHECK_SETTLE_MS + verifiedLoopHoldMs
-      : PHRASE_HOLDS[index] ?? 10_000;
+      : donationOnly
+        ? DROPLET_START_MS + JOURNEY_DURATION * 1000 + donationLoopHoldMs
+        : PHRASE_HOLDS[index] ?? 10_000;
     timersRef.current.push(
       setTimeout(() => {
-        if (verifiedOnly) {
+        if (singlePhrase) {
           setCycle((current) => current + 1);
           return;
         }
@@ -620,7 +630,7 @@ const RotatingHeadline: React.FC<RotatingHeadlineProps> = ({
           key={`${index}-${cycle}`}
           variants={container}
           initial="hidden"
-          animate="visible"
+          animate={canAnimate ? 'visible' : 'hidden'}
           exit="exit"
           onAnimationComplete={(def) => {
             if (def === 'visible') startInnerTimeline();

@@ -62,8 +62,8 @@ Deno.serve(async (request) => {
   const amountCents = toPositiveInteger(body.amountCents);
 
   if (!ngoId || ngoId.length > 100) return fail('Invalid NGO');
-  if (amountCents === null || amountCents < 500 || amountCents > 10_000_000) {
-    return fail('Donation must be between R$ 5,00 and R$ 100.000,00');
+  if (amountCents === null || amountCents < 50 || amountCents > 10_000_000) {
+    return fail('Donation must be between R$ 0,50 and R$ 100.000,00');
   }
 
   const { data: paymentAccount, error: accountError } = await adminClient

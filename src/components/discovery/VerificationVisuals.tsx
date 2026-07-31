@@ -111,7 +111,7 @@ export const IdentityVisual: React.FC = () => {
 
 const evidenceItems = [
   { label: 'Projeto apresentado', detail: 'Objetivo e público atendido', Icon: FolderHeart, color: 'bg-brand-blue text-white' },
-  { label: 'Localização informada', detail: 'Contexto de atuação', Icon: MapPin, color: 'bg-brand-yellow text-white' },
+  { label: 'Localização informada', detail: 'Contexto de atuação', Icon: MapPin, color: 'bg-brand-yellow text-brand-ink' },
   { label: 'Registros de atuação', detail: 'Evidências compartilhadas', Icon: ImageIcon, color: 'bg-emerald-500 text-white' },
 ];
 
@@ -160,7 +160,7 @@ export const TransparencyVisual: React.FC = () => {
   const reducedMotion = useReducedMotion();
   const layers = [
     { label: 'Informações claras', detail: 'O que a organização apresenta', Icon: ClipboardCheck, accent: 'bg-brand-blue text-white' },
-    { label: 'Responsáveis visíveis', detail: 'Quem responde pela atuação', Icon: Users, accent: 'bg-brand-yellow text-white' },
+    { label: 'Responsáveis visíveis', detail: 'Quem responde pela atuação', Icon: Users, accent: 'bg-brand-yellow text-brand-ink' },
     { label: 'Evidências organizadas', detail: 'Como o trabalho ganha contexto', Icon: FolderHeart, accent: 'bg-emerald-500 text-white' },
   ];
 
@@ -239,7 +239,7 @@ export const SealVisual: React.FC = () => {
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true, amount: 0.7 }}
                 transition={{ duration: 0.55, delay: 1.75, ease: EASE_OUT }}
-                className='absolute -right-4 -top-4 grid h-12 w-12 place-items-center rounded-full bg-brand-yellow text-white shadow-md'
+                className='absolute -right-4 -top-4 grid h-12 w-12 place-items-center rounded-full bg-brand-yellow text-brand-ink shadow-md'
               >
                 <Sparkles size={20} />
               </motion.span>

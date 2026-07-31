@@ -37,7 +37,7 @@ import logo from '@/assets/logo.png';
 type Side = AccountType;
 type Mode = 'login' | 'signup';
 
-const SPRING = { type: 'spring' as const, stiffness: 400, damping: 34 };
+const SPRING = { duration: 0.34, ease: [0.22, 1, 0.36, 1] as const };
 
 const inputClass =
   'w-full px-4 py-3.5 bg-secondary border-2 border-transparent focus:border-brand-blue focus:bg-background rounded-2xl outline-none transition-all';
@@ -521,7 +521,7 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
       className="absolute inset-y-0 left-0 hidden md:flex w-1/2 z-20 overflow-hidden"
       initial={false}
       animate={{ x: isDonor ? '100%' : '0%' }}
-      transition={{ duration: 0.7, ease: [0.65, 0, 0.35, 1] }}
+      transition={{ duration: 0.58, ease: [0.22, 1, 0.36, 1] }}
     >
       <div className={`relative flex-1 grain flex flex-col items-center justify-center text-center px-10 text-white ${isDonor ? 'bg-brand-ink' : 'bg-brand-blue'}`}>
         <div className="aurora opacity-40" aria-hidden="true" />
@@ -531,7 +531,7 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.4, delay: 0.15 }}
+            transition={{ duration: 0.36, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
             className="relative z-10 max-w-xs"
           >
             <img src={logo} alt="TranquiliCare" className="w-16 h-16 rounded-2xl shadow-xl mx-auto mb-6" />
@@ -663,7 +663,7 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
                 initial="enter"
                 animate="center"
                 exit="exit"
-                transition={{ duration: 0.45, ease: [0.65, 0, 0.35, 1] }}
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
                 className="p-7 sm:p-10"
               >
                 <AuthForm role={side} />

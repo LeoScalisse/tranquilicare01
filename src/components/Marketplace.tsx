@@ -137,7 +137,7 @@ const FlashCampaignCard: React.FC<{ campaign: FlashCampaign; onOpen: (c: FlashCa
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
-        <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-brand-yellow px-2.5 py-1 text-xs font-bold text-white shadow-sm">
+        <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-brand-yellow px-2.5 py-1 text-xs font-bold text-brand-ink shadow-sm">
           <Zap size={13} className="fill-brand-ink" />
           Relâmpago
         </span>

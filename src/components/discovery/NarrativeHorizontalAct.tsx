@@ -3,6 +3,7 @@ import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion
 import DiscoveryScrollContext from './DiscoveryScrollContext';
 import GhostLottie from './GhostLottie';
 import SearchLottie from './SearchLottie';
+import StoryPunctuation from './StoryPunctuation';
 
 interface NarrativePanel {
   id: string;
@@ -21,10 +22,14 @@ const toneClasses: Record<NarrativePanel['tone'], string> = {
   sky: 'bg-[#eaf7ff] text-brand-ink',
   white: 'bg-background text-brand-ink',
   ink: 'bg-brand-ink text-white',
-  yellow: 'bg-brand-yellow text-white',
+  yellow: 'bg-brand-yellow text-brand-ink',
   mist: 'bg-[#f3f5f6] text-brand-ink',
   green: 'bg-[#edf8f1] text-brand-ink',
 };
+
+const punctuationClass = (tone: NarrativePanel['tone']) => (
+  tone === 'ink' ? 'text-brand-yellow' : 'text-brand-blue'
+);
 
 const SearchSweep: React.FC<{ className: string; reducedMotion: boolean }> = ({
   className,
@@ -91,7 +96,11 @@ const NarrativeHorizontalAct: React.FC<NarrativeHorizontalActProps> = ({
             {visualPreset === 'verification' && panel.id === 'lost-opportunities' && (
               <GhostLottie className='pointer-events-none absolute bottom-[14%] left-4 z-20 h-20 w-20 opacity-75 sm:left-auto sm:right-7 sm:h-28 sm:w-28' />
             )}
-            <div className='font-narrative relative z-20 mx-auto w-full max-w-4xl text-3xl font-medium leading-tight sm:text-5xl'>{panel.lines}</div>
+            <div className='font-narrative relative z-20 mx-auto w-full max-w-4xl text-3xl font-medium leading-tight sm:text-5xl'>
+              <StoryPunctuation className={punctuationClass(panel.tone)}>
+                {panel.lines}
+              </StoryPunctuation>
+            </div>
           </div>
         ))}
       </section>
@@ -130,7 +139,9 @@ const NarrativeHorizontalAct: React.FC<NarrativeHorizontalActProps> = ({
               )}
               <div className='relative z-20 mx-auto w-full max-w-5xl'>
                 <div className='font-narrative max-w-4xl text-4xl font-medium leading-[1.08] sm:text-6xl lg:text-7xl'>
-                  {panel.lines}
+                  <StoryPunctuation className={punctuationClass(panel.tone)}>
+                    {panel.lines}
+                  </StoryPunctuation>
                 </div>
               </div>
             </article>

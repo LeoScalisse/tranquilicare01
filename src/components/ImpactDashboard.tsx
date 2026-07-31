@@ -226,7 +226,7 @@ const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
               variants={cardVariants}
               initial="hidden"
               animate="show"
-              className="bg-brand-yellow rounded-3xl p-6 shadow-lg shadow-brand-yellow/40 text-white flex items-center gap-5"
+              className="bg-brand-yellow rounded-3xl p-6 shadow-lg shadow-brand-yellow/40 text-brand-ink flex items-center gap-5"
             >
               <ProgressRing
                 percent={(receivedTotal / receivedMilestone) * 100}

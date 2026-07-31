@@ -8,10 +8,12 @@ import DiscoveryShell from '@/components/discovery/DiscoveryShell';
 import DonationAmountMarquee from '@/components/discovery/DonationAmountMarquee';
 import NarrativeHorizontalAct from '@/components/discovery/NarrativeHorizontalAct';
 import ScrollFloat from '@/components/discovery/ScrollFloat';
-import VelocityTextSection from '@/components/discovery/VelocityTextSection';
+import StoryPunctuation from '@/components/discovery/StoryPunctuation';
+import RotatingHeadline from '@/components/RotatingHeadline';
 import AnimatedEllipsis from '@/components/ui/animated-ellipsis';
 import BlurText from '@/components/ui/blur-text';
 import DonationAmountWheel from '@/components/ui/donation-amount-wheel';
+import Highlighter from '@/components/ui/highlighter';
 import { clearDiscoveryOrigin, readDiscoveryOrigin } from '@/lib/discoveryNavigation';
 
 interface DiscoveryLocationState {
@@ -40,7 +42,7 @@ const journeyPanels = [
   {
     id: 'your-choice',
     tone: 'yellow' as const,
-    lines: <>Você escolheu quanto queria fazer parte<span className='text-white'>{'\u2060'}.</span></>,
+    lines: <>Você escolheu quanto queria fazer parte<FinalMark /></>,
   },
   {
     id: 'perhaps-choice',
@@ -53,16 +55,6 @@ const journeyPanels = [
         </strong>
       </>
     ),
-  },
-  {
-    id: 'because-perhaps',
-    tone: 'sky' as const,
-    lines: <>Porque talvez<AnimatedEllipsis className='text-brand-blue' /></>,
-  },
-  {
-    id: 'whole-intention',
-    tone: 'ink' as const,
-    lines: <strong className='font-display font-semibold text-brand-yellow'>A sua intenção nunca deveria perder força pelo caminho.</strong>,
   },
 ];
 
@@ -109,7 +101,7 @@ const DonationIntegrityDiscovery: React.FC<DonationIntegrityDiscoveryProps> = ({
   const location = useLocation();
   const overlay = presentation === 'overlay';
   const reducedMotion = useReducedMotion();
-  const [storyDonationAmount, setStoryDonationAmount] = React.useState(20);
+  const [storyDonationAmount, setStoryDonationAmount] = React.useState<number | null>(null);
   const scrollContainerRef = useRef<HTMLElement>(null);
   const routeState = location.state as DiscoveryLocationState | null;
   const hasInternalOrigin = useMemo(
@@ -162,19 +154,27 @@ const DonationIntegrityDiscovery: React.FC<DonationIntegrityDiscoveryProps> = ({
       { id: 'meaning', text: 'Ela faz sentido para você.' },
       { id: 'decision', text: 'Você decide ajudar.' },
       { id: 'amount-picker', picker: true },
-      { id: 'any-value', text: 'Não importa o valor.' },
-      { id: 'natural', text: 'Naquele momento, uma coisa parece natural.' },
+      { id: 'any-value', text: 'Não importa o valor, importa sua intenção em fazer parte.' },
+      { id: 'truth', text: 'Mas fala a verdade.' },
+      { id: 'natural', text: 'Uma coisa parece natural.' },
       {
         id: 'chosen',
-        text: `Já que você escolheu ${storyCurrency.format(storyDonationAmount)}.`,
+        text: storyDonationAmount === null
+          ? ''
+          : `Já que você escolheu fazer parte com ${storyCurrency.format(storyDonationAmount)}.`,
       },
       {
         id: 'arrival',
-        text: `É porque quer que ${storyCurrency.format(storyDonationAmount)} cheguem àquela causa.`,
+        text: storyDonationAmount === null
+          ? ''
+          : `É porque quer que ${storyCurrency.format(storyDonationAmount)} cheguem àquela causa.`,
       },
     ],
     [storyDonationAmount],
   );
+  const visibleSetupItems = storyDonationAmount === null
+    ? setupItems.slice(0, 4)
+    : setupItems;
 
   return (
     <DiscoveryShell
@@ -208,7 +208,7 @@ const DonationIntegrityDiscovery: React.FC<DonationIntegrityDiscoveryProps> = ({
           rootMargin='0px 0px -10% 0px'
           rootRef={scrollContainerRef}
           punctuationClassName='text-brand-yellow'
-          className='justify-center py-2 text-center font-display text-5xl font-semibold leading-[1.08] sm:text-7xl sm:leading-[1.04] lg:text-8xl'
+          className='max-w-full justify-center py-3 text-center font-display text-[clamp(2.7rem,13vw,5rem)] font-semibold leading-[1.12] sm:text-7xl sm:leading-[1.04] lg:text-8xl'
         />
       </section>
 
@@ -217,34 +217,41 @@ const DonationIntegrityDiscovery: React.FC<DonationIntegrityDiscoveryProps> = ({
           <p className='text-xs font-bold uppercase text-brand-blue'>Parte I</p>
           <h2 id='donation-choice-title' className='sr-only'>A escolha</h2>
           <div className='mt-14 space-y-[32svh] pb-[26svh] sm:mt-20 sm:space-y-[38svh]'>
-            {setupItems.map((item, index) => (
+            {visibleSetupItems.map((item, index) => (
               item.picker ? (
                 <div id='story-donation-choice' key={item.id} className='mx-auto flex min-h-[72svh] max-w-5xl flex-col items-center justify-center'>
-                  <h3 className='mb-10 text-center font-display text-5xl font-semibold leading-[1.08] text-brand-ink sm:text-7xl lg:text-8xl'>
-                    Escolha um valor<span className='text-brand-blue'>.</span>
+                  <h3 className='mb-10 text-center font-display text-[clamp(2.6rem,12vw,5rem)] font-semibold leading-[1.12] text-brand-ink sm:text-7xl sm:leading-[1.06] lg:text-8xl'>
+                    E você escolhe ajudar com<span className='text-brand-blue'>:</span>
                   </h3>
                   <DonationAmountWheel
                     id='story-donation-amount'
                     value={storyDonationAmount}
                     onValueChange={setStoryDonationAmount}
-                    min={5}
+                    min={0.5}
                     max={100_000}
                     step={5}
                     label='Valor escolhido para a história'
                   />
+                  {storyDonationAmount === null && (
+                    <p className='mt-6 max-w-md text-center text-sm font-semibold leading-6 text-muted-foreground'>
+                      <StoryPunctuation className='text-brand-blue'>
+                        Escolha ou digite um valor para continuar a história.
+                      </StoryPunctuation>
+                    </p>
+                  )}
                 </div>
               ) : (
                 <ScrollFloat
                   key={item.id}
                   scrollContainerRef={scrollContainerRef}
                   animationDuration={1}
-                  ease='back.inOut(1.45)'
+                  ease='power3.out'
                   scrollStart='center bottom+=35%'
                   scrollEnd='bottom center'
-                  stagger={0.022}
+                  stagger={0.016}
                   punctuationClassName='text-brand-blue'
-                  containerClassName={`max-w-5xl font-display text-5xl font-semibold leading-[1.08] text-brand-ink sm:text-7xl sm:leading-[1.05] lg:text-8xl ${index % 2 ? 'ml-auto text-right' : ''}`}
-                  textClassName='leading-[1.08] sm:leading-[1.05]'
+                  containerClassName={`max-w-5xl font-display text-[clamp(2.35rem,11.5vw,3.25rem)] font-semibold leading-[1.14] text-brand-ink sm:text-7xl sm:leading-[1.08] lg:text-8xl ${index % 2 ? 'sm:ml-auto sm:text-right' : ''}`}
+                  textClassName='leading-[1.14] sm:leading-[1.08]'
                 >
                   {item.text}
                 </ScrollFloat>
@@ -254,12 +261,21 @@ const DonationIntegrityDiscovery: React.FC<DonationIntegrityDiscoveryProps> = ({
         </div>
       </section>
 
+      {storyDonationAmount !== null && (
+        <>
       <section className='flex min-h-svh items-center bg-brand-yellow px-5 py-28 sm:px-8 sm:py-40 lg:px-12'>
-        <h2 className='mx-auto max-w-6xl text-center font-display text-5xl font-semibold leading-[1.08] text-white sm:text-7xl lg:text-8xl'>
-          <span>Fazer o bem deveria ser </span>
-          <span>tão simples assim</span>
-          <span className='text-white'>{'\u2060'}.</span>
-        </h2>
+        <BlurText
+          text='Fazer o bem deveria ser simples assim.'
+          animateBy='words'
+          direction='bottom'
+          delay={65}
+          stepDuration={0.5}
+          threshold={0.35}
+          rootMargin='0px 0px -10% 0px'
+          rootRef={scrollContainerRef}
+          punctuationClassName='text-brand-blue'
+          className='mx-auto max-w-6xl justify-center py-3 text-center font-display text-5xl font-semibold leading-[1.08] text-brand-ink sm:text-7xl lg:text-8xl'
+        />
       </section>
 
       <DonationLongRoadScene />
@@ -271,12 +287,30 @@ const DonationIntegrityDiscovery: React.FC<DonationIntegrityDiscoveryProps> = ({
         visualPreset='none'
       />
 
-      <VelocityTextSection
+      <section
         id='donation-intention-repeat'
-        eyebrow='Nós repetimos'
-        text='A sua intenção nunca deveria perder força pelo caminho.'
-        tone='brand-blue'
-      />
+        className='flex min-h-svh items-center bg-brand-blue px-5 py-28 text-white sm:px-8 sm:py-40 lg:px-12'
+      >
+        <div className='mx-auto w-full max-w-6xl text-center'>
+          <p className='font-display text-4xl font-semibold leading-tight text-brand-yellow sm:text-6xl'>
+            E nós repetimos
+          </p>
+          <p className='mx-auto mt-10 max-w-5xl font-display text-5xl font-semibold leading-[1.1] sm:mt-14 sm:text-7xl sm:leading-[1.05] lg:text-8xl'>
+            A sua intenção{' '}
+            <Highlighter
+              action='highlight'
+              color='#ffdd58'
+              animationDuration={900}
+              padding={4}
+              isView
+              className='text-brand-ink'
+            >
+              nunca
+            </Highlighter>{' '}
+            deveria perder força pelo caminho<span className='text-brand-yellow'>{'\u2060'}.</span>
+          </p>
+        </div>
+      </section>
 
       <section aria-labelledby='intention-title' className='bg-background px-5 py-28 sm:px-8 sm:py-40 lg:px-12'>
         <div className='mx-auto max-w-5xl'>
@@ -306,7 +340,9 @@ const DonationIntegrityDiscovery: React.FC<DonationIntegrityDiscoveryProps> = ({
                 viewport={{ once: true, amount: 0.35, root: scrollContainerRef }}
                 transition={{ duration: reducedMotion ? 0 : 0.72, ease: [0.22, 1, 0.36, 1] }}
               >
-                {block.content}
+                <StoryPunctuation className='text-brand-blue'>
+                  {block.content}
+                </StoryPunctuation>
               </motion.p>
             ))}
           </div>
@@ -321,19 +357,26 @@ const DonationIntegrityDiscovery: React.FC<DonationIntegrityDiscoveryProps> = ({
 
       <section className='flex min-h-[95svh] items-center bg-background px-5 py-24 sm:px-8 sm:py-32 lg:px-12'>
         <div className='mx-auto w-full max-w-5xl text-center'>
-          <p className='text-xs font-bold uppercase text-brand-blue'>A intenção chega inteira</p>
-          <p className='mt-8 font-display text-8xl font-semibold leading-none text-brand-blue sm:text-9xl lg:text-[14rem]'>100%</p>
-          <h2 className='mx-auto mt-6 max-w-3xl font-display text-4xl font-semibold leading-tight text-brand-ink sm:text-6xl'>
-            do valor escolhido é destinado à organização<FinalMark />
-          </h2>
+          <h2 className='sr-only'>100% da sua doação chega na ONG</h2>
+          <div className='mx-auto min-h-56 max-w-5xl py-2 font-display text-5xl font-semibold leading-[1.08] text-brand-ink sm:min-h-64 sm:text-7xl sm:leading-[1.04] lg:text-8xl'>
+            <RotatingHeadline
+              variant='donation-only'
+              donationLoopHoldMs={20_000}
+              startOnView
+            />
+          </div>
           <p className='font-narrative mx-auto mt-7 max-w-2xl text-lg leading-8 text-muted-foreground sm:text-2xl'>
-            A taxa TranquiliCare é apresentada e adicionada separadamente ao total do apoio.
+            <StoryPunctuation className='text-brand-blue'>
+              A taxa TranquiliCare é apresentada e adicionada separadamente ao total do apoio.
+            </StoryPunctuation>
           </p>
           <div className='mt-12 flex justify-center'>
             <DiscoveryCTA onExplore={exploreCauses} label='Conhecer causas para apoiar' />
           </div>
         </div>
       </section>
+        </>
+      )}
     </DiscoveryShell>
   );
 };

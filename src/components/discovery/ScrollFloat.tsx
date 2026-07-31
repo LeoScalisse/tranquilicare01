@@ -63,7 +63,7 @@ const ScrollFloat: React.FC<ScrollFloatProps> = ({
                 part.split('').map((character, characterIndex) => (
                   <span
                     className={`scroll-float-char ${
-                      /[.!?…]/.test(character) ? punctuationClassName : ''
+                      /[.,!?;:…]/.test(character) ? punctuationClassName : ''
                     }`}
                     key={`${partIndex}-${character}-${characterIndex}`}
                   >
@@ -90,9 +90,9 @@ const ScrollFloat: React.FC<ScrollFloatProps> = ({
         characters,
         {
           autoAlpha: 0,
-          yPercent: 95,
-          scaleY: 1.45,
-          scaleX: 0.88,
+          yPercent: 42,
+          scaleY: 1.12,
+          scaleX: 0.96,
           transformOrigin: '50% 0%',
         },
         {
@@ -108,7 +108,7 @@ const ScrollFloat: React.FC<ScrollFloatProps> = ({
             scroller: scrollContainerRef?.current ?? undefined,
             start: scrollStart,
             end: scrollEnd,
-            scrub: 0.65,
+            scrub: 0.9,
             invalidateOnRefresh: true,
           },
         },

@@ -49,7 +49,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
   const [showContactModal, setShowContactModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showDonationModal, setShowDonationModal] = useState(false);
-  const [donationAmount, setDonationAmount] = useState(100);
+  const [donationAmount, setDonationAmount] = useState<number | null>(null);
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [zoomedPost, setZoomedPost] = useState<NGOPost | null>(null);
   const [copiedPhone, setCopiedPhone] = useState(false);
@@ -58,11 +58,12 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
   const sealTriggerId = `ngo-verification-seal-${ngo.id}`;
 
   const amountCents = useMemo(
-    () => Number.isFinite(donationAmount) && donationAmount > 0
+    () => donationAmount !== null && Number.isFinite(donationAmount) && donationAmount > 0
       ? Math.round(donationAmount * 100)
       : 0,
     [donationAmount],
   );
+  const isDonationAmountValid = amountCents >= 50 && amountCents <= 10_000_000;
   const platformFeeCents = Math.round(amountCents * 0.05);
   const totalCents = amountCents + platformFeeCents;
 
@@ -72,8 +73,8 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
       navigate('/donor/auth');
       return;
     }
-    if (amountCents < 500 || amountCents > 10_000_000) {
-      toast('Escolha um valor entre R$ 5,00 e R$ 100.000,00.');
+    if (amountCents < 50 || amountCents > 10_000_000) {
+      toast('Escolha um valor entre R$ 0,50 e R$ 100.000,00.');
       return;
     }
 
@@ -156,18 +157,18 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
             id='donation-amount'
             value={donationAmount}
             onValueChange={setDonationAmount}
-            min={5}
+            min={0.5}
             max={100_000}
             step={5}
             label='Valor destinado à ONG'
           />
           <div className='mt-5 rounded-lg bg-secondary/60 p-4 text-sm'>
-            <div className='flex justify-between gap-4'><span className='text-muted-foreground'>Doação</span><strong>{formatBRL(amountCents)}</strong></div>
-            <div className='mt-2 flex justify-between gap-4'><span className='text-muted-foreground'>Taxa TranquiliCare (5%)</span><strong>{formatBRL(platformFeeCents)}</strong></div>
-            <div className='mt-3 flex justify-between border-t border-border pt-3 font-bold'><span>Total</span><span>{formatBRL(totalCents)}</span></div>
+            <div className='flex justify-between gap-4'><span className='text-muted-foreground'>Doação</span><strong>{donationAmount === null ? 'A definir' : formatBRL(amountCents)}</strong></div>
+            <div className='mt-2 flex justify-between gap-4'><span className='text-muted-foreground'>Taxa TranquiliCare (5%)</span><strong>{donationAmount === null ? '—' : formatBRL(platformFeeCents)}</strong></div>
+            <div className='mt-3 flex justify-between border-t border-border pt-3 font-bold'><span>Total</span><span>{donationAmount === null ? '—' : formatBRL(totalCents)}</span></div>
           </div>
           <p className='mt-4 text-xs leading-relaxed text-muted-foreground'>A doação é destinada integralmente à ONG. A taxa de 5% é adicionada ao valor final e o pagamento é processado pela Stripe.</p>
-          <button disabled={isStartingCheckout} onClick={startDonation} className='tc-button-3d mt-5 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold text-white disabled:opacity-60'>{isStartingCheckout ? <Loader2 size={18} className='animate-spin' /> : <CreditCard size={18} />}{isStartingCheckout ? 'Abrindo pagamento...' : 'Continuar para pagamento'}</button>
+          <button disabled={isStartingCheckout || !isDonationAmountValid} onClick={startDonation} className='tc-button-3d mt-5 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold text-white disabled:opacity-60'>{isStartingCheckout ? <Loader2 size={18} className='animate-spin' /> : <CreditCard size={18} />}{isStartingCheckout ? 'Abrindo pagamento...' : donationAmount === null ? 'Escolha um valor para continuar' : 'Continuar para pagamento'}</button>
         </ModalShell>
       )}
 
@@ -225,7 +226,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
                 {latestPost ? <button onClick={() => setZoomedPost(latestPost)} className='group grid w-full overflow-hidden rounded-lg border-2 border-border bg-background text-left sm:grid-cols-[240px_1fr]'><div className='relative aspect-[4/3] overflow-hidden sm:aspect-auto'><PostMedia post={latestPost} /><span className='absolute left-3 top-3 rounded-full bg-brand-ink/75 px-2.5 py-1 text-[11px] font-bold text-white backdrop-blur'>História recente</span></div><div className='flex flex-col justify-center p-5 md:p-7'><Sparkles className='text-brand-yellow' size={22} /><h3 className='mt-3 font-display text-2xl font-semibold'>Veja como o apoio virou ação</h3><p className='font-narrative mt-2 text-sm leading-6 text-muted-foreground'>{latestPost.caption || 'Uma nova história de impacto foi compartilhada pela organização.'}</p><span className='mt-5 inline-flex items-center gap-1.5 text-sm font-bold text-brand-blue'>Abrir história <ChevronRight size={17} /></span></div></button> : <EmptyStories ownerMode={ownerMode} />}
               </section>
               <aside className='space-y-5'>
-                <section><h2 className='mb-3 font-display text-xl font-semibold'>Objetivo atual</h2><button onClick={() => setShowGoalModal(true)} className='w-full rounded-lg bg-brand-yellow p-5 text-left text-white'><Target size={23} /><p className='mt-3 line-clamp-3 font-bold leading-6'>{ngo.goal}</p><span className='mt-4 inline-flex items-center gap-1 text-xs font-bold'>Ver meta completa <ChevronRight size={15} /></span></button></section>
+                <section><h2 className='mb-3 font-display text-xl font-semibold'>Objetivo atual</h2><button onClick={() => setShowGoalModal(true)} className='w-full rounded-lg bg-brand-yellow p-5 text-left text-brand-ink'><Target size={23} /><p className='mt-3 line-clamp-3 font-bold leading-6'>{ngo.goal}</p><span className='mt-4 inline-flex items-center gap-1 text-xs font-bold'>Ver meta completa <ChevronRight size={15} /></span></button></section>
                 <section className='rounded-lg border-2 border-border p-5'><h2 className='font-display text-xl font-semibold'>Conecte-se</h2><p className='font-narrative mt-2 text-sm leading-6 text-muted-foreground'>Acompanhe as atualizações e fale diretamente com a equipe.</p><button onClick={() => setShowContactModal(true)} className='mt-4 inline-flex items-center gap-2 text-sm font-bold text-brand-blue'>Ver canais de contato <ChevronRight size={16} /></button></section>
               </aside>
             </div>

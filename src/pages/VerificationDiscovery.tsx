@@ -7,6 +7,7 @@ import NarrativeHorizontalAct from '@/components/discovery/NarrativeHorizontalAc
 import ScrollFloat from '@/components/discovery/ScrollFloat';
 import SealImpactPopover from '@/components/discovery/SealImpactPopover';
 import SealImpactShowcase from '@/components/discovery/SealImpactShowcase';
+import StoryPunctuation from '@/components/discovery/StoryPunctuation';
 import VerificationSealMarquee from '@/components/discovery/VerificationSealMarquee';
 import RotatingHeadline from '@/components/RotatingHeadline';
 import AnimatedEllipsis from '@/components/ui/animated-ellipsis';
@@ -55,7 +56,7 @@ const conflictPanels = [
   {
     id: 'cause',
     tone: 'yellow' as const,
-    lines: <>Não porque deixaram de acreditar na causa<span className='text-white'>{'\u2060'}.</span></>,
+    lines: <>Não porque deixaram de acreditar na causa<FinalMark /></>,
   },
   {
     id: 'acting-with-doubt',
@@ -222,7 +223,7 @@ const VerificationDiscovery: React.FC<VerificationDiscoveryProps> = ({ presentat
           rootMargin='0px 0px -10% 0px'
           rootRef={scrollContainerRef}
           punctuationClassName='text-brand-yellow'
-          className='justify-center py-2 font-display text-6xl font-semibold leading-[1.08] sm:text-8xl sm:leading-[1.04] lg:text-9xl'
+          className='max-w-full flex-nowrap justify-center whitespace-nowrap py-3 text-center font-display text-[clamp(2.2rem,12vw,5rem)] font-semibold leading-[1.12] sm:text-8xl sm:leading-[1.04] lg:text-9xl'
         />
       </section>
 
@@ -236,13 +237,13 @@ const VerificationDiscovery: React.FC<VerificationDiscoveryProps> = ({ presentat
                 key={line}
                 scrollContainerRef={scrollContainerRef}
                 animationDuration={1}
-                ease='back.inOut(1.45)'
+                ease='power3.out'
                 scrollStart='center bottom+=35%'
                 scrollEnd='bottom center'
-                stagger={0.022}
+                stagger={0.016}
                 punctuationClassName='text-brand-blue'
-                containerClassName={`max-w-5xl font-display text-5xl font-semibold leading-[1.08] text-brand-ink sm:text-7xl sm:leading-[1.05] lg:text-8xl ${index % 2 ? 'ml-auto text-right' : ''}`}
-                textClassName='leading-[1.08] sm:leading-[1.05]'
+                containerClassName={`max-w-5xl font-display text-[clamp(2.35rem,11.5vw,3.25rem)] font-semibold leading-[1.14] text-brand-ink sm:text-7xl sm:leading-[1.08] lg:text-8xl ${index % 2 ? 'sm:ml-auto sm:text-right' : ''}`}
+                textClassName='leading-[1.14] sm:leading-[1.08]'
               >
                 {line}
               </ScrollFloat>
@@ -252,17 +253,17 @@ const VerificationDiscovery: React.FC<VerificationDiscoveryProps> = ({ presentat
       </section>
 
       <section className='flex min-h-svh items-center bg-brand-yellow px-5 py-28 sm:px-8 sm:py-40 lg:px-12'>
-        <h2 className='mx-auto max-w-6xl text-center font-display text-5xl font-semibold leading-[1.08] text-white sm:text-7xl lg:text-8xl'>
+        <h2 className='mx-auto max-w-6xl text-center font-display text-5xl font-semibold leading-[1.08] text-brand-ink sm:text-7xl lg:text-8xl'>
           <span>E fazer o bem </span>
           <SquigglyText
             steps={5}
-            stepDuration={105}
-            scale={[4, 6]}
+            stepDuration={155}
+            scale={[2, 3]}
             baseFrequency={0.016}
             numOctaves={2}
           >
             não deveria começar assim
-            <span className='text-white'>{'\u2060'}.</span>
+            <span className='text-brand-blue'>{'\u2060'}.</span>
           </SquigglyText>
         </h2>
       </section>
@@ -300,7 +301,9 @@ const VerificationDiscovery: React.FC<VerificationDiscoveryProps> = ({ presentat
                 viewport={{ once: true, amount: 0.35, root: scrollContainerRef }}
                 transition={{ duration: reducedMotion ? 0 : 0.72, ease: [0.22, 1, 0.36, 1] }}
               >
-                {block.content}
+                <StoryPunctuation className='text-brand-blue'>
+                  {block.content}
+                </StoryPunctuation>
               </motion.p>
             ))}
           </div>

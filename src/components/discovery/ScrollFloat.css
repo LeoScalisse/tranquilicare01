@@ -1,8 +1,8 @@
 .scroll-float {
   margin: 0;
   overflow: clip;
-  overflow-clip-margin: 0.22em;
-  padding-block: 0.16em;
+  overflow-clip-margin: 0.38em;
+  padding-block: 0.24em;
 }
 
 .scroll-float-text {
@@ -12,7 +12,7 @@
 
 .scroll-float-char {
   display: inline-block;
-  padding-block: 0.04em;
+  padding-block: 0.08em;
   will-change: opacity, transform;
 }
 

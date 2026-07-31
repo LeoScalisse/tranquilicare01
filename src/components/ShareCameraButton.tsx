@@ -12,7 +12,6 @@ interface ShareCameraButtonProps {
   className?: string;
 }
 
-const ELASTIC = [0.68, -0.6, 0.32, 1.6] as const;
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 const wait = (milliseconds: number) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 
@@ -97,7 +96,7 @@ const ShareCameraButton: React.FC<ShareCameraButtonProps> = ({
               initial={{ x: '-50%', y: -5, opacity: 0, rotate: 0 }}
               animate={{ x: '-50%', y: 31, opacity: 1, rotate: 5 }}
               exit={{ x: '-50%', y: 22, opacity: 0, rotate: 2, scale: 0.9 }}
-              transition={{ duration: reducedMotion ? 0.01 : 0.72, ease: ELASTIC }}
+              transition={{ duration: reducedMotion ? 0.01 : 0.58, ease: EASE_OUT }}
             >
               <span className='relative block h-[27px] w-full overflow-hidden rounded-sm bg-brand-blue'>
                 <span className='absolute bottom-0 left-0 h-3 w-full bg-brand-yellow [clip-path:polygon(0_100%,45%_20%,65%_65%,100%_15%,100%_100%)]' />
@@ -112,7 +111,7 @@ const ShareCameraButton: React.FC<ShareCameraButtonProps> = ({
         <motion.span
           className='absolute inset-x-1 bottom-1 top-2 z-10 rounded-[13px] bg-brand-blue shadow-[0_5px_0_#1685c4,0_10px_18px_rgba(15,42,65,0.22),inset_0_2px_3px_rgba(255,255,255,0.38)] [transform-style:preserve-3d]'
           animate={animating ? { y: -3, rotateX: 7 } : { y: 0, rotateX: 0 }}
-          transition={{ duration: reducedMotion ? 0.01 : 0.46, ease: ELASTIC }}
+          transition={{ duration: reducedMotion ? 0.01 : 0.38, ease: EASE_OUT }}
         >
           <span className='absolute left-0 right-0 top-[9px] h-[7px] bg-brand-yellow shadow-[inset_0_1px_2px_rgba(15,42,65,0.12)]' />
 
