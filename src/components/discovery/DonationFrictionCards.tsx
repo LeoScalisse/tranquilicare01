@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, useMotionValue, useTransform } from 'framer-motion';
 
-const cardLabels = ['Interesseiros', 'Descontos', 'Custos'];
+const cardLabels = ['Interesseiros', 'Taxas', 'Custos'];
 
 interface FrictionCardProps {
   index: number;
@@ -78,7 +78,7 @@ const DonationFrictionCards: React.FC = () => {
     const timer = window.setTimeout(() => {
       setActiveIndex((current) => (current + 1) % cardLabels.length);
       setTimerVersion((version) => version + 1);
-    }, 5_000);
+    }, 3_000);
     return () => window.clearTimeout(timer);
   }, [timerVersion]);
 

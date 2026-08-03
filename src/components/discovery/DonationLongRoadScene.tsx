@@ -75,8 +75,7 @@ const DonationLongRoadScene: React.FC = () => {
         <img src={longRoadImage} alt='' className='absolute inset-0 -z-20 h-full w-full object-cover' />
         <div className='absolute inset-0 -z-10 bg-brand-ink/55' />
         <div className='mx-auto max-w-5xl text-center'>
-          <p className='text-xs font-bold uppercase text-brand-yellow'>Parte II</p>
-          <h2 className='mt-8 font-display text-5xl font-semibold leading-[1.08] sm:text-7xl'>
+          <h2 className='font-display text-5xl font-semibold leading-[1.08] sm:text-7xl'>
             <StoryPunctuation className='text-brand-yellow'>
               Mas entre a sua intenção e a organização existe um caminho loooooooooooooooongo.
             </StoryPunctuation>
@@ -95,7 +94,7 @@ const DonationLongRoadScene: React.FC = () => {
     <section
       id='donation-long-road'
       ref={sectionRef}
-      aria-label='Parte II. O longo caminho entre a intenção e a organização.'
+      aria-label='O longo caminho entre a intenção e a organização.'
       className='relative isolate h-[330svh] bg-brand-ink'
     >
       <div className='sticky top-0 h-svh overflow-hidden text-white'>
@@ -106,9 +105,6 @@ const DonationLongRoadScene: React.FC = () => {
         />
         <div className='absolute inset-0 -z-20 bg-brand-ink/[0.42]' />
         <div className='absolute inset-0 -z-10 bg-gradient-to-b from-brand-ink/35 via-transparent to-brand-ink/55' />
-        <p className='absolute left-5 top-10 text-xs font-bold uppercase text-brand-yellow sm:left-8 sm:top-14 lg:left-12'>
-          Parte II
-        </p>
         <h2 className='sr-only'>O longo caminho</h2>
 
         <motion.p

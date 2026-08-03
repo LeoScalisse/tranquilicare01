@@ -61,7 +61,7 @@ const journeyPanels = [
 const resolutionBlocks = [
   {
     id: 'same-value',
-    content: <>Quando você escolhe um valor para uma causa no TranquiliCare, acreditamos que esse mesmo valor deve chegar integralmente à organização<FinalMark /></>,
+    content: <>Quando você escolhe um valor para uma causa no TranquiliCare, acreditamos que esse mesmo valor deve chegar à organização<FinalMark /></>,
   },
   {
     id: 'number',
@@ -214,7 +214,6 @@ const DonationIntegrityDiscovery: React.FC<DonationIntegrityDiscoveryProps> = ({
 
       <section aria-labelledby='donation-choice-title' className='bg-background px-5 py-24 sm:px-8 sm:py-32 lg:px-12'>
         <div className='mx-auto max-w-6xl'>
-          <p className='text-xs font-bold uppercase text-brand-blue'>Parte I</p>
           <h2 id='donation-choice-title' className='sr-only'>A escolha</h2>
           <div className='mt-14 space-y-[32svh] pb-[26svh] sm:mt-20 sm:space-y-[38svh]'>
             {visibleSetupItems.map((item, index) => (
@@ -227,7 +226,7 @@ const DonationIntegrityDiscovery: React.FC<DonationIntegrityDiscoveryProps> = ({
                     id='story-donation-amount'
                     value={storyDonationAmount}
                     onValueChange={setStoryDonationAmount}
-                    min={0.5}
+                    min={0.51}
                     max={100_000}
                     step={5}
                     label='Valor escolhido para a história'
@@ -314,7 +313,6 @@ const DonationIntegrityDiscovery: React.FC<DonationIntegrityDiscoveryProps> = ({
 
       <section aria-labelledby='intention-title' className='bg-background px-5 py-28 sm:px-8 sm:py-40 lg:px-12'>
         <div className='mx-auto max-w-5xl'>
-          <p className='text-xs font-bold uppercase text-brand-blue'>Parte III</p>
           <motion.h2
             id='intention-title'
             className='mt-5 max-w-4xl font-display text-5xl font-semibold leading-[1.04] text-brand-ink sm:text-7xl lg:text-8xl'
@@ -365,11 +363,6 @@ const DonationIntegrityDiscovery: React.FC<DonationIntegrityDiscoveryProps> = ({
               startOnView
             />
           </div>
-          <p className='font-narrative mx-auto mt-7 max-w-2xl text-lg leading-8 text-muted-foreground sm:text-2xl'>
-            <StoryPunctuation className='text-brand-blue'>
-              A taxa TranquiliCare é apresentada e adicionada separadamente ao total do apoio.
-            </StoryPunctuation>
-          </p>
           <div className='mt-12 flex justify-center'>
             <DiscoveryCTA onExplore={exploreCauses} label='Conhecer causas para apoiar' />
           </div>

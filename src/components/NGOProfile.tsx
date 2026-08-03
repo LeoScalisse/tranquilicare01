@@ -63,7 +63,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
       : 0,
     [donationAmount],
   );
-  const isDonationAmountValid = amountCents >= 50 && amountCents <= 10_000_000;
+  const isDonationAmountValid = amountCents >= 51 && amountCents <= 10_000_000;
   const platformFeeCents = Math.round(amountCents * 0.05);
   const totalCents = amountCents + platformFeeCents;
 
@@ -73,8 +73,8 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
       navigate('/donor/auth');
       return;
     }
-    if (amountCents < 50 || amountCents > 10_000_000) {
-      toast('Escolha um valor entre R$ 0,50 e R$ 100.000,00.');
+    if (amountCents < 51 || amountCents > 10_000_000) {
+      toast('Escolha um valor entre R$ 0,51 e R$ 100.000,00.');
       return;
     }
 
@@ -157,7 +157,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
             id='donation-amount'
             value={donationAmount}
             onValueChange={setDonationAmount}
-            min={0.5}
+            min={0.51}
             max={100_000}
             step={5}
             label='Valor destinado à ONG'

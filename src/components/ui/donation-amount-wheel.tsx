@@ -7,6 +7,8 @@ import React, {
   useState,
 } from 'react';
 import { useReducedMotion } from 'framer-motion';
+import { Pencil } from 'lucide-react';
+import AnimateCount from '@/components/ui/animate-count';
 import { cn } from '@/lib/utils';
 
 interface DonationAmountWheelProps {
@@ -30,10 +32,11 @@ interface DragState {
   moved: boolean;
 }
 
-const ROW_HEIGHT = 52;
+const ROW_HEIGHT = 54;
 const VISIBLE_RADIUS = 4;
 const DRAG_THRESHOLD = 3;
-const SNAP_SMOOTHING_MS = 115;
+const SNAP_SMOOTHING_MS = 175;
+const MANUAL_COMMIT_DELAY_MS = 1000;
 
 const currencyNumber = new Intl.NumberFormat('pt-BR', {
   minimumFractionDigits: 0,
@@ -53,7 +56,7 @@ const clamp = (value: number, min: number, max: number) =>
   Math.min(max, Math.max(min, value));
 
 const buildSuggestedValues = (min: number, max: number, step: number) => {
-  const introductoryValues = [0.5, 1, 2, 3, 4, 5];
+  const introductoryValues = [1, 2, 3, 4, 5];
   const values = introductoryValues.filter((amount) => amount >= min && amount <= max);
   const safeStep = Math.max(step, 0.5);
   let amount = Math.max(10, Math.ceil(Math.max(min, 10) / safeStep) * safeStep);
@@ -70,7 +73,7 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
   id = 'donation-amount',
   value,
   onValueChange,
-  min = 0.5,
+  min = 0.51,
   max = 100_000,
   step = 5,
   className,
@@ -95,9 +98,12 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
   const initialIndex = indexFromValue(value);
   const [draft, setDraft] = useState(() => value === null ? '' : formatDonationNumber(value));
   const [editing, setEditing] = useState(false);
+  const [awaitingManualEntry, setAwaitingManualEntry] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [anchorIndex, setAnchorIndex] = useState(initialIndex);
   const rootRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const cancelEditRef = useRef(false);
   const itemRefs = useRef<Array<HTMLDivElement | null>>([]);
   const dragRef = useRef<DragState | null>(null);
   const positionRef = useRef(initialIndex);
@@ -106,6 +112,7 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
   const frameRef = useRef<number | null>(null);
   const frameTimeRef = useRef(0);
   const wheelTimerRef = useRef<number | null>(null);
+  const manualCommitTimerRef = useRef<number | null>(null);
   const reducedMotion = useReducedMotion();
 
   const layoutItems = useCallback((position: number) => {
@@ -114,16 +121,16 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
       const itemIndex = Number(element.dataset.index);
       const distance = itemIndex - position;
       const absoluteDistance = Math.abs(distance);
-      const angle = clamp(distance * 11.5, -58, 58);
+      const angle = clamp(distance * 10.5, -56, 56);
       const angleRadians = angle * Math.PI / 180;
-      const radius = ROW_HEIGHT / (11.5 * Math.PI / 180);
+      const radius = ROW_HEIGHT / (10.5 * Math.PI / 180);
       const y = radius * Math.sin(angleRadians);
       const z = radius * (Math.cos(angleRadians) - 1);
-      const scale = Math.max(0.78, 1 - absoluteDistance * 0.055);
+      const scale = Math.max(0.8, 1 - absoluteDistance * 0.05);
       const opacity = absoluteDistance < 0.46
         ? 0
-        : Math.max(0.08, 0.88 - absoluteDistance * 0.2);
-      const blur = Math.max(0, absoluteDistance - 0.6) * 0.42;
+        : Math.max(0.12, 0.94 - absoluteDistance * 0.16);
+      const blur = Math.max(0, absoluteDistance - 0.7) * 0.28;
 
       element.style.transform = `translate3d(0, calc(-50% + ${y.toFixed(2)}px), ${z.toFixed(2)}px) rotateX(${(-angle).toFixed(2)}deg) scale(${scale.toFixed(3)})`;
       element.style.opacity = opacity.toFixed(3);
@@ -201,7 +208,14 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
   useEffect(() => () => {
     if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
     if (wheelTimerRef.current !== null) window.clearTimeout(wheelTimerRef.current);
+    if (manualCommitTimerRef.current !== null) window.clearTimeout(manualCommitTimerRef.current);
   }, []);
+
+  const clearManualCommitTimer = () => {
+    if (manualCommitTimerRef.current === null) return;
+    window.clearTimeout(manualCommitTimerRef.current);
+    manualCommitTimerRef.current = null;
+  };
 
   const parseDraft = (raw: string) => {
     const sanitized = raw.replace(/[^\d.,]/g, '');
@@ -219,12 +233,23 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
   };
 
   const commitDraft = () => {
+    clearManualCommitTimer();
+
+    if (cancelEditRef.current) {
+      cancelEditRef.current = false;
+      setDraft(value === null ? '' : formatDonationNumber(value));
+      setEditing(false);
+      setAwaitingManualEntry(false);
+      return;
+    }
+
     if (!draft.trim()) {
       selectedRef.current = -1;
       setAnchorIndex(-1);
       setImmediatePosition(-1);
       onValueChange(null);
       setEditing(false);
+      setAwaitingManualEntry(false);
       return;
     }
 
@@ -232,6 +257,7 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
     if (parsed === null) {
       setDraft(value === null ? '' : formatDonationNumber(value));
       setEditing(false);
+      setAwaitingManualEntry(false);
       return;
     }
 
@@ -243,6 +269,25 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
     onValueChange(nextValue);
     setDraft(formatDonationNumber(nextValue));
     setEditing(false);
+    setAwaitingManualEntry(false);
+  };
+
+  const beginManualEdit = () => {
+    cancelEditRef.current = false;
+    setEditing(true);
+    setAwaitingManualEntry(true);
+    window.requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    });
+  };
+
+  const toggleManualEdit = () => {
+    if (editing) {
+      inputRef.current?.blur();
+      return;
+    }
+    beginManualEdit();
   };
 
   const finishDrag = (pointerId?: number) => {
@@ -251,7 +296,7 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
 
     dragRef.current = null;
     setIsDragging(false);
-    const projectedDistance = drag.moved ? drag.velocityY * 135 / ROW_HEIGHT : 0;
+    const projectedDistance = drag.moved ? drag.velocityY * 180 / ROW_HEIGHT : 0;
     const destination = clamp(
       Math.round(positionRef.current - projectedDistance),
       -1,
@@ -285,6 +330,7 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
       )}
       onPointerDown={(event) => {
         if (event.button !== 0 || dragRef.current) return;
+        if (editing) inputRef.current?.blur();
         dragRef.current = {
           pointerId: event.pointerId,
           startY: event.clientY,
@@ -308,7 +354,7 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
         const now = performance.now();
         const elapsed = Math.max(now - drag.lastAt, 1);
         const instantVelocity = (event.clientY - drag.lastY) / elapsed;
-        drag.velocityY = drag.velocityY * 0.72 + instantVelocity * 0.28;
+        drag.velocityY = drag.velocityY * 0.84 + instantVelocity * 0.16;
         drag.lastY = event.clientY;
         drag.lastAt = now;
 
@@ -328,14 +374,15 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
       onWheel={(event) => {
         if (Math.abs(event.deltaY) < 2) return;
         event.preventDefault();
-        const normalizedDelta = clamp(event.deltaY / ROW_HEIGHT, -0.85, 0.85);
+        if (editing) inputRef.current?.blur();
+        const normalizedDelta = clamp(event.deltaY / ROW_HEIGHT, -0.72, 0.72);
         targetRef.current = clamp(targetRef.current + normalizedDelta, -1, maxIndex);
         startLoop();
         if (wheelTimerRef.current !== null) window.clearTimeout(wheelTimerRef.current);
         wheelTimerRef.current = window.setTimeout(() => {
           targetRef.current = clamp(Math.round(targetRef.current), -1, maxIndex);
           startLoop();
-        }, 130);
+        }, 180);
       }}
       aria-label={`${label}: ${selectedLabel}. Arraste para cima ou para baixo para alterar.`}
     >
@@ -361,8 +408,16 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
       </div>
 
       <div
-        className='pointer-events-none absolute inset-x-4 top-1/2 z-20 h-[76px] -translate-y-1/2 overflow-hidden rounded-lg border border-white/65 bg-white/20 shadow-[0_14px_34px_rgba(4,64,104,0.22),inset_0_1px_1px_rgba(255,255,255,0.88),inset_0_-1px_1px_rgba(4,91,145,0.2)] backdrop-blur-[18px] backdrop-saturate-[1.7]'
-        style={{ WebkitBackdropFilter: 'blur(18px) saturate(1.7)' }}
+        className={cn(
+          'pointer-events-none absolute inset-x-4 top-1/2 z-20 h-[76px] -translate-y-1/2 overflow-hidden rounded-lg border bg-white/20 backdrop-blur-[18px] backdrop-saturate-[1.7] transition-[transform,background-color,border-color,box-shadow] duration-300',
+          isDragging
+            ? 'scale-[1.018] border-white/85 bg-white/25 shadow-[0_18px_42px_rgba(3,54,91,0.3),inset_0_1px_1px_rgba(255,255,255,0.96),inset_0_-1px_1px_rgba(4,91,145,0.18)]'
+            : 'border-white/65 shadow-[0_14px_34px_rgba(4,64,104,0.22),inset_0_1px_1px_rgba(255,255,255,0.88),inset_0_-1px_1px_rgba(4,91,145,0.2)]',
+        )}
+        style={{
+          WebkitBackdropFilter: 'blur(18px) saturate(1.7)',
+          transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)',
+        }}
         aria-hidden='true'
       >
         <span className='absolute inset-x-5 top-0 h-px bg-white/90' />
@@ -370,33 +425,83 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
       </div>
 
       <div className='pointer-events-none absolute inset-x-4 top-1/2 z-40 flex h-[76px] -translate-y-1/2 items-center justify-center px-4 text-white'>
-        <span className='mr-2 text-lg font-bold' aria-hidden='true'>R$</span>
-        <input
-          id={id}
-          value={draft}
-          inputMode='decimal'
-          autoComplete='off'
-          placeholder='--'
-          onFocus={() => setEditing(true)}
-          onBlur={commitDraft}
-          onChange={(event) => {
-            const nextDraft = event.target.value;
-            setDraft(nextDraft);
-            if (!nextDraft.trim()) {
-              onValueChange(null);
-              return;
-            }
-            const parsed = parseDraft(nextDraft);
-            if (parsed !== null && parsed >= min && parsed <= max) onValueChange(parsed);
+        <div className='flex min-w-0 items-center justify-center pr-11 sm:pr-12'>
+          <span className='mr-2 text-lg font-bold' aria-hidden='true'>R$</span>
+          {editing ? (
+            <input
+              ref={inputRef}
+              id={id}
+              value={draft}
+              inputMode='decimal'
+              autoComplete='off'
+              placeholder='--'
+              onPointerDown={(event) => event.stopPropagation()}
+              onBlur={commitDraft}
+              onChange={(event) => {
+                clearManualCommitTimer();
+                const nextDraft = event.target.value;
+                setDraft(nextDraft);
+                if (/\d/.test(nextDraft)) setAwaitingManualEntry(false);
+                if (!nextDraft.trim()) {
+                  onValueChange(null);
+                  return;
+                }
+                const parsed = parseDraft(nextDraft);
+                if (parsed !== null && parsed >= min && parsed <= max) {
+                  onValueChange(parsed);
+                  manualCommitTimerRef.current = window.setTimeout(() => {
+                    inputRef.current?.blur();
+                  }, MANUAL_COMMIT_DELAY_MS);
+                }
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') event.currentTarget.blur();
+                if (event.key === 'Escape') {
+                  cancelEditRef.current = true;
+                  event.currentTarget.blur();
+                }
+              }}
+              aria-label={`${label} em reais`}
+              aria-valuemin={min}
+              aria-valuemax={max}
+              className='pointer-events-auto min-w-0 max-w-[9rem] cursor-text bg-transparent text-center text-3xl font-bold text-white caret-brand-yellow outline-none placeholder:text-white/55 selection:bg-brand-yellow/35 sm:max-w-[11rem] sm:text-4xl'
+            />
+          ) : (
+            <AnimateCount
+              value={value}
+              formatter={formatDonationNumber}
+              className='min-w-[4.5rem] max-w-[9rem] text-center text-3xl font-bold text-white sm:max-w-[11rem] sm:text-4xl'
+            />
+          )}
+        </div>
+
+        <button
+          type='button'
+          onPointerDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
           }}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') event.currentTarget.blur();
-          }}
-          aria-label={`${label} em reais`}
-          aria-valuemin={min}
-          aria-valuemax={max}
-          className='pointer-events-auto min-w-0 max-w-[12rem] cursor-grab bg-transparent text-center text-3xl font-bold text-white outline-none placeholder:text-white/55 active:cursor-grabbing sm:text-4xl'
-        />
+          onClick={toggleManualEdit}
+          aria-label={editing ? 'Concluir edição manual' : 'Editar valor manualmente'}
+          aria-pressed={editing}
+          className='pointer-events-auto absolute right-2.5 grid h-11 w-11 place-items-center rounded-full bg-transparent text-white outline-none transition-[transform,color] duration-300 hover:scale-105 focus-visible:ring-2 focus-visible:ring-brand-yellow focus-visible:ring-offset-2 focus-visible:ring-offset-brand-blue active:scale-95 sm:right-3.5'
+        >
+          <span className='relative block h-8 w-10' aria-hidden='true'>
+            <span
+              className={cn(
+                'tc-pencil-line',
+                awaitingManualEntry && 'tc-pencil-line--visible',
+              )}
+            />
+            <Pencil
+              className={cn(
+                'tc-pencil-icon absolute z-10 h-[21px] w-[21px] text-white',
+                awaitingManualEntry && 'tc-pencil-icon--writing',
+              )}
+              strokeWidth={2.25}
+            />
+          </span>
+        </button>
       </div>
     </div>
   );

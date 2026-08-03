@@ -60,7 +60,7 @@ const SearchSweep: React.FC<{ className: string; reducedMotion: boolean }> = ({
 
 const NarrativeHorizontalAct: React.FC<NarrativeHorizontalActProps> = ({
   panels,
-  partLabel = 'Parte II',
+  partLabel = '',
   accessibleTitle = 'Quando confiar vira uma investigação',
   visualPreset = 'verification',
 }) => {
@@ -80,7 +80,7 @@ const NarrativeHorizontalAct: React.FC<NarrativeHorizontalActProps> = ({
     return (
       <section aria-labelledby='conflict-title' className='bg-background'>
         <div className='px-5 pb-12 pt-24 sm:px-8 lg:px-12'>
-          <p className='text-xs font-bold uppercase text-brand-blue'>{partLabel}</p>
+          {partLabel && <p className='text-xs font-bold uppercase text-brand-blue'>{partLabel}</p>}
           <h2 id='conflict-title' className='mt-3 font-display text-4xl font-semibold text-brand-ink sm:text-6xl'>
             {accessibleTitle}<span className='text-brand-blue'>.</span>
           </h2>
