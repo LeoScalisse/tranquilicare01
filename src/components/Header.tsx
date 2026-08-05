@@ -29,7 +29,7 @@ const Header: React.FC<HeaderProps> = ({
   const navItemClass = (view: View) => `
     flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm transition-all duration-300
     ${currentView === view
-      ? 'bg-brand-ink text-white shadow-lg shadow-brand-blue/20'
+      ? 'bg-brand-yellow text-brand-ink shadow-lg shadow-brand-yellow/25'
       : 'text-muted-foreground hover:bg-brand-blue/10 hover:text-brand-ink'}
   `;
 

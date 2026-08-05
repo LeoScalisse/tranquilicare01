@@ -275,7 +275,10 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
         </div>
 
         {/* Search — rotating placeholder while empty */}
-        <div className="relative max-w-2xl bg-background border border-border rounded-full shadow-sm transition-all focus-within:ring-4 focus-within:ring-brand-blue/15 focus-within:border-brand-blue">
+        <div
+          className="marketplace-search-shell relative mx-auto h-14 w-[86%] max-w-xl rounded-full border border-transparent bg-[linear-gradient(143deg,rgba(217,240,244,0.76)_15%,rgba(243,253,255,0.9)_88%)] shadow-[0_12px_24px_-1px_rgba(11,57,84,0.16)] transition-[width,max-width,box-shadow,border-color] duration-500 focus-within:w-full focus-within:max-w-2xl focus-within:border-brand-blue/35 focus-within:shadow-[0_16px_34px_-4px_rgba(11,96,148,0.22)] focus-within:ring-4 focus-within:ring-brand-blue/10 md:w-[72%]"
+          style={{ transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
+        >
           <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
             <Search className="h-5 w-5 text-brand-blue" />
           </div>
@@ -298,7 +301,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
           <input
             type="text"
             aria-label="Buscar causas ou organizações"
-            className="relative z-[1] block w-full pr-5 py-4 bg-transparent text-sm outline-none"
+            className="relative z-[1] block h-full w-full bg-transparent py-4 pr-5 text-sm text-brand-ink outline-none"
             style={{ paddingLeft: '3.25rem' }}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}

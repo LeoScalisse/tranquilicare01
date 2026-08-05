@@ -12,6 +12,7 @@ import VerificationSealMarquee from '@/components/discovery/VerificationSealMarq
 import RotatingHeadline from '@/components/RotatingHeadline';
 import AnimatedEllipsis from '@/components/ui/animated-ellipsis';
 import BlurText from '@/components/ui/blur-text';
+import FoldText from '@/components/ui/fold-text';
 import { SquigglyText } from '@/components/ui/squiggly-text';
 import { verificationSeals } from '@/data/verificationSeals';
 import { clearDiscoveryOrigin, readDiscoveryOrigin } from '@/lib/discoveryNavigation';
@@ -317,7 +318,17 @@ const VerificationDiscovery: React.FC<VerificationDiscoveryProps> = ({ presentat
             E mais tempo fazendo a diferença<FinalMark dark />
           </p>
           <p className='mx-auto mt-32 max-w-3xl text-center font-narrative text-3xl font-medium leading-snug text-brand-yellow sm:text-5xl'>
-            Podemos fazer o mundo um lugar melhor.
+            <FoldText
+              text='Podemos fazer o mundo um lugar melhor.'
+              splitBy='char'
+              hinge='top'
+              duration={0.68}
+              stagger={0.032}
+              perspective={800}
+              creaseShading={0.42}
+              color='hsl(var(--brand-yellow))'
+              scrollContainerRef={scrollContainerRef}
+            />
           </p>
         </div>
       </section>

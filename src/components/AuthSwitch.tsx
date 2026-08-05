@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -18,7 +19,11 @@ import { BrandedText } from '../utils';
 import {
   ArrowLeft,
   ArrowRight,
+  BadgeCheck,
   Building2,
+  CheckCircle2,
+  CircleDollarSign,
+  Compass,
   Eye,
   EyeOff,
   Heart,
@@ -26,16 +31,18 @@ import {
   Lock,
   Mail,
   MailCheck,
-  Sparkles,
   User,
+  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import CosmosNav from './CosmosNav';
 import { buildMobileNavItems } from './mobileNavItems';
 import logo from '@/assets/logo.png';
+import HowItWorks, { type JourneyStep } from '@/components/ui/how-it-works';
 
 type Side = AccountType;
 type Mode = 'login' | 'signup';
+type JourneyStage = 0 | 1 | 2;
 
 const SPRING = { duration: 0.34, ease: [0.22, 1, 0.36, 1] as const };
 
@@ -50,6 +57,7 @@ interface RoleConfig {
   iconWrap: string;
   kickerText: string;
   submitBg: string;
+  submitText: string;
   titles: Record<Mode, string>;
   subs: Record<Mode, string>;
   namePlaceholder: string;
@@ -64,10 +72,11 @@ const ROLE: Record<Side, RoleConfig> = {
     iconWrap: 'bg-brand-blue/10',
     kickerText: 'text-brand-blue',
     submitBg: 'bg-brand-blue shadow-brand-blue/25',
+    submitText: 'text-white',
     titles: { login: 'Bem-vindo de volta', signup: 'Comece a fazer o bem' },
     subs: {
-      login: 'Entre para acompanhar seus apoios.',
-      signup: 'Crie sua conta e apoie causas em minutos.',
+      login: 'Continue acompanhando as causas que você escolheu apoiar.',
+      signup: 'Sua próxima boa ação pode começar daqui.',
     },
     namePlaceholder: 'Seu nome',
     emailPlaceholder: 'seu@email.com',
@@ -78,15 +87,53 @@ const ROLE: Record<Side, RoleConfig> = {
     Icon: Building2,
     iconWrap: 'bg-brand-yellow/25',
     kickerText: 'text-brand-ink/70',
-    submitBg: 'bg-brand-ink shadow-brand-ink/20',
-    titles: { login: 'Área da sua ONG', signup: 'Cadastre sua organização' },
+    submitBg: 'tc-button-3d-yellow',
+    submitText: 'text-brand-ink',
+    titles: { login: 'Bem-vinda de volta.', signup: 'Cadastre sua organização' },
     subs: {
-      login: 'Entre para acompanhar sua organização.',
-      signup: 'Crie a conta da sua ONG e comece a receber apoio.',
+      login: 'Sua comunidade continua esperando por você.',
+      signup: 'Inspire as pessoas através da sua causa.',
     },
     namePlaceholder: 'Nome da organização',
     emailPlaceholder: 'contato@suaong.org',
   },
+};
+
+const JOURNEY_STEPS: Record<Side, JourneyStep[]> = {
+  donor: [
+    {
+      title: 'Acesso e cadastro',
+      description: 'Entre na sua conta ou crie uma nova em poucos passos.',
+      tone: 'blue',
+    },
+    {
+      title: 'Verifique seu e-mail',
+      description: 'Confirme o código para manter sua conta protegida.',
+      tone: 'azure',
+    },
+    {
+      title: 'O começo do bem',
+      description: 'Chegue às causas preparado para escolher como participar.',
+      tone: 'yellow',
+    },
+  ],
+  ngo: [
+    {
+      title: 'Acesso e cadastro',
+      description: 'Entre ou apresente sua organização ao TranquiliCare.',
+      tone: 'yellow',
+    },
+    {
+      title: 'Verificação e dados',
+      description: 'Confirme o e-mail e prepare dados e recebimentos.',
+      tone: 'azure',
+    },
+    {
+      title: 'Uma jornada que inspira',
+      description: 'Comece a aproximar pessoas do propósito da sua organização.',
+      tone: 'blue',
+    },
+  ],
 };
 
 /** Google's official 4-colour "G", inlined so no asset or network call is needed. */
@@ -144,7 +191,7 @@ const VerificationCodeInput: React.FC<VerificationCodeInputProps> = ({ value, on
   };
 
   return (
-    <div className="flex items-center justify-center gap-1 sm:gap-2" aria-label="Codigo de verificacao de 8 digitos">
+    <div className="flex items-center justify-center gap-1 sm:gap-2" aria-label="Código de verificação de 8 dígitos">
       {digits.map((digit, index) => (
         <React.Fragment key={index}>
           {index === 4 && <span className="mx-0 h-px w-3 rounded-full bg-border sm:mx-1 sm:w-5" aria-hidden="true" />}
@@ -174,7 +221,14 @@ const VerificationCodeInput: React.FC<VerificationCodeInputProps> = ({ value, on
 /*  Unified auth form — login + signup, identical for both roles              */
 /* -------------------------------------------------------------------------- */
 
-const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
+interface AuthFormProps {
+  role: Side;
+  activeStep: JourneyStage;
+  onStepChange: (step: JourneyStage) => void;
+  onStepComplete: (step: JourneyStage) => void;
+}
+
+const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onStepComplete }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const cfg = ROLE[role];
@@ -192,6 +246,8 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
   const [confirmationCode, setConfirmationCode] = useState('');
   const [verifyingCode, setVerifyingCode] = useState(false);
   const [resendingCode, setResendingCode] = useState(false);
+  const [journeyReady, setJourneyReady] = useState(false);
+  const [pendingDestination, setPendingDestination] = useState(defaultDestForAccount(role));
 
   const validateSignup = () => {
     if (mode !== 'signup') return true;
@@ -211,16 +267,16 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
     const raw = err instanceof Error ? err.message.toLowerCase() : '';
     if (raw.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
     if (raw.includes('email not confirmed')) return 'Confirme seu e-mail antes de entrar.';
-    if (raw.includes('invalid-code')) return 'Digite o codigo de 8 digitos enviado por email.';
+    if (raw.includes('invalid-code')) return 'Digite o código de 8 dígitos enviado por e-mail.';
     if (raw.includes('token has expired') || raw.includes('otp') || raw.includes('invalid token'))
-      return 'Codigo invalido ou expirado. Confira o email ou solicite um novo codigo.';
+      return 'Código inválido ou expirado. Confira o e-mail ou solicite um novo código.';
     if (raw.includes('already registered')) return 'Esse e-mail já tem conta. Tente entrar.';
     if (raw.includes('email address not authorized'))
-      return 'O email de teste do Supabase nao esta autorizado. Configure um SMTP proprio ou autorize este endereco.';
+      return 'O e-mail de teste do Supabase não está autorizado. Configure um SMTP próprio ou autorize este endereço.';
     if (raw.includes('rate limit') || raw.includes('too many requests'))
-      return 'Limite de envio atingido. Aguarde alguns minutos e tente reenviar o codigo.';
+      return 'Limite de envio atingido. Aguarde alguns minutos e tente reenviar o código.';
     if (raw.includes('smtp') || raw.includes('error sending confirmation email') || raw.includes('email provider'))
-      return 'O Supabase nao conseguiu enviar o email. Confira o SMTP e os logs de Auth.';
+      return 'O Supabase não conseguiu enviar o e-mail. Confira o SMTP e os logs de autenticação.';
     if (raw.includes('supabase-disabled') || raw.includes('google-unavailable'))
       return 'Login com Google ainda não está ativo — falta configurar o Supabase.';
     return 'Erro ao processar. Tente novamente.';
@@ -254,18 +310,35 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
       if (mode === 'login') {
         const user = await signIn(email, password, role);
         toast.success('Login realizado com sucesso!');
-        goAfterAuth(defaultDestForAccount(user.accountType));
+        setPendingDestination(defaultDestForAccount(user.accountType));
+        setJourneyReady(true);
+        onStepComplete(0);
+        if (role === 'ngo') {
+          onStepChange(1);
+        } else {
+          onStepComplete(1);
+          onStepChange(2);
+        }
       } else {
         const { user, needsEmailConfirmation } = await signUp(email, name, password, role);
+        onStepComplete(0);
         if (needsEmailConfirmation) {
           setConfirmationCode('');
           setAwaitingConfirmation(true);
-          toast.success('Enviamos um codigo de verificacao para seu email.');
+          onStepChange(1);
+          toast.success('Enviamos um código de verificação para seu e-mail.');
           return;
         }
         toast.success(role === 'ngo' ? 'Organização cadastrada com sucesso!' : 'Conta criada com sucesso!');
         const dest = defaultDestForAccount(user?.accountType ?? role);
-        goAfterAuth(needsProfileSetup(user) ? `${dest}?setup=1` : dest);
+        setPendingDestination(needsProfileSetup(user) ? `${dest}?setup=1` : dest);
+        setJourneyReady(true);
+        if (role === 'ngo') {
+          onStepChange(1);
+        } else {
+          onStepComplete(1);
+          onStepChange(2);
+        }
       }
     } catch (err) {
       console.error('Auth error:', err);
@@ -278,16 +351,24 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
   const handleVerifyCode = async (event: React.FormEvent) => {
     event.preventDefault();
     if (confirmationCode.length !== CODE_LENGTH) {
-      toast.error('Digite o codigo de 8 digitos enviado por email.');
+      toast.error('Digite o código de 8 dígitos enviado por e-mail.');
       return;
     }
 
     setVerifyingCode(true);
     try {
       const user = await verifyEmailCode(email, confirmationCode, role);
-      toast.success('Email confirmado com sucesso!');
+      toast.success('E-mail confirmado com sucesso!');
       const dest = defaultDestForAccount(user.accountType);
-      goAfterAuth(needsProfileSetup(user) ? `${dest}?setup=1` : dest);
+      setPendingDestination(needsProfileSetup(user) ? `${dest}?setup=1` : dest);
+      setJourneyReady(true);
+      setAwaitingConfirmation(false);
+      if (role === 'ngo') {
+        onStepChange(1);
+      } else {
+        onStepComplete(1);
+        onStepChange(2);
+      }
     } catch (err) {
       console.error('Email verification error:', err);
       toast.error(messageFor(err));
@@ -301,7 +382,7 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
     try {
       await resendSignupCode(email);
       setConfirmationCode('');
-      toast.success('Enviamos um novo codigo para seu email.');
+      toast.success('Enviamos um novo código para seu e-mail.');
     } catch (err) {
       console.error('Resend verification code error:', err);
       toast.error(messageFor(err));
@@ -312,7 +393,7 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
 
   const { Icon } = cfg;
 
-  if (awaitingConfirmation) {
+  if (activeStep === 1 && awaitingConfirmation) {
     return (
       <div className="w-full">
         <div className="mb-5 flex items-center gap-3">
@@ -320,20 +401,20 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
             <MailCheck className="text-brand-blue" size={24} />
           </div>
           <div>
-            <h2 className="font-display text-2xl font-semibold text-brand-ink">Verifique seu email</h2>
-            <p className="text-sm text-muted-foreground">Enviamos um codigo para sua caixa de entrada.</p>
+            <h2 className="font-display text-2xl font-semibold text-brand-ink">Verifique seu e-mail</h2>
+            <p className="text-sm text-muted-foreground">Enviamos um código para sua caixa de entrada.</p>
           </div>
         </div>
 
         <form onSubmit={handleVerifyCode} className="space-y-4">
           <div className="rounded-2xl bg-secondary px-4 py-3 text-sm text-muted-foreground">
-            Codigo enviado para <span className="font-bold text-brand-ink">{email}</span>
+            Código enviado para <span className="font-bold text-brand-ink">{email}</span>
           </div>
 
           <div className="space-y-2">
             <label className={labelClass}>
               <MailCheck size={17} className="text-brand-blue" />
-              Codigo de verificacao
+              Código de verificação
             </label>
             <VerificationCodeInput
               value={confirmationCode}
@@ -345,17 +426,17 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
           <button
             type="submit"
             disabled={verifyingCode || confirmationCode.length !== CODE_LENGTH}
-            className={`tc-button-3d btn-shine w-full py-3.5 ${cfg.submitBg} text-white rounded-2xl font-bold shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2`}
+            className={`tc-button-3d btn-shine w-full py-3.5 ${cfg.submitBg} ${cfg.submitText} rounded-2xl font-bold shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2`}
           >
             {verifyingCode ? <Loader2 size={19} className="animate-spin" /> : null}
-            Confirmar codigo
+            Confirmar código
           </button>
         </form>
 
         <div className="mt-5 flex flex-col gap-3 text-center sm:flex-row sm:items-center sm:justify-between sm:text-left">
           <button
             type="button"
-            onClick={() => setAwaitingConfirmation(false)}
+            onClick={() => onStepChange(0)}
             className="text-sm font-bold text-muted-foreground hover:text-brand-ink"
           >
             Voltar
@@ -367,12 +448,113 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
             className="inline-flex items-center justify-center gap-2 text-sm font-bold text-brand-blue hover:underline disabled:opacity-50"
           >
             {resendingCode ? <Loader2 size={15} className="animate-spin" /> : null}
-            Reenviar codigo
+            Reenviar código
           </button>
         </div>
       </div>
     );
   }
+
+  if (activeStep === 1) {
+    if (journeyReady && role === 'ngo') {
+      return (
+        <div className='w-full'>
+          <div className='mb-7 flex items-start gap-4'>
+            <div className='grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-yellow/30 text-brand-ink'>
+              <CircleDollarSign size={24} />
+            </div>
+            <div>
+              <p className='text-xs font-bold uppercase tracking-[0.16em] text-brand-blue'>Próxima preparação</p>
+              <h2 className='mt-1 font-display text-3xl font-semibold leading-tight text-brand-ink'>Dados e recebimentos</h2>
+              <p className='mt-2 text-sm leading-6 text-muted-foreground'>Antes de receber apoio, sua organização completa as informações que dão segurança para toda a comunidade.</p>
+            </div>
+          </div>
+
+          <div className='divide-y divide-brand-ink/10 border-y border-brand-ink/10'>
+            {[
+              ['Identidade da organização', 'Dados oficiais e canais de contato.'],
+              ['Responsáveis', 'Quem representa e acompanha a organização.'],
+              ['Recebimentos', 'Configuração segura para repasses e doações.'],
+            ].map(([title, description], index) => (
+              <div key={title} className='flex items-start gap-3 py-4'>
+                <span className='grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-blue/10 text-xs font-bold text-brand-blue'>{index + 1}</span>
+                <span>
+                  <strong className='block text-sm text-brand-ink'>{title}</strong>
+                  <span className='mt-0.5 block text-sm text-muted-foreground'>{description}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <button
+            type='button'
+            onClick={() => { onStepComplete(1); onStepChange(2); }}
+            className='tc-button-3d tc-button-3d-yellow btn-shine mt-7 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 font-bold text-brand-ink'
+          >
+            Seguir para o início da jornada
+            <ArrowRight size={18} />
+          </button>
+        </div>
+      );
+    }
+
+    if (journeyReady) {
+      return (
+        <div className='grid min-h-[360px] place-items-center text-center'>
+          <div className='max-w-sm'>
+            <CheckCircle2 className='mx-auto text-brand-blue' size={48} />
+            <h2 className='mt-5 font-display text-3xl font-semibold text-brand-ink'>Seu e-mail está confirmado.</h2>
+            <p className='mt-3 text-sm leading-6 text-muted-foreground'>Sua conta está pronta para acompanhar cada causa escolhida.</p>
+            <button type='button' onClick={() => onStepChange(2)} className='mt-7 inline-flex items-center gap-2 font-bold text-brand-blue'>Continuar <ArrowRight size={18} /></button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className='grid min-h-[360px] place-items-center text-center'>
+        <div className='max-w-sm'>
+          <MailCheck className='mx-auto text-brand-blue' size={46} />
+          <h2 className='mt-5 font-display text-3xl font-semibold text-brand-ink'>A verificação acontece depois do cadastro.</h2>
+          <p className='mt-3 text-sm leading-6 text-muted-foreground'>Crie sua conta na primeira etapa. Assim que o código for enviado, este espaço estará pronto para recebê-lo.</p>
+          <button type='button' onClick={() => onStepChange(0)} className='mt-7 inline-flex items-center gap-2 font-bold text-brand-blue'><ArrowLeft size={18} /> Ir para acesso e cadastro</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (activeStep === 2) {
+    const title = role === 'ngo' ? 'Uma jornada que inspira começa aqui.' : 'O começo do bem.';
+    const description = role === 'ngo'
+      ? 'Leve sua organização para perto de pessoas que querem transformar intenção em impacto.'
+      : 'Sua conta está pronta. Agora você pode descobrir causas e acompanhar o impacto que ajuda a construir.';
+
+    return (
+      <div className='grid min-h-[420px] place-items-center text-center'>
+        <div className='max-w-md'>
+          <div className={`mx-auto grid h-20 w-20 place-items-center rounded-full ${journeyReady ? 'bg-brand-yellow text-brand-ink' : 'bg-secondary text-muted-foreground'}`}>
+            {role === 'ngo' ? <Compass size={34} /> : <Heart size={34} className={journeyReady ? 'fill-brand-blue text-brand-blue' : ''} />}
+          </div>
+          <p className='mt-6 text-xs font-bold uppercase tracking-[0.18em] text-brand-blue'>Etapa 03</p>
+          <h2 className='mt-2 font-display text-4xl font-semibold leading-tight text-brand-ink'>{title}</h2>
+          <p className='mx-auto mt-4 max-w-sm text-base leading-7 text-muted-foreground'>{journeyReady ? description : 'Conclua as etapas anteriores para chegar até aqui.'}</p>
+          {journeyReady ? (
+            <button
+              type='button'
+              onClick={() => goAfterAuth(pendingDestination)}
+              className={`tc-button-3d btn-shine mt-8 inline-flex min-h-12 items-center gap-2 rounded-2xl px-7 font-bold ${role === 'ngo' ? 'tc-button-3d-yellow text-brand-ink' : 'text-white'}`}
+            >
+              {role === 'ngo' ? 'Configurar minha organização' : 'Explorar causas'}
+              <ArrowRight size={18} />
+            </button>
+          ) : (
+            <button type='button' onClick={() => onStepChange(0)} className='mt-8 inline-flex items-center gap-2 font-bold text-brand-blue'><ArrowLeft size={18} /> Começar pela primeira etapa</button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full">
       <div className="flex items-center gap-2.5 mb-1">
@@ -475,7 +657,7 @@ const AuthForm: React.FC<{ role: Side }> = ({ role }) => {
         <button
           type="submit"
           disabled={loading}
-          className={`tc-button-3d btn-shine w-full py-3.5 ${cfg.submitBg} text-white rounded-2xl font-bold shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2`}
+          className={`tc-button-3d btn-shine w-full py-3.5 ${cfg.submitBg} ${cfg.submitText} rounded-2xl font-bold shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2`}
         >
           {loading ? <Loader2 size={19} className="animate-spin" /> : null}
           {mode === 'login' ? 'Entrar' : role === 'ngo' ? 'Cadastrar organização' : 'Criar conta'}
@@ -493,10 +675,54 @@ interface AuthSwitchProps {
   initialSide: Side;
 }
 
+type AuthViewTransition = {
+  ready: Promise<void>;
+  finished: Promise<void>;
+};
+
+type AuthViewTransitionDocument = Document & {
+  startViewTransition?: (update: () => void) => AuthViewTransition;
+};
+
+const AUTH_THEME_TRANSITION_MS = 1050;
+const AUTH_CONTENT_EXIT_MS = 240;
+
+const getCircleReveal = (origin: HTMLElement | null) => {
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  const rect = origin?.getBoundingClientRect();
+  const x = rect ? rect.left + rect.width / 2 : viewportWidth / 2;
+  const y = rect ? rect.top + rect.height / 2 : viewportHeight / 2;
+  const maxRadius = Math.hypot(
+    Math.max(x, viewportWidth - x),
+    Math.max(y, viewportHeight - y),
+  );
+  const referenceRadius = Math.hypot(viewportWidth, viewportHeight) / Math.SQRT2;
+  const xPercent = (x / viewportWidth) * 100;
+  const yPercent = (y / viewportHeight) * 100;
+  const radiusPercent = (maxRadius / referenceRadius) * 100;
+
+  return [
+    `circle(0% at ${xPercent}% ${yPercent}%)`,
+    `circle(${radiusPercent}% at ${xPercent}% ${yPercent}%)`,
+  ];
+};
+
 const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [side, setSide] = useState<Side>(initialSide);
+  const [activeSteps, setActiveSteps] = useState<Record<Side, JourneyStage>>({ donor: 0, ngo: 0 });
+  const [completedSteps, setCompletedSteps] = useState<Record<Side, JourneyStage[]>>({ donor: [], ngo: [] });
+  const [openStage, setOpenStage] = useState<JourneyStage | null>(null);
+  const [contentVisible, setContentVisible] = useState(true);
+  const [roleTransitioning, setRoleTransitioning] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const mountedRef = useRef(true);
+  const roleTransitioningRef = useRef(false);
+  const transitionOriginRef = useRef<HTMLElement | null>(null);
+  const transitionStartTimerRef = useRef<number | null>(null);
+  const fallbackRevealTimerRef = useRef<number | null>(null);
 
   // Already signed in? Send them to their account's home. Waits for the session
   // to hydrate first — with Supabase, getUser() is null on the first tick.
@@ -513,74 +739,118 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const activeStep = activeSteps[side];
   const isDonor = side === 'donor';
 
-  // The sliding brand overlay (desktop): covers whichever side is INACTIVE.
-  const overlay = (
-    <motion.div
-      className="absolute inset-y-0 left-0 hidden md:flex w-1/2 z-20 overflow-hidden"
-      initial={false}
-      animate={{ x: isDonor ? '100%' : '0%' }}
-      transition={{ duration: 0.58, ease: [0.22, 1, 0.36, 1] }}
-    >
-      <div className={`relative flex-1 grain flex flex-col items-center justify-center text-center px-10 text-white ${isDonor ? 'bg-brand-ink' : 'bg-brand-blue'}`}>
-        <div className="aurora opacity-40" aria-hidden="true" />
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={side}
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -16 }}
-            transition={{ duration: 0.36, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
-            className="relative z-10 max-w-xs"
-          >
-            <img src={logo} alt="TranquiliCare" className="w-16 h-16 rounded-2xl shadow-xl mx-auto mb-6" />
-            {isDonor ? (
-              <>
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-background/15 px-3 py-1 text-xs font-bold mb-4">
-                  <Sparkles size={13} className="text-brand-yellow fill-brand-yellow" />
-                  Para organizações
-                </div>
-                <h3 className="font-display text-3xl font-semibold leading-tight mb-3">
-                  Sua causa também<br />merece apoio
-                </h3>
-                <p className="text-white/70 text-sm mb-8">
-                  Cadastre sua ONG e comece a receber doações de quem acredita no seu trabalho.
-                </p>
-                <button
-                  onClick={() => setSide('ngo')}
-                  className="inline-flex items-center gap-2 rounded-full border-2 border-white/40 px-6 py-3 font-bold text-sm hover:bg-background hover:text-brand-ink transition-colors"
-                >
-                  Sou uma organização
-                  <ArrowRight size={17} />
-                </button>
-              </>
-            ) : (
-              <>
-                <div className="inline-flex items-center gap-1.5 rounded-full bg-background/15 px-3 py-1 text-xs font-bold mb-4">
-                  <Heart size={13} className="text-brand-yellow fill-brand-yellow" />
-                  Para doadores
-                </div>
-                <h3 className="font-display text-3xl font-semibold leading-tight mb-3">
-                  Faça o bem<br />acontecer hoje
-                </h3>
-                <p className="text-white/80 text-sm mb-8">
-                  Descubra causas verificadas, acompanhe seu impacto e inspire outras pessoas a ajudar.
-                </p>
-                <button
-                  onClick={() => setSide('donor')}
-                  className="inline-flex items-center gap-2 rounded-full border-2 border-white/50 px-6 py-3 font-bold text-sm hover:bg-background hover:text-brand-blue transition-colors"
-                >
-                  <ArrowLeft size={17} />
-                  Sou um doador
-                </button>
-              </>
-            )}
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    </motion.div>
-  );
+  const finishRoleTransition = () => {
+    const root = document.documentElement;
+    delete root.dataset.tcAuthThemeVt;
+    root.style.removeProperty('--tc-auth-theme-vt-duration');
+    root.style.removeProperty('--tc-auth-theme-vt-clip-from');
+    roleTransitioningRef.current = false;
+    if (!mountedRef.current) return;
+    setRoleTransitioning(false);
+    requestAnimationFrame(() => {
+      if (!mountedRef.current) return;
+      setContentVisible(true);
+      transitionOriginRef.current?.focus({ preventScroll: true });
+    });
+  };
+
+  const changeRole = (nextSide: Side, origin: HTMLElement | null) => {
+    if (nextSide === side || roleTransitioningRef.current) return;
+
+    roleTransitioningRef.current = true;
+    transitionOriginRef.current = origin;
+    setRoleTransitioning(true);
+    setContentVisible(false);
+    setOpenStage(null);
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const startDelay = reduceMotion ? 0 : AUTH_CONTENT_EXIT_MS;
+
+    transitionStartTimerRef.current = window.setTimeout(() => {
+      const applyRole = () => flushSync(() => setSide(nextSide));
+      const transitionDocument = document as AuthViewTransitionDocument;
+
+      if (reduceMotion || typeof transitionDocument.startViewTransition !== 'function') {
+        applyRole();
+        if (reduceMotion) {
+          finishRoleTransition();
+        } else {
+          fallbackRevealTimerRef.current = window.setTimeout(
+            finishRoleTransition,
+            AUTH_THEME_TRANSITION_MS,
+          );
+        }
+        return;
+      }
+
+      const clipPath = getCircleReveal(origin);
+      const root = document.documentElement;
+      root.dataset.tcAuthThemeVt = 'active';
+      root.style.setProperty('--tc-auth-theme-vt-duration', `${AUTH_THEME_TRANSITION_MS}ms`);
+      root.style.setProperty('--tc-auth-theme-vt-clip-from', clipPath[0]);
+
+      try {
+        const transition = transitionDocument.startViewTransition(applyRole);
+        transition.ready
+          .then(() => {
+            root.animate(
+              { clipPath },
+              {
+                duration: AUTH_THEME_TRANSITION_MS,
+                easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+                fill: 'forwards',
+                pseudoElement: '::view-transition-new(root)',
+              },
+            );
+          })
+          .catch(() => undefined);
+        transition.finished.then(finishRoleTransition, finishRoleTransition);
+      } catch {
+        applyRole();
+        fallbackRevealTimerRef.current = window.setTimeout(
+          finishRoleTransition,
+          AUTH_THEME_TRANSITION_MS,
+        );
+      }
+    }, startDelay);
+  };
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+    roleTransitioningRef.current = false;
+    if (transitionStartTimerRef.current !== null) window.clearTimeout(transitionStartTimerRef.current);
+    if (fallbackRevealTimerRef.current !== null) window.clearTimeout(fallbackRevealTimerRef.current);
+    const root = document.documentElement;
+    delete root.dataset.tcAuthThemeVt;
+    root.style.removeProperty('--tc-auth-theme-vt-duration');
+    root.style.removeProperty('--tc-auth-theme-vt-clip-from');
+  }, []);
+
+  const changeStep = (step: number) => {
+    const nextStep = Math.max(0, Math.min(2, step)) as JourneyStage;
+    setActiveSteps((current) => ({ ...current, [side]: nextStep }));
+    setOpenStage(nextStep);
+  };
+
+  const openStep = (step: number) => setOpenStage(Math.max(0, Math.min(2, step)) as JourneyStage);
+
+  const completeStep = (step: JourneyStage) => {
+    setCompletedSteps((current) => {
+      if (current[side].includes(step)) return current;
+      return { ...current, [side]: [...current[side], step] };
+    });
+  };
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (openStage !== null && !dialog.open) dialog.showModal();
+    if (openStage === null && dialog.open) dialog.close();
+  }, [openStage]);
 
   // The floating nav stays available on the auth screen too, with "Entrar" as
   // the active section.
@@ -590,88 +860,157 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
     onHome: () => navigate('/'),
     onApoiar: () => navigate('/?view=marketplace'),
     onStories: () => navigate('/?view=stories'),
-    onPerfil: () => setSide('donor'),
+    onPerfil: () => {
+      setSide('donor');
+      setOpenStage(null);
+    },
   });
 
   return (
-    <div className="relative min-h-screen bg-background flex items-center justify-center px-4 py-10 pb-32 md:pb-10 overflow-hidden">
-      <div className="aurora opacity-40" aria-hidden="true" />
+    <div
+      className={`auth-theme-page auth-theme-page--${side} relative min-h-screen overflow-hidden px-4 pb-32 pt-6 md:pb-12 md:pt-8`}
+      aria-busy={roleTransitioning}
+    >
+      <div className="aurora opacity-20 mix-blend-soft-light" aria-hidden="true" />
       <CosmosNav items={navItems} />
 
-      <div className="relative z-10 w-full max-w-5xl">
-        <button
-          onClick={() => navigate('/')}
-          className="mb-4 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-brand-ink transition-colors"
+      <div className="relative z-10 mx-auto w-full max-w-7xl">
+        <header className="flex items-center justify-between gap-4">
+          <button
+            onClick={() => navigate('/')}
+            className="inline-flex min-h-11 items-center gap-2 rounded-full px-2 text-sm font-semibold text-brand-ink/70 transition-colors hover:text-brand-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-white/40"
+          >
+            <ArrowLeft size={17} />
+            Voltar ao início
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="hidden items-center gap-2 rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20 sm:flex"
+            aria-label="Ir para a página inicial do TranquiliCare"
+          >
+            <img src={logo} alt="" className="h-9 w-9 rounded-xl shadow-sm" />
+            <BrandedText text="TranquiliCare" className="font-display text-lg font-semibold" />
+          </button>
+        </header>
+
+        <section className="mx-auto mt-8 max-w-5xl text-center md:mt-10">
+          <motion.div
+            key={`auth-intro-${side}`}
+            initial={false}
+            animate={contentVisible ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+            transition={{
+              duration: contentVisible ? 0.68 : 0.22,
+              delay: contentVisible ? 0.05 : 0,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            aria-hidden={!contentVisible}
+          >
+            <div className={`mx-auto inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.12em] ${isDonor ? 'border-white/35 bg-white/25 text-brand-ink' : 'border-brand-yellow/45 bg-brand-yellow/35 text-brand-ink'}`}>
+              <BadgeCheck size={15} />
+              {isDonor ? 'Caminho do doador' : 'Caminho da organização'}
+            </div>
+            <h1 className="mx-auto mt-4 max-w-3xl font-display text-3xl font-semibold leading-tight text-brand-ink sm:text-4xl lg:text-5xl">
+              {isDonor ? 'Toda boa ação começa com uma escolha.' : 'Sua causa também tem um lugar aqui.'}
+            </h1>
+            <p className="mx-auto mt-3 max-w-2xl text-base leading-7 text-brand-ink/75">
+              {isDonor
+                ? 'Entre, confirme sua conta e encontre uma causa para começar a construir impacto.'
+                : 'Prepare sua presença, organize os dados essenciais e conecte pessoas ao seu propósito.'}
+            </p>
+          </motion.div>
+
+          <div className="relative mx-auto mt-6 grid max-w-md grid-cols-2 rounded-2xl border border-brand-ink/10 bg-card p-1 shadow-[0_10px_28px_rgba(17,54,79,0.08)]" role="group" aria-label="Escolha como entrar">
+            {(['donor', 'ngo'] as Side[]).map((role) => {
+              const active = side === role;
+              const { Icon, tab } = ROLE[role];
+              return (
+                <button
+                  key={role}
+                  type="button"
+                  onClick={(event) => changeRole(role, event.currentTarget)}
+                  disabled={roleTransitioning}
+                  className="relative min-h-11 rounded-xl px-3 text-sm font-bold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20"
+                  aria-pressed={active}
+                >
+                  {active && (
+                    <motion.span
+                      layoutId="auth-role-pill"
+                      transition={SPRING}
+                      className={`absolute inset-0 rounded-xl shadow-sm ${role === 'donor' ? 'bg-brand-blue' : 'bg-brand-yellow'}`}
+                    />
+                  )}
+                  <span className={`relative z-10 flex items-center justify-center gap-2 transition-colors ${active ? (role === 'ngo' ? 'text-brand-ink' : 'text-white') : 'text-muted-foreground'}`}>
+                    <Icon size={16} />
+                    {tab}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <motion.div
+          key={`auth-journey-${side}`}
+          className="mt-12 min-w-0 md:mt-16"
+          initial={false}
+          animate={contentVisible ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+          transition={{
+            duration: contentVisible ? 0.72 : 0.22,
+            delay: contentVisible ? 0.14 : 0,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+          aria-hidden={!contentVisible}
+          style={{ pointerEvents: contentVisible ? 'auto' : 'none' }}
         >
-          <ArrowLeft size={16} />
-          Voltar ao início
-        </button>
-
-        {/* Mobile: animated segmented role switch (sliding pill) */}
-        <div className="md:hidden relative grid grid-cols-2 bg-secondary p-1 rounded-2xl mb-5">
-          {(['donor', 'ngo'] as Side[]).map((s) => {
-            const active = side === s;
-            const { Icon, tab } = ROLE[s];
-            return (
-              <button
-                key={s}
-                onClick={() => setSide(s)}
-                className="relative py-2.5 rounded-xl text-sm font-bold"
-                aria-pressed={active}
-              >
-                {active && (
-                  <motion.span
-                    layoutId="auth-mobile-pill"
-                    transition={SPRING}
-                    className={`absolute inset-0 rounded-xl shadow-sm ${s === 'donor' ? 'bg-brand-blue' : 'bg-brand-ink'}`}
-                  />
-                )}
-                <span className={`relative z-10 flex items-center justify-center gap-1.5 transition-colors ${active ? 'text-white' : 'text-muted-foreground'}`}>
-                  <Icon size={15} />
-                  {tab}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="relative bg-card border border-border rounded-3xl shadow-2xl overflow-hidden md:min-h-[600px]">
-          {/* Desktop: two columns with sliding overlay */}
-          <div className="hidden md:grid grid-cols-2 min-h-[600px]">
-            <div className={`flex items-center p-10 lg:p-14 transition-opacity duration-300 ${isDonor ? 'opacity-100' : 'opacity-0'}`} aria-hidden={!isDonor}>
-              <AuthForm role="donor" />
-            </div>
-            <div className={`flex items-center p-10 lg:p-14 transition-opacity duration-300 ${!isDonor ? 'opacity-100' : 'opacity-0'}`} aria-hidden={isDonor}>
-              <AuthForm role="ngo" />
-            </div>
-          </div>
-          {overlay}
-
-          {/* Mobile: full horizontal "screen change" slide between roles,
-              mirroring the desktop panel motion. popLayout lets the entering
-              form define the card height while the outgoing one slides away. */}
-          <div className="md:hidden relative overflow-hidden">
-            <AnimatePresence mode="popLayout" initial={false} custom={isDonor ? -1 : 1}>
-              <motion.div
-                key={side}
-                custom={isDonor ? -1 : 1}
-                variants={{
-                  enter: (d: number) => ({ x: d > 0 ? '100%' : '-100%', opacity: 0 }),
-                  center: { x: '0%', opacity: 1 },
-                  exit: (d: number) => ({ x: d > 0 ? '-100%' : '100%', opacity: 0 }),
-                }}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
-                className="p-7 sm:p-10"
-              >
-                <AuthForm role={side} />
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </div>
+          <HowItWorks
+            features={JOURNEY_STEPS[side]}
+            activeIndex={activeStep}
+            completedSteps={completedSteps[side]}
+            onStepSelect={openStep}
+            ariaLabel={`Etapas do caminho de ${isDonor ? 'doador' : 'organização'}`}
+          />
+        </motion.div>
       </div>
+
+      <dialog
+        ref={dialogRef}
+        aria-labelledby="journey-dialog-title"
+        onCancel={(event) => {
+          event.preventDefault();
+          setOpenStage(null);
+        }}
+        onClose={() => setOpenStage(null)}
+        onMouseDown={(event) => {
+          if (event.target !== event.currentTarget) return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
+          if (!inside) setOpenStage(null);
+        }}
+        className="journey-auth-dialog fixed inset-x-0 bottom-0 top-auto m-0 max-h-[94dvh] w-full max-w-none overflow-y-auto rounded-t-3xl border border-brand-ink/10 bg-card p-0 text-brand-ink shadow-[0_-28px_90px_rgba(5,22,38,0.28)] backdrop:bg-brand-ink/65 backdrop:backdrop-blur-sm sm:inset-0 sm:m-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-3xl sm:shadow-[0_28px_90px_rgba(5,22,38,0.3)]"
+      >
+        <h2 id="journey-dialog-title" className="sr-only">
+          {JOURNEY_STEPS[side][openStage ?? activeStep].title}
+        </h2>
+        <div className={`h-2 w-full ${isDonor ? 'bg-brand-blue' : 'bg-brand-yellow'}`} aria-hidden="true" />
+        <button
+          type="button"
+          onClick={() => setOpenStage(null)}
+          className="absolute right-4 top-5 z-20 grid h-11 w-11 place-items-center rounded-full bg-background text-brand-blue shadow-sm transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/25"
+          aria-label="Fechar etapa"
+        >
+          <X size={21} />
+        </button>
+        <div className="mx-auto flex min-h-[560px] w-full max-w-xl items-center p-6 pt-16 sm:p-10 sm:pt-16">
+          <AuthForm
+            key={side}
+            role={side}
+            activeStep={openStage ?? activeStep}
+            onStepChange={changeStep}
+            onStepComplete={completeStep}
+          />
+        </div>
+      </dialog>
     </div>
   );
 };

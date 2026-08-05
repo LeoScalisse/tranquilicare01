@@ -13,6 +13,7 @@ import RotatingHeadline from '@/components/RotatingHeadline';
 import AnimatedEllipsis from '@/components/ui/animated-ellipsis';
 import BlurText from '@/components/ui/blur-text';
 import DonationAmountWheel from '@/components/ui/donation-amount-wheel';
+import FoldText from '@/components/ui/fold-text';
 import Highlighter from '@/components/ui/highlighter';
 import { clearDiscoveryOrigin, readDiscoveryOrigin } from '@/lib/discoveryNavigation';
 
@@ -326,12 +327,28 @@ const DonationIntegrityDiscovery: React.FC<DonationIntegrityDiscoveryProps> = ({
           </motion.h2>
 
           <div className='font-narrative ml-auto mt-24 max-w-3xl space-y-20 text-2xl leading-relaxed text-brand-ink/80 sm:mt-32 sm:space-y-28 sm:text-4xl'>
-            {resolutionBlocks.map((block, index) => (
+            {resolutionBlocks.map((block, index) => block.id === 'impact' ? (
+              <p
+                key={block.id}
+                className='ml-auto max-w-[94%] text-right font-display font-semibold text-brand-ink'
+              >
+                <FoldText
+                  text='É transformar intenção em impacto'
+                  splitBy='char'
+                  hinge='top'
+                  duration={0.68}
+                  stagger={0.035}
+                  perspective={800}
+                  creaseShading={0.4}
+                  color='hsl(var(--brand-ink))'
+                  scrollContainerRef={scrollContainerRef}
+                />
+                <FinalMark />
+              </p>
+            ) : (
               <motion.p
                 key={block.id}
-                className={`${index % 2 ? 'ml-auto text-right' : 'mr-auto'} ${
-                  block.emphasized ? 'font-display font-semibold text-brand-ink' : ''
-                } max-w-[94%]`}
+                className={`${index % 2 ? 'ml-auto text-right' : 'mr-auto'} max-w-[94%]`}
                 variants={reveal}
                 initial={reducedMotion ? 'visible' : 'hidden'}
                 whileInView='visible'

@@ -201,7 +201,13 @@ const TranquiliCareApp: React.FC = () => {
       case View.MARKETPLACE:
         return <Marketplace ngos={ngos} onSelectNGO={handleSelectNGO} onSupportNGO={handleSelectNGO} />;
       case View.STORIES:
-        return <Stories onOpenNGO={(ngoId) => navigate(`/ong/${ngoId}`)} />;
+        return (
+          <Stories
+            onOpenNGO={(ngoId) => navigate(`/ong/${ngoId}`)}
+            canTellStory={user?.accountType === 'ngo'}
+            onTellStory={() => navigate(user?.accountType === 'ngo' ? defaultDestForAccount('ngo') : '/ngo/auth')}
+          />
+        );
       case View.NGO_PROFILE:
         return viewingNGO ? <NGOProfile ngo={viewingNGO} /> : renderHome();
       default:
