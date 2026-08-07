@@ -27,6 +27,7 @@ import { demoNgos } from '@/data/demoNgos';
 import logo from '@/assets/logo.png';
 import WalletCard from '@/components/WalletCard';
 import AppBottomNav from '@/components/AppBottomNav';
+import { SmoothInput } from '@/components/ui/smooth-input';
 
 const DAY_MS = 86_400_000;
 const AVATAR_MAX_CHARS = 4000;
@@ -260,8 +261,8 @@ const DonorProfile: React.FC = () => {
           {editingProfile && (
             <motion.section initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className='overflow-hidden border-b border-border'>
               <div className='grid gap-4 py-6 md:grid-cols-[1fr_1fr_auto] md:items-end'>
-                <label className='text-sm font-bold'>Nome<input value={name} onChange={(event) => { setName(event.target.value); setDirty(true); }} className='mt-2 w-full rounded-lg border-2 border-border px-4 py-3 outline-none focus:border-brand-blue' /></label>
-                <label className='text-sm font-bold'>E-mail<input value={email} disabled className='mt-2 w-full rounded-lg border-2 border-border bg-muted px-4 py-3 text-muted-foreground' /></label>
+                <label className='text-sm font-bold'>Nome<SmoothInput value={name} onChange={(event) => { setName(event.target.value); setDirty(true); }} className='mt-2 w-full rounded-lg border-2 border-border px-4 py-3 outline-none focus:border-brand-blue' /></label>
+                <label className='text-sm font-bold'>E-mail<SmoothInput type='email' value={email} disabled className='mt-2 w-full rounded-lg border-2 border-border bg-muted px-4 py-3 text-muted-foreground' /></label>
                 <button onClick={handleSave} disabled={saving || !dirty} className='tc-button-3d inline-flex h-12 items-center justify-center gap-2 rounded-xl px-5 font-bold text-white disabled:opacity-45'>
                   {saving ? <Loader2 size={18} className='animate-spin' /> : <Save size={18} />}
                   {dirty ? 'Salvar' : 'Salvo'}

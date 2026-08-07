@@ -115,6 +115,12 @@ const TranquiliCareApp: React.FC = () => {
   }, [location.hash, location.pathname, location.search]);
 
   useEffect(() => {
+    const discoveryOrigin = readDiscoveryOrigin();
+    if (discoveryOrigin && matchesDiscoveryOrigin(discoveryOrigin, window.location)) return;
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [currentView]);
+
+  useEffect(() => {
     if (requestedView === 'marketplace') setCurrentView(View.MARKETPLACE);
     if (requestedView === 'stories') setCurrentView(View.STORIES);
     if (paymentStatus === 'cancelled') toast('Pagamento cancelado. Nenhuma doação foi concluída.');
@@ -204,8 +210,9 @@ const TranquiliCareApp: React.FC = () => {
         return (
           <Stories
             onOpenNGO={(ngoId) => navigate(`/ong/${ngoId}`)}
-            canTellStory={user?.accountType === 'ngo'}
-            onTellStory={() => navigate(user?.accountType === 'ngo' ? defaultDestForAccount('ngo') : '/ngo/auth')}
+            canTellStory={Boolean(user)}
+            storytellerType={user?.accountType ?? null}
+            onTellStory={() => navigate(user ? defaultDestForAccount(user.accountType) : '/donor/auth')}
           />
         );
       case View.NGO_PROFILE:

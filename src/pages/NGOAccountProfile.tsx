@@ -8,6 +8,7 @@ import { demoNgos } from '@/data/demoNgos';
 import { AppUser, authReady, getUser, onAuthChange, signOut, updateUser } from '@/lib/auth';
 import logo from '@/assets/logo.png';
 import AppBottomNav from '@/components/AppBottomNav';
+import { SmoothInput } from '@/components/ui/smooth-input';
 
 const resizeAvatar = (file: File): Promise<string> => new Promise((resolve, reject) => {
   const objectUrl = URL.createObjectURL(file);
@@ -144,8 +145,8 @@ const NGOAccountProfile: React.FC = () => {
               <div className='flex items-center justify-between bg-brand-ink px-5 py-4 text-white'><h2 className='font-display text-xl font-semibold'>Editar perfil</h2><button onClick={() => setEditing(false)} className='grid h-9 w-9 place-items-center rounded-full bg-background text-brand-blue' aria-label='Fechar'><X size={19} /></button></div>
               <div className='p-6'>
                 <div className='flex items-center gap-4'><div className='h-20 w-20 overflow-hidden rounded-full border-4 border-brand-blue'><img src={avatar || profile.image} className='h-full w-full object-cover' alt='' /></div><div><button onClick={() => fileInputRef.current?.click()} className='inline-flex items-center gap-2 rounded-lg border-2 border-border px-3 py-2 text-sm font-bold hover:border-brand-blue hover:text-brand-blue'><Camera size={17} />Trocar imagem</button><input ref={fileInputRef} type='file' accept='image/*' className='hidden' onChange={chooseImage} /><p className='mt-1 text-xs text-muted-foreground'>JPG ou PNG em formato quadrado.</p></div></div>
-                <label className='mt-6 block text-sm font-bold'>Nome da organização<input value={name} onChange={(event) => setName(event.target.value)} className='mt-2 w-full rounded-lg border-2 border-border px-4 py-3 outline-none focus:border-brand-blue' /></label>
-                <label className='mt-4 block text-sm font-bold'>E-mail da conta<input value={user?.email || ''} disabled className='mt-2 w-full rounded-lg border-2 border-border bg-muted px-4 py-3 text-muted-foreground' /></label>
+                <label className='mt-6 block text-sm font-bold'>Nome da organização<SmoothInput value={name} onChange={(event) => setName(event.target.value)} className='mt-2 w-full rounded-lg border-2 border-border px-4 py-3 outline-none focus:border-brand-blue' /></label>
+                <label className='mt-4 block text-sm font-bold'>E-mail da conta<SmoothInput type='email' value={user?.email || ''} disabled className='mt-2 w-full rounded-lg border-2 border-border bg-muted px-4 py-3 text-muted-foreground' /></label>
                 <p className='mt-4 text-xs leading-relaxed text-muted-foreground'>Dados institucionais, descrição e contatos validados serão conectados ao cadastro da organização em uma próxima etapa.</p>
                 <button onClick={saveProfile} disabled={saving} className='tc-button-3d mt-6 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold text-white disabled:opacity-60'>{saving ? <Loader2 size={18} className='animate-spin' /> : <Save size={18} />}{saving ? 'Salvando...' : 'Salvar alterações'}</button>
               </div>

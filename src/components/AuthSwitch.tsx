@@ -32,13 +32,13 @@ import {
   Mail,
   MailCheck,
   User,
-  X,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import CosmosNav from './CosmosNav';
 import { buildMobileNavItems } from './mobileNavItems';
 import logo from '@/assets/logo.png';
 import HowItWorks, { type JourneyStep } from '@/components/ui/how-it-works';
+import { SmoothInput } from '@/components/ui/smooth-input';
 
 type Side = AccountType;
 type Mode = 'login' | 'signup';
@@ -209,7 +209,7 @@ const VerificationCodeInput: React.FC<VerificationCodeInputProps> = ({ value, on
             onChange={(event) => setDigit(index, event.target.value)}
             onKeyDown={(event) => handleKeyDown(index, event)}
             onPaste={handlePaste}
-            className={`mx-0 h-9 w-8 max-w-[190px] rounded-[10px] border-0 bg-secondary p-2.5 text-center text-xl font-bold text-brand-ink outline-none transition-all duration-500 ease-out focus:w-14 focus:rotate-0 focus:bg-background focus:ring-2 focus:ring-brand-blue/45 focus:shadow-sm disabled:opacity-60 sm:h-11 sm:w-11 sm:focus:w-[86px] ${digit ? 'rotate-0' : 'rotate-90'}`}
+            className={`mx-0 h-11 w-9 rounded-xl border-2 bg-[#f8feff] p-1 text-center text-xl font-bold text-brand-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_4px_12px_rgba(17,54,79,0.08)] outline-none transition-[border-color,background-color,box-shadow,transform] duration-300 ease-out focus:-translate-y-0.5 focus:border-brand-blue focus:bg-background focus:ring-4 focus:ring-brand-blue/15 disabled:opacity-60 sm:h-12 sm:w-12 ${digit ? 'border-brand-blue/55 bg-brand-blue/10 shadow-[inset_0_0_0_1px_rgba(55,181,247,0.08),0_6px_16px_rgba(55,181,247,0.14)]' : 'border-brand-blue/25 hover:border-brand-blue/45'}`}
             aria-label={`Digito ${index + 1}`}
           />
         </React.Fragment>
@@ -619,9 +619,9 @@ const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onS
             >
               <label className={labelClass}>
                 <User size={17} className="text-brand-blue" />
-                {role === 'ngo' ? 'Nome da organização' : 'Nome'}
+                {role === 'ngo' ? 'Nome da organização' : 'Nome do Doador'}
               </label>
-              <input type="text" required={mode === 'signup'} value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder={cfg.namePlaceholder} />
+              <SmoothInput type="text" required={mode === 'signup'} value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder={cfg.namePlaceholder} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -631,7 +631,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onS
             <Mail size={17} className="text-brand-blue" />
             E-mail
           </label>
-          <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} placeholder={cfg.emailPlaceholder} />
+          <SmoothInput type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} placeholder={cfg.emailPlaceholder} />
         </div>
 
         <div className="space-y-2">
@@ -640,7 +640,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onS
             Senha
           </label>
           <div className="relative">
-            <input
+            <SmoothInput
               type={showPassword ? 'text' : 'password'}
               required
               value={password}
@@ -684,8 +684,8 @@ type AuthViewTransitionDocument = Document & {
   startViewTransition?: (update: () => void) => AuthViewTransition;
 };
 
-const AUTH_THEME_TRANSITION_MS = 1050;
-const AUTH_CONTENT_EXIT_MS = 240;
+const AUTH_THEME_TRANSITION_MS = 820;
+const AUTH_CONTENT_EXIT_MS = 110;
 
 const getCircleReveal = (origin: HTMLElement | null) => {
   const viewportWidth = window.innerWidth;
@@ -703,7 +703,7 @@ const getCircleReveal = (origin: HTMLElement | null) => {
   const radiusPercent = (maxRadius / referenceRadius) * 100;
 
   return [
-    `circle(0% at ${xPercent}% ${yPercent}%)`,
+    `circle(1.5% at ${xPercent}% ${yPercent}%)`,
     `circle(${radiusPercent}% at ${xPercent}% ${yPercent}%)`,
   ];
 };
@@ -717,7 +717,6 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
   const [openStage, setOpenStage] = useState<JourneyStage | null>(null);
   const [contentVisible, setContentVisible] = useState(true);
   const [roleTransitioning, setRoleTransitioning] = useState(false);
-  const dialogRef = useRef<HTMLDialogElement>(null);
   const mountedRef = useRef(true);
   const roleTransitioningRef = useRef(false);
   const transitionOriginRef = useRef<HTMLElement | null>(null);
@@ -763,17 +762,22 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
     roleTransitioningRef.current = true;
     transitionOriginRef.current = origin;
     setRoleTransitioning(true);
-    setContentVisible(false);
     setOpenStage(null);
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const startDelay = reduceMotion ? 0 : AUTH_CONTENT_EXIT_MS;
+    const transitionDocument = document as AuthViewTransitionDocument;
+    const supportsViewTransition = !reduceMotion && typeof transitionDocument.startViewTransition === 'function';
+    const startDelay = supportsViewTransition || reduceMotion ? 0 : AUTH_CONTENT_EXIT_MS;
+
+    if (!supportsViewTransition && !reduceMotion) setContentVisible(false);
 
     transitionStartTimerRef.current = window.setTimeout(() => {
-      const applyRole = () => flushSync(() => setSide(nextSide));
-      const transitionDocument = document as AuthViewTransitionDocument;
+      const applyRole = () => flushSync(() => {
+        setSide(nextSide);
+        if (!supportsViewTransition) setContentVisible(true);
+      });
 
-      if (reduceMotion || typeof transitionDocument.startViewTransition !== 'function') {
+      if (!supportsViewTransition) {
         applyRole();
         if (reduceMotion) {
           finishRoleTransition();
@@ -797,10 +801,14 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
         transition.ready
           .then(() => {
             root.animate(
-              { clipPath },
+              {
+                clipPath,
+                opacity: [0.82, 1],
+                filter: ['blur(1.5px)', 'blur(0px)'],
+              },
               {
                 duration: AUTH_THEME_TRANSITION_MS,
-                easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+                easing: 'cubic-bezier(0.32, 0.72, 0, 1)',
                 fill: 'forwards',
                 pseudoElement: '::view-transition-new(root)',
               },
@@ -835,7 +843,12 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
     setOpenStage(nextStep);
   };
 
-  const openStep = (step: number) => setOpenStage(Math.max(0, Math.min(2, step)) as JourneyStage);
+  const openStep = (step: number) => {
+    const nextStep = Math.max(0, Math.min(2, step)) as JourneyStage;
+    const available = nextStep === activeStep || completedSteps[side].includes(nextStep);
+    if (!available) return;
+    setOpenStage((current) => current === nextStep ? null : nextStep);
+  };
 
   const completeStep = (step: JourneyStage) => {
     setCompletedSteps((current) => {
@@ -843,14 +856,6 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
       return { ...current, [side]: [...current[side], step] };
     });
   };
-
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (openStage !== null && !dialog.open) dialog.showModal();
-    if (openStage === null && dialog.open) dialog.close();
-  }, [openStage]);
 
   // The floating nav stays available on the auth screen too, with "Entrar" as
   // the active section.
@@ -898,10 +903,10 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
           <motion.div
             key={`auth-intro-${side}`}
             initial={false}
-            animate={contentVisible ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
+            animate={contentVisible ? { opacity: 1, y: 0 } : { opacity: 0, y: 8 }}
             transition={{
-              duration: contentVisible ? 0.68 : 0.22,
-              delay: contentVisible ? 0.05 : 0,
+              duration: contentVisible ? 0.48 : 0.16,
+              delay: 0,
               ease: [0.22, 1, 0.36, 1],
             }}
             aria-hidden={!contentVisible}
@@ -954,10 +959,10 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
           key={`auth-journey-${side}`}
           className="mt-12 min-w-0 md:mt-16"
           initial={false}
-          animate={contentVisible ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+          animate={contentVisible ? { opacity: 1, y: 0 } : { opacity: 0, y: 12 }}
           transition={{
-            duration: contentVisible ? 0.72 : 0.22,
-            delay: contentVisible ? 0.14 : 0,
+            duration: contentVisible ? 0.56 : 0.16,
+            delay: contentVisible ? 0.04 : 0,
             ease: [0.22, 1, 0.36, 1],
           }}
           aria-hidden={!contentVisible}
@@ -967,50 +972,21 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
             features={JOURNEY_STEPS[side]}
             activeIndex={activeStep}
             completedSteps={completedSteps[side]}
+            expandedIndex={openStage}
+            expandedContent={(
+              <AuthForm
+                key={side}
+                role={side}
+                activeStep={openStage ?? activeStep}
+                onStepChange={changeStep}
+                onStepComplete={completeStep}
+              />
+            )}
             onStepSelect={openStep}
             ariaLabel={`Etapas do caminho de ${isDonor ? 'doador' : 'organização'}`}
           />
         </motion.div>
       </div>
-
-      <dialog
-        ref={dialogRef}
-        aria-labelledby="journey-dialog-title"
-        onCancel={(event) => {
-          event.preventDefault();
-          setOpenStage(null);
-        }}
-        onClose={() => setOpenStage(null)}
-        onMouseDown={(event) => {
-          if (event.target !== event.currentTarget) return;
-          const rect = event.currentTarget.getBoundingClientRect();
-          const inside = event.clientX >= rect.left && event.clientX <= rect.right && event.clientY >= rect.top && event.clientY <= rect.bottom;
-          if (!inside) setOpenStage(null);
-        }}
-        className="journey-auth-dialog fixed inset-x-0 bottom-0 top-auto m-0 max-h-[94dvh] w-full max-w-none overflow-y-auto rounded-t-3xl border border-brand-ink/10 bg-card p-0 text-brand-ink shadow-[0_-28px_90px_rgba(5,22,38,0.28)] backdrop:bg-brand-ink/65 backdrop:backdrop-blur-sm sm:inset-0 sm:m-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-3xl sm:shadow-[0_28px_90px_rgba(5,22,38,0.3)]"
-      >
-        <h2 id="journey-dialog-title" className="sr-only">
-          {JOURNEY_STEPS[side][openStage ?? activeStep].title}
-        </h2>
-        <div className={`h-2 w-full ${isDonor ? 'bg-brand-blue' : 'bg-brand-yellow'}`} aria-hidden="true" />
-        <button
-          type="button"
-          onClick={() => setOpenStage(null)}
-          className="absolute right-4 top-5 z-20 grid h-11 w-11 place-items-center rounded-full bg-background text-brand-blue shadow-sm transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/25"
-          aria-label="Fechar etapa"
-        >
-          <X size={21} />
-        </button>
-        <div className="mx-auto flex min-h-[560px] w-full max-w-xl items-center p-6 pt-16 sm:p-10 sm:pt-16">
-          <AuthForm
-            key={side}
-            role={side}
-            activeStep={openStage ?? activeStep}
-            onStepChange={changeStep}
-            onStepComplete={completeStep}
-          />
-        </div>
-      </dialog>
     </div>
   );
 };

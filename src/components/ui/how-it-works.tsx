@@ -1,6 +1,16 @@
 import React from 'react';
-import { Check, LockKeyhole } from 'lucide-react';
+import { Check, ChevronDown, LockKeyhole } from 'lucide-react';
 import { motion, useReducedMotion } from 'framer-motion';
+
+import {
+  Expandable,
+  ExpandableCard,
+  ExpandableCardContent,
+  ExpandableCardHeader,
+  ExpandableContent,
+  ExpandableTrigger,
+} from '@/components/ui/expandable';
+import { cn } from '@/lib/utils';
 
 export interface JourneyStep {
   title: string;
@@ -12,119 +22,244 @@ interface HowItWorksProps {
   features: JourneyStep[];
   activeIndex: number;
   completedSteps?: number[];
+  expandedIndex?: number | null;
+  expandedContent?: React.ReactNode;
   onStepSelect: (index: number) => void;
   ariaLabel: string;
   className?: string;
 }
 
-const toneClasses: Record<NonNullable<JourneyStep['tone']>, string> = {
-  blue: 'border-brand-blue/35 bg-brand-blue/15 text-brand-blue',
-  yellow: 'border-brand-yellow/60 bg-brand-yellow/35 text-brand-ink',
-  azure: 'border-brand-blue/20 bg-background text-brand-ink',
-};
-
-const positions = [
-  'lg:absolute lg:left-[7%] lg:top-0 lg:-rotate-3',
-  'lg:absolute lg:right-[7%] lg:top-[245px] lg:rotate-3',
-  'lg:absolute lg:left-[17%] lg:top-[500px] lg:-rotate-2',
+const alignments = [
+  'self-start sm:ml-[8%]',
+  'self-end sm:mr-[8%]',
+  'self-start sm:ml-[16%]',
 ];
 
-const Pin = ({ active, complete }: { active: boolean; complete: boolean }) => (
+const toneClasses: Record<NonNullable<JourneyStep['tone']>, string> = {
+  blue: 'bg-brand-blue/[0.11]',
+  yellow: 'bg-brand-yellow/25',
+  azure: 'bg-background/80',
+};
+
+const JourneyPin = ({ active, complete }: { active: boolean; complete: boolean }) => (
   <span
-    className={`grid h-11 w-11 place-items-center rounded-full border shadow-sm transition-colors duration-500 ${
-      active
-        ? 'border-brand-blue/25 bg-brand-blue text-white'
-        : complete
-          ? 'border-brand-blue/20 bg-background text-brand-blue'
-          : 'border-brand-ink/10 bg-secondary text-brand-ink/35'
-    }`}
+    className={cn(
+      'grid size-9 place-items-center rounded-full border-2',
+      active && 'border-background bg-brand-blue text-white',
+      complete && 'border-background bg-brand-yellow text-brand-ink',
+      !active && !complete && 'border-background bg-secondary text-brand-ink/30',
+    )}
     aria-hidden='true'
   >
-    {complete ? <Check size={20} strokeWidth={3} /> : active ? (
-      <svg viewBox='0 0 24 24' className='h-5 w-5 fill-current'>
-        <path d='M16 3a1 1 0 0 1 .117 1.993L16 5v4.764l1.894 3.789a1 1 0 0 1 .1.331L18 14v2a1 1 0 0 1-.883.993L17 17h-4v4a1 1 0 0 1-1.993.117L11 21v-4H7a1 1 0 0 1-.993-.883L6 16v-2a1 1 0 0 1 .06-.34l.046-.107L8 9.762V5a1 1 0 0 1-.117-1.993L8 3h8Z' />
-      </svg>
-    ) : <LockKeyhole size={18} />}
+    {complete ? <Check size={16} strokeWidth={3} /> : active ? (
+      <span className='size-2 rounded-full bg-white' />
+    ) : <LockKeyhole size={14} />}
   </span>
 );
+
+const JourneyConnector = ({ connected, order }: { connected: boolean; order: number }) => (
+  <div className='pointer-events-none h-16 w-full sm:h-20' style={{ order }} aria-hidden='true'>
+    <svg viewBox='0 0 1000 100' preserveAspectRatio='none' className='size-full overflow-visible'>
+      <path
+        d={order % 4 === 1 ? 'M 260 0 C 430 18, 600 82, 760 100' : 'M 760 0 C 600 18, 430 82, 260 100'}
+        fill='none'
+        stroke={connected ? '#ffd343' : 'rgba(17,54,79,0.18)'}
+        strokeWidth={connected ? 3 : 2}
+        strokeDasharray='7 9'
+        strokeLinecap='round'
+        vectorEffect='non-scaling-stroke'
+      />
+    </svg>
+  </div>
+);
+
+interface StepSummaryProps {
+  step: JourneyStep;
+  index: number;
+  active: boolean;
+  complete: boolean;
+  expanded: boolean;
+  available: boolean;
+}
+
+const StepSummary = ({ step, index, active, complete, expanded, available }: StepSummaryProps) => (
+  <>
+    <span className='flex items-start justify-between gap-4'>
+      <span className='font-display text-3xl font-semibold tabular-nums text-brand-blue'>0{index + 1}</span>
+      <span className={cn(
+        'pt-1 text-[10px] font-bold uppercase tracking-[0.14em]',
+        active && 'text-brand-blue',
+        complete && 'text-brand-ink/65',
+        !available && 'text-brand-ink/35',
+      )}>
+        {active ? 'Etapa atual' : complete ? 'Concluída' : 'Bloqueada'}
+      </span>
+    </span>
+    <strong className='mt-5 block font-display text-2xl font-semibold leading-tight text-brand-ink'>
+      {step.title}
+    </strong>
+    <span className='mt-2 block text-sm leading-6 text-brand-ink/60'>
+      {step.description}
+    </span>
+    <span className={cn(
+      'mt-5 flex items-center justify-between text-xs font-bold uppercase tracking-[0.13em]',
+      available ? 'text-brand-blue' : 'text-brand-ink/35',
+    )}>
+      {active ? (expanded ? 'Fechar etapa' : 'Continuar') : complete ? (expanded ? 'Fechar revisão' : 'Revisar') : 'Conclua a etapa anterior'}
+      {available && (
+        <motion.span animate={{ rotate: expanded ? 180 : 0 }} transition={{ duration: 0.3 }}>
+          <ChevronDown size={16} />
+        </motion.span>
+      )}
+    </span>
+  </>
+);
+
+interface JourneyCardProps {
+  step: JourneyStep;
+  index: number;
+  active: boolean;
+  complete: boolean;
+  expanded: boolean;
+  available: boolean;
+  content?: React.ReactNode;
+  onToggle: () => void;
+  order: number;
+}
+
+const JourneyCard = ({
+  step,
+  index,
+  active,
+  complete,
+  expanded,
+  available,
+  content,
+  onToggle,
+  order,
+}: JourneyCardProps) => {
+  const reducedMotion = useReducedMotion();
+  const contentRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (contentRef.current) contentRef.current.inert = !expanded;
+  }, [expanded]);
+
+  return (
+    <Expandable
+      expanded={expanded}
+      onToggle={onToggle}
+      expandDirection='both'
+      expandBehavior='replace'
+      transitionDuration={reducedMotion ? 0.01 : 0.46}
+      className={cn('relative z-10', expanded ? 'self-center' : alignments[index % alignments.length])}
+      style={{ order }}
+    >
+      <ExpandableCard
+        collapsedSize={{ width: 360, height: 210 }}
+        expandedSize={{ width: 680 }}
+        hoverToExpand={false}
+        className={cn(
+          'relative max-w-[calc(100vw-2rem)] rounded-2xl border bg-card text-brand-ink',
+          'shadow-[0_12px_34px_rgba(17,54,79,0.10)]',
+          expanded && 'border-brand-blue/30 shadow-[0_22px_54px_rgba(17,54,79,0.14)]',
+          complete && !expanded && 'border-brand-yellow/70',
+          !available && 'border-brand-ink/10 opacity-45 saturate-50',
+          available && !expanded && 'border-brand-ink/10',
+        )}
+      >
+        <span className='absolute left-1/2 top-0 z-20 -translate-x-1/2 -translate-y-1/2'>
+          <JourneyPin active={active} complete={complete} />
+        </span>
+
+        <ExpandableTrigger
+          disabled={!available}
+          aria-label={`${active ? 'Etapa atual' : complete ? 'Concluída' : 'Bloqueada'}: ${step.title}`}
+          className={cn(
+            'rounded-2xl outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/25',
+            available ? 'cursor-pointer' : 'cursor-not-allowed',
+          )}
+        >
+          <ExpandableCardHeader className={cn('min-h-[210px] rounded-2xl p-6 pt-8', toneClasses[step.tone ?? 'blue'])}>
+            <StepSummary
+              step={step}
+              index={index}
+              active={active}
+              complete={complete}
+              expanded={expanded}
+              available={available}
+            />
+          </ExpandableCardHeader>
+        </ExpandableTrigger>
+
+        <ExpandableCardContent className='px-0 pb-0'>
+          <ExpandableContent ref={contentRef} keepMounted preset='blur-sm'>
+            <div className='border-t border-brand-ink/10 px-6 pb-8 pt-7 sm:px-9 sm:pb-10 sm:pt-8'>
+              {content}
+            </div>
+          </ExpandableContent>
+        </ExpandableCardContent>
+      </ExpandableCard>
+    </Expandable>
+  );
+};
 
 const HowItWorks: React.FC<HowItWorksProps> = ({
   features,
   activeIndex,
   completedSteps = [],
+  expandedIndex = null,
+  expandedContent,
   onStepSelect,
   ariaLabel,
-  className = '',
+  className,
 }) => {
-  const reducedMotion = useReducedMotion();
+  const liveIndex = expandedIndex ?? activeIndex;
 
   return (
-    <nav aria-label={ariaLabel} className={`relative mx-auto w-full max-w-5xl ${className}`}>
-      <div className='pointer-events-none absolute bottom-16 left-1/2 top-16 border-l-2 border-dashed border-brand-blue/20 lg:hidden' aria-hidden='true' />
-      <svg
-        className='pointer-events-none absolute inset-0 hidden h-full w-full lg:block'
-        viewBox='0 0 1000 810'
-        preserveAspectRatio='none'
-        aria-hidden='true'
-      >
-        <motion.path
-          d='M 280 125 C 540 120, 550 280, 720 345 C 850 405, 590 535, 350 625'
-          fill='none'
-          stroke='rgba(55, 181, 247, 0.3)'
-          strokeWidth='2'
-          strokeDasharray='9 8'
-          strokeLinecap='round'
-          vectorEffect='non-scaling-stroke'
-          animate={reducedMotion ? undefined : { strokeDashoffset: [0, -68] }}
-          transition={{ duration: 4.2, repeat: Infinity, ease: 'linear' }}
-        />
-      </svg>
-
-      <div className='relative flex flex-col items-center gap-16 py-8 lg:block lg:min-h-[810px] lg:py-0'>
+    <nav aria-label={ariaLabel} className={cn('relative mx-auto w-full max-w-5xl', className)}>
+      <div className='relative flex flex-col py-6'>
         {features.map((step, index) => {
           const active = activeIndex === index;
           const complete = completedSteps.includes(index);
-          const tone = step.tone ?? 'blue';
-          const status = active ? 'Etapa atual' : complete ? 'Concluída' : 'Próxima etapa';
+          const available = active || complete;
 
           return (
-            <motion.button
-              key={step.title}
-              type='button'
-              onClick={() => onStepSelect(index)}
-              aria-current={active ? 'step' : undefined}
-              aria-label={`${status}: ${step.title}`}
-              className={`group relative z-10 w-[min(88vw,370px)] rounded-xl border bg-card p-2 text-left shadow-[0_18px_42px_rgba(17,54,79,0.12)] outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/30 ${positions[index]}`}
-              initial={false}
-              animate={{
-                opacity: active ? 1 : complete ? 0.68 : 0.43,
-                scale: active && !reducedMotion ? 1.055 : 0.97,
-                filter: active ? 'saturate(1)' : 'saturate(0.42)',
-              }}
-              whileHover={reducedMotion ? undefined : { opacity: active ? 1 : 0.78, scale: active ? 1.055 : 1 }}
-              whileTap={reducedMotion ? undefined : { scale: active ? 1.025 : 0.98 }}
-              transition={{ duration: reducedMotion ? 0.01 : 0.48, ease: [0.22, 1, 0.36, 1] }}
-            >
-              <span className='absolute left-1/2 top-0 z-20 -translate-x-1/2 -translate-y-1/2'>
-                <Pin active={active} complete={complete} />
-              </span>
+            <React.Fragment key={step.title}>
+              {liveIndex !== index && (
+                <JourneyCard
+                  step={step}
+                  index={index}
+                  active={active}
+                  complete={complete}
+                  expanded={false}
+                  available={available}
+                  onToggle={() => available && onStepSelect(index)}
+                  order={index * 2}
+                />
+              )}
 
-              <span className={`flex min-h-[218px] flex-col rounded-lg border p-6 pt-8 ${toneClasses[tone]}`}>
-                <span className='flex items-center justify-between gap-4'>
-                  <span className='font-display text-4xl font-semibold tabular-nums'>0{index + 1}</span>
-                  <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.12em] ${active ? 'bg-brand-yellow text-brand-ink' : 'bg-brand-ink/5 text-brand-ink/55'}`}>
-                    {status}
-                  </span>
-                </span>
-                <strong className='mt-6 font-display text-2xl font-semibold leading-tight text-brand-ink'>{step.title}</strong>
-                <span className='mt-3 text-sm leading-6 text-brand-ink/65'>{step.description}</span>
-                <span className={`mt-auto pt-5 text-xs font-bold uppercase tracking-[0.14em] transition-colors ${active ? 'text-brand-blue' : 'text-brand-ink/45'}`}>
-                  {active ? 'Continuar' : complete ? 'Revisar' : 'Conhecer etapa'}
-                </span>
-              </span>
-            </motion.button>
+              {index < features.length - 1 && (
+                <JourneyConnector
+                  connected={completedSteps.includes(index) || activeIndex > index}
+                  order={index * 2 + 1}
+                />
+              )}
+            </React.Fragment>
           );
         })}
+
+        <JourneyCard
+          step={features[liveIndex]}
+          index={liveIndex}
+          active={activeIndex === liveIndex}
+          complete={completedSteps.includes(liveIndex)}
+          expanded={expandedIndex === liveIndex}
+          available={activeIndex === liveIndex || completedSteps.includes(liveIndex)}
+          content={expandedContent}
+          onToggle={() => onStepSelect(liveIndex)}
+          order={liveIndex * 2}
+        />
       </div>
     </nav>
   );

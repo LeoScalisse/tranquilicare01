@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Toaster } from '@/components/ui/toaster';
 import { Toaster as Sonner } from '@/components/ui/sonner';
@@ -19,6 +19,7 @@ import NGOAccountProfile from './pages/NGOAccountProfile';
 import NGOPublicProfile from './pages/NGOPublicProfile';
 import AuthCallback from './pages/AuthCallback';
 import NotFound from './pages/NotFound';
+import { matchesDiscoveryOrigin, readDiscoveryOrigin } from '@/lib/discoveryNavigation';
 
 const VerificationDiscovery = lazy(() => import('./pages/VerificationDiscovery'));
 const DonationIntegrityDiscovery = lazy(() => import('./pages/DonationIntegrityDiscovery'));
@@ -47,6 +48,15 @@ const AppRoutes = () => {
   const reducedMotion = useReducedMotion();
   const routeState = location.state as DiscoveryRouteState | null;
   const backgroundLocation = routeState?.backgroundLocation;
+
+  useEffect(() => {
+    if (backgroundLocation || location.pathname.startsWith('/descobertas/')) return;
+
+    const discoveryOrigin = readDiscoveryOrigin();
+    if (discoveryOrigin && matchesDiscoveryOrigin(discoveryOrigin, window.location)) return;
+
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [backgroundLocation, location.key, location.pathname, location.search]);
 
   return (
     <>
