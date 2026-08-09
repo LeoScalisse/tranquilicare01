@@ -214,8 +214,6 @@ const HowItWorks: React.FC<HowItWorksProps> = ({
   ariaLabel,
   className,
 }) => {
-  const liveIndex = expandedIndex ?? activeIndex;
-
   return (
     <nav aria-label={ariaLabel} className={cn('relative mx-auto w-full max-w-5xl', className)}>
       <div className='relative flex flex-col py-6'>
@@ -223,21 +221,21 @@ const HowItWorks: React.FC<HowItWorksProps> = ({
           const active = activeIndex === index;
           const complete = completedSteps.includes(index);
           const available = active || complete;
+          const expanded = expandedIndex === index;
 
           return (
             <React.Fragment key={step.title}>
-              {liveIndex !== index && (
-                <JourneyCard
-                  step={step}
-                  index={index}
-                  active={active}
-                  complete={complete}
-                  expanded={false}
-                  available={available}
-                  onToggle={() => available && onStepSelect(index)}
-                  order={index * 2}
-                />
-              )}
+              <JourneyCard
+                step={step}
+                index={index}
+                active={active}
+                complete={complete}
+                expanded={expanded}
+                available={available}
+                content={expanded ? expandedContent : undefined}
+                onToggle={() => available && onStepSelect(index)}
+                order={index * 2}
+              />
 
               {index < features.length - 1 && (
                 <JourneyConnector
@@ -248,18 +246,6 @@ const HowItWorks: React.FC<HowItWorksProps> = ({
             </React.Fragment>
           );
         })}
-
-        <JourneyCard
-          step={features[liveIndex]}
-          index={liveIndex}
-          active={activeIndex === liveIndex}
-          complete={completedSteps.includes(liveIndex)}
-          expanded={expandedIndex === liveIndex}
-          available={activeIndex === liveIndex || completedSteps.includes(liveIndex)}
-          content={expandedContent}
-          onToggle={() => onStepSelect(liveIndex)}
-          order={liveIndex * 2}
-        />
       </div>
     </nav>
   );

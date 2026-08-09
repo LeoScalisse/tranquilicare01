@@ -28,6 +28,7 @@ import logo from '@/assets/logo.png';
 import WalletCard from '@/components/WalletCard';
 import AppBottomNav from '@/components/AppBottomNav';
 import { SmoothInput } from '@/components/ui/smooth-input';
+import ImpactStatCarousel from '@/components/ui/impact-stat-carousel';
 
 const DAY_MS = 86_400_000;
 const AVATAR_MAX_CHARS = 4000;
@@ -276,20 +277,12 @@ const DonorProfile: React.FC = () => {
           <div className='space-y-9'>
             <section>
               <div className='mb-4 flex items-end justify-between'><div><p className='text-xs font-bold uppercase tracking-[0.14em] text-brand-blue'>Seu impacto</p><h2 className='font-display text-2xl font-semibold'>Estatísticas</h2></div><button onClick={() => navigate('/?view=marketplace')} className='text-sm font-bold text-brand-blue hover:underline'>Fazer uma doação</button></div>
-              <div className='grid grid-cols-2 gap-3 md:grid-cols-4'>
-                {[
-                  { label: 'Total doado', value: formatBRL(animatedTotal), icon: Heart, color: 'text-brand-blue' },
-                  { label: 'Doações', value: String(stats.count), icon: Gift, color: 'text-rose-500' },
-                  { label: 'Sequência', value: `${stats.streak} ${stats.streak === 1 ? 'dia' : 'dias'}`, icon: Flame, color: 'text-orange-500' },
-                  { label: 'Créditos', value: String(credits), icon: Sparkles, color: 'text-amber-500' },
-                ].map((stat) => (
-                  <div key={stat.label} className='min-w-0 rounded-lg border-2 border-border p-4'>
-                    <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                    <p className='mt-3 truncate text-lg font-bold md:text-xl'>{stat.value}</p>
-                    <p className='text-xs text-muted-foreground'>{stat.label}</p>
-                  </div>
-                ))}
-              </div>
+              <ImpactStatCarousel cards={[
+                { id: 'total', title: 'Total doado', value: formatBRL(animatedTotal), description: 'A soma das contribuições que você destinou às causas acompanhadas.', icon: Heart, color: 'bg-brand-blue' },
+                { id: 'donations', title: 'Doações', value: String(stats.count), description: 'Cada apoio registrado no seu histórico de impacto.', icon: Gift, color: 'bg-[#7657d6]' },
+                { id: 'streak', title: 'Sequência', value: `${stats.streak} ${stats.streak === 1 ? 'dia' : 'dias'}`, description: 'Dias consecutivos em que sua intenção se transformou em apoio.', icon: Flame, color: 'bg-[#ef8c2f]' },
+                { id: 'credits', title: 'Créditos', value: String(credits), description: 'Créditos disponíveis na sua carteira TranquiliCare.', icon: Sparkles, color: 'bg-brand-ink' },
+              ]} />
             </section>
 
             <section>

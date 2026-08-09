@@ -899,7 +899,7 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
           </button>
         </header>
 
-        <section className="mx-auto mt-8 max-w-5xl text-center md:mt-10">
+        <section className="mx-auto mt-8 w-full min-w-0 max-w-5xl overflow-hidden text-center md:mt-10">
           <motion.div
             key={`auth-intro-${side}`}
             initial={false}
@@ -915,17 +915,17 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
               <BadgeCheck size={15} />
               {isDonor ? 'Caminho do doador' : 'Caminho da organização'}
             </div>
-            <h1 className="mx-auto mt-4 max-w-3xl font-display text-3xl font-semibold leading-tight text-brand-ink sm:text-4xl lg:text-5xl">
+            <h1 className="mx-auto mt-4 max-w-[calc(100vw-2rem)] break-words px-1 font-display text-3xl font-semibold leading-tight text-brand-ink sm:max-w-3xl sm:text-4xl lg:text-5xl">
               {isDonor ? 'Toda boa ação começa com uma escolha.' : 'Sua causa também tem um lugar aqui.'}
             </h1>
-            <p className="mx-auto mt-3 max-w-2xl text-base leading-7 text-brand-ink/75">
+            <p className="mx-auto mt-3 max-w-[calc(100vw-2rem)] px-1 text-base leading-7 text-brand-ink/75 sm:max-w-2xl">
               {isDonor
                 ? 'Entre, confirme sua conta e encontre uma causa para começar a construir impacto.'
                 : 'Prepare sua presença, organize os dados essenciais e conecte pessoas ao seu propósito.'}
             </p>
           </motion.div>
 
-          <div className="relative mx-auto mt-6 grid max-w-md grid-cols-2 rounded-2xl border border-brand-ink/10 bg-card p-1 shadow-[0_10px_28px_rgba(17,54,79,0.08)]" role="group" aria-label="Escolha como entrar">
+          <div className="relative mx-auto mt-6 grid w-[calc(100vw-2rem)] max-w-md grid-cols-2 overflow-hidden rounded-2xl border border-brand-ink/10 bg-card p-1 shadow-[0_10px_28px_rgba(17,54,79,0.08)]" role="group" aria-label="Escolha como entrar">
             {(['donor', 'ngo'] as Side[]).map((role) => {
               const active = side === role;
               const { Icon, tab } = ROLE[role];

@@ -1,5 +1,6 @@
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -10,8 +11,6 @@ import React, {
 import {
   AnimatePresence,
   motion,
-  useMotionValue,
-  useSpring,
   type HTMLMotionProps,
   type TargetAndTransition,
 } from 'framer-motion';
@@ -19,7 +18,14 @@ import useMeasure from 'react-use-measure';
 
 import { cn } from '@/lib/utils';
 
-const springConfig = { stiffness: 190, damping: 24, mass: 0.72 };
+const cardSpring = {
+  type: 'spring' as const,
+  stiffness: 310,
+  damping: 34,
+  mass: 0.82,
+};
+
+const contentEase = [0.22, 1, 0.36, 1] as const;
 
 type ExpandDirection = 'vertical' | 'horizontal' | 'both';
 type ExpandBehavior = 'replace' | 'push';
@@ -77,7 +83,10 @@ const Expandable = React.forwardRef<HTMLDivElement, ExpandableProps>(({
 }, ref) => {
   const [internalExpanded, setInternalExpanded] = useState(false);
   const isExpanded = expanded ?? internalExpanded;
-  const toggleExpand = onToggle ?? (() => setInternalExpanded((current) => !current));
+  const internalToggle = useCallback(() => {
+    setInternalExpanded((current) => !current);
+  }, []);
+  const toggleExpand = onToggle ?? internalToggle;
   const mounted = useRef(false);
 
   useEffect(() => {
@@ -110,8 +119,14 @@ const Expandable = React.forwardRef<HTMLDivElement, ExpandableProps>(({
     <ExpandableContext.Provider value={context}>
       <motion.div
         ref={ref}
+        layout='position'
         initial={false}
-        transition={{ duration: transitionDuration, ease: easeType, delay: initialDelay }}
+        transition={{
+          layout: cardSpring,
+          duration: transitionDuration,
+          ease: easeType,
+          delay: initialDelay,
+        }}
         {...props}
       >
         {typeof children === 'function' ? children({ isExpanded }) : children}
@@ -164,24 +179,26 @@ const ExpandableContent = React.forwardRef<HTMLDivElement, ExpandableContentProp
   ...props
 }, forwardedRef) => {
   const { isExpanded, transitionDuration, easeType } = useExpandable();
+  const [contentRef, bounds] = useMeasure();
 
   return (
     <motion.div
       ref={forwardedRef}
       className={cn('overflow-hidden', className)}
       initial={false}
-      animate={{ height: isExpanded ? 'auto' : 0 }}
-      transition={{ duration: transitionDuration, ease: easeType }}
+      animate={{ height: isExpanded ? bounds.height : 0 }}
+      transition={cardSpring}
       aria-hidden={!isExpanded}
       {...props}
     >
-      <AnimatePresence initial={false}>
+      <AnimatePresence initial={false} mode='sync'>
         {(isExpanded || keepMounted) && (
           <motion.div
+            ref={contentRef}
             initial={animationPresets[preset].initial}
             animate={isExpanded ? animationPresets[preset].animate : animationPresets[preset].exit}
             exit={animationPresets[preset].exit}
-            transition={{ duration: transitionDuration, ease: easeType }}
+            transition={{ duration: Math.min(transitionDuration, 0.34), ease: easeType ?? contentEase }}
           >
             {children}
           </motion.div>
@@ -214,14 +231,7 @@ const ExpandableCard = React.forwardRef<HTMLDivElement, ExpandableCardProps>(({
   ...props
 }, forwardedRef) => {
   const { isExpanded, toggleExpand, expandDirection } = useExpandable();
-  const [measureRef, bounds] = useMeasure();
-  const widthTarget = useMotionValue(collapsedSize.width ?? bounds.width);
-  const width = useSpring(widthTarget, springConfig);
   const hoverTimer = useRef<number | null>(null);
-
-  useEffect(() => {
-    widthTarget.set(isExpanded ? expandedSize.width ?? bounds.width : collapsedSize.width ?? bounds.width);
-  }, [bounds.width, collapsedSize.width, expandedSize.width, isExpanded, widthTarget]);
 
   useEffect(() => () => {
     if (hoverTimer.current !== null) window.clearTimeout(hoverTimer.current);
@@ -236,22 +246,30 @@ const ExpandableCard = React.forwardRef<HTMLDivElement, ExpandableCardProps>(({
   return (
     <motion.div
       ref={forwardedRef}
+      layout='size'
+      initial={false}
+      animate={{
+        width: expandDirection === 'vertical'
+          ? collapsedSize.width
+          : isExpanded ? expandedSize.width : collapsedSize.width,
+        minHeight: expandDirection === 'horizontal'
+          ? collapsedSize.height
+          : isExpanded ? expandedSize.height ?? collapsedSize.height : collapsedSize.height,
+      }}
       className={cn('max-w-full overflow-hidden', className)}
       style={{
         ...style,
-        width: expandDirection === 'vertical' ? collapsedSize.width : width,
-        height: expandDirection === 'horizontal'
-          ? collapsedSize.height
-          : isExpanded
-            ? expandedSize.height ?? 'auto'
-            : collapsedSize.height,
       }}
-      transition={springConfig}
+      transition={{
+        layout: cardSpring,
+        width: cardSpring,
+        minHeight: cardSpring,
+      }}
       onHoverStart={() => !isExpanded && scheduleToggle(expandDelay)}
       onHoverEnd={() => isExpanded && scheduleToggle(collapseDelay)}
       {...props}
     >
-      <div ref={measureRef} className='flex min-h-full w-full flex-col'>
+      <div className='flex min-h-full w-full flex-col'>
         {children}
       </div>
     </motion.div>
