@@ -42,14 +42,15 @@ const SmoothInput = forwardRef<HTMLInputElement, SmoothInputProps>(({
   const rootRef = useRef<HTMLSpanElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
+  const frameRef = useRef<number | null>(null);
   const caretX = useMotionValue(0);
-  const caretY = useMotionValue(0);
+  const caretTop = useMotionValue(0);
   const caretHeight = useMotionValue(16);
   const caretOpacity = useMotionValue(0);
   const reducedMotion = useReducedMotion();
   const springCaretX = useSpring(caretX, reducedMotion
     ? { stiffness: 10_000, damping: 100, mass: 0.1 }
-    : { stiffness: 500, damping: 30, mass: 0.5 });
+    : { stiffness: 720, damping: 38, mass: 0.34 });
   const supportsAnimatedCaret = ANIMATED_TYPES.has(type);
   const updateCaretRef = useRef<(target: HTMLInputElement) => void>(() => undefined);
 
@@ -63,10 +64,13 @@ const SmoothInput = forwardRef<HTMLInputElement, SmoothInputProps>(({
       fontSize = `${Number.parseFloat(fontSize) + 6.25}px`;
     }
 
-    measure.style.font = `${styles.fontStyle} ${styles.fontWeight} ${fontSize} ${styles.fontFamily}`;
+    measure.style.font = styles.font;
+    measure.style.fontSize = fontSize;
     measure.style.letterSpacing = styles.letterSpacing;
     measure.style.fontFeatureSettings = styles.fontFeatureSettings;
     measure.style.fontVariationSettings = styles.fontVariationSettings;
+    measure.style.fontKerning = styles.fontKerning;
+    measure.style.fontStretch = styles.fontStretch;
     measure.style.textTransform = styles.textTransform;
     return styles;
   };
@@ -91,9 +95,10 @@ const SmoothInput = forwardRef<HTMLInputElement, SmoothInputProps>(({
     const styles = syncMeasure(target, measure);
     measure.textContent = textBeforeCaret;
 
+    const borderLeft = Number.parseFloat(styles.borderLeftWidth) || 0;
     const paddingLeft = Number.parseFloat(styles.paddingLeft) || 0;
     const paddingRight = Number.parseFloat(styles.paddingRight) || 0;
-    const prefixWidth = textBeforeCaret.length > 0 ? measure.offsetWidth : -1;
+    const prefixWidth = textBeforeCaret.length > 0 ? measure.getBoundingClientRect().width : 0;
     const absoluteWidth = paddingLeft + prefixWidth;
     const maxScroll = Math.max(0, target.scrollWidth - target.clientWidth);
     const visibleLeft = target.scrollLeft + paddingLeft;
@@ -111,17 +116,23 @@ const SmoothInput = forwardRef<HTMLInputElement, SmoothInputProps>(({
     const minX = paddingLeft - 1;
     const maxX = target.clientWidth - paddingRight;
     const visible = localX >= minX && localX <= maxX + 1;
+    const fontSize = Number.parseFloat(styles.fontSize) || 16;
+    const lineHeight = Number.parseFloat(styles.lineHeight);
+    const desiredHeight = Number.isFinite(lineHeight) ? lineHeight : fontSize * 1.25;
+    const height = Math.max(14, Math.min(desiredHeight, fontSize * 1.35, inputRect.height - 10));
 
-    caretX.set(inputRect.left - rootRect.left + Math.min(Math.max(localX, minX), maxX));
-    caretY.set(inputRect.top - rootRect.top + inputRect.height / 2);
-    caretHeight.set(Math.max(14, Math.min(Number.parseFloat(styles.lineHeight) || Number.parseFloat(styles.fontSize), inputRect.height - 12)));
+    caretX.set(inputRect.left - rootRect.left + borderLeft + Math.min(Math.max(localX, minX), maxX));
+    caretTop.set(inputRect.top - rootRect.top + (inputRect.height - height) / 2);
+    caretHeight.set(height);
     caretOpacity.set(!hasSelection && visible ? 1 : 0);
   };
 
   updateCaretRef.current = updateCaret;
 
   const scheduleCaretUpdate = (target: HTMLInputElement) => {
-    window.requestAnimationFrame(() => {
+    if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
+    frameRef.current = window.requestAnimationFrame(() => {
+      frameRef.current = null;
       if (document.activeElement === target) updateCaretRef.current(target);
     });
   };
@@ -151,6 +162,7 @@ const SmoothInput = forwardRef<HTMLInputElement, SmoothInputProps>(({
     void document.fonts.ready.then(syncIfFocused);
 
     return () => {
+      if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
       observer.disconnect();
       document.removeEventListener('selectionchange', handleSelectionChange);
       document.fonts.removeEventListener('loadingdone', syncIfFocused);
@@ -203,8 +215,8 @@ const SmoothInput = forwardRef<HTMLInputElement, SmoothInputProps>(({
       />
       <motion.span
         aria-hidden='true'
-        className={cn('pointer-events-none absolute left-0 top-0 z-[2] w-0.5 -translate-y-1/2 rounded-full bg-brand-blue', caretClassName)}
-        style={{ x: springCaretX, y: caretY, height: caretHeight, opacity: caretOpacity }}
+        className={cn('smooth-input-caret pointer-events-none absolute left-0 top-0 z-[2] w-0.5 rounded-full bg-brand-blue will-change-transform', caretClassName)}
+        style={{ x: springCaretX, y: caretTop, height: caretHeight, opacity: caretOpacity }}
       />
     </span>
   );

@@ -201,6 +201,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
             <div className='mt-5 flex flex-wrap gap-3'>
               {ownerMode ? <button onClick={onEditProfile} className='tc-button-3d inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white'><Pencil size={17} />Editar perfil</button> : <button onClick={() => setShowDonationModal(true)} className='tc-button-3d inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white'><Heart size={17} className='fill-current' />Apoiar agora</button>}
               <button onClick={() => setShowContactModal(true)} className='tc-button-neumorph inline-flex items-center gap-2 rounded-lg border border-border bg-background px-5 py-2.5 text-sm font-bold transition-colors hover:border-brand-blue hover:text-brand-blue'><MessageCircle size={17} />Contato</button>
+              <ViewOnMap locationName={ngo.name} address={`${ngo.name}, Brasil`} />
             </div>
           </div>
         </div>
@@ -228,7 +229,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
               </section>
               <aside className='space-y-5'>
                 <section><h2 className='mb-3 font-display text-xl font-semibold'>Objetivo atual</h2><button onClick={() => setShowGoalModal(true)} className='w-full rounded-lg bg-brand-yellow p-5 text-left text-brand-ink'><Target size={23} /><p className='mt-3 line-clamp-3 font-bold leading-6'>{ngo.goal}</p><span className='mt-4 inline-flex items-center gap-1 text-xs font-bold'>Ver meta completa <ChevronRight size={15} /></span></button></section>
-                <section className='rounded-lg border-2 border-border p-5'><h2 className='font-display text-xl font-semibold'>Conecte-se</h2><p className='font-narrative mt-2 text-sm leading-6 text-muted-foreground'>Acompanhe as atualizações e fale diretamente com a equipe.</p><button onClick={() => setShowContactModal(true)} className='mt-4 inline-flex items-center gap-2 text-sm font-bold text-brand-blue'>Ver canais de contato <ChevronRight size={16} /></button><ViewOnMap locationName={ngo.name} address={`${ngo.name}, Brasil`} className='mt-5' /></section>
+                <section className='rounded-lg border-2 border-border p-5'><h2 className='font-display text-xl font-semibold'>Conecte-se</h2><p className='font-narrative mt-2 text-sm leading-6 text-muted-foreground'>Acompanhe as atualizações e fale diretamente com a equipe.</p><button onClick={() => setShowContactModal(true)} className='mt-4 inline-flex items-center gap-2 text-sm font-bold text-brand-blue'>Ver canais de contato <ChevronRight size={16} /></button></section>
               </aside>
             </div>
           )}

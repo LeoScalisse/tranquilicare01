@@ -1,7 +1,6 @@
 import React, { useContext, useRef } from 'react';
 import { motion, useReducedMotion, useScroll, useTransform } from 'framer-motion';
 import DiscoveryScrollContext from './DiscoveryScrollContext';
-import GhostLottie from './GhostLottie';
 import SearchLottie from './SearchLottie';
 import StoryPunctuation from './StoryPunctuation';
 
@@ -93,9 +92,6 @@ const NarrativeHorizontalAct: React.FC<NarrativeHorizontalActProps> = ({
                 className='absolute left-[7%] top-1/2 h-28 w-28 -translate-y-1/2 drop-shadow-[0_12px_18px_rgba(20,72,105,0.16)] sm:h-40 sm:w-40'
               />
             )}
-            {visualPreset === 'verification' && panel.id === 'lost-opportunities' && (
-              <GhostLottie className='pointer-events-none absolute bottom-[14%] left-4 z-20 h-20 w-20 opacity-75 sm:left-auto sm:right-7 sm:h-28 sm:w-28' />
-            )}
             <div className='font-narrative relative z-20 mx-auto w-full max-w-4xl text-3xl font-medium leading-tight sm:text-5xl'>
               <StoryPunctuation className={punctuationClass(panel.tone)}>
                 {panel.lines}
@@ -133,9 +129,6 @@ const NarrativeHorizontalAct: React.FC<NarrativeHorizontalActProps> = ({
                   reducedMotion={Boolean(reducedMotion)}
                   className='absolute left-[7%] top-1/2 h-[min(21vw,13rem)] w-[min(21vw,13rem)] -translate-y-1/2 drop-shadow-[0_14px_22px_rgba(20,72,105,0.18)]'
                 />
-              )}
-              {visualPreset === 'verification' && panel.id === 'lost-opportunities' && (
-                <GhostLottie className='pointer-events-none absolute bottom-[14%] left-5 z-20 h-24 w-24 opacity-75 sm:left-auto sm:right-8 sm:h-32 sm:w-32' />
               )}
               <div className='relative z-20 mx-auto w-full max-w-5xl'>
                 <div className='font-narrative max-w-4xl text-4xl font-medium leading-[1.08] sm:text-6xl lg:text-7xl'>

@@ -33,7 +33,7 @@ const ViewOnMap: React.FC<ViewOnMapProps> = ({ locationName, address, className 
   };
 
   return (
-    <div className={cn('w-full', className)}>
+    <div className={cn(isOpen ? 'w-full max-w-sm basis-full' : 'w-auto', className)}>
       <AnimatePresence initial={false} mode='popLayout'>
         {!isOpen ? (
           <motion.button
@@ -41,7 +41,7 @@ const ViewOnMap: React.FC<ViewOnMapProps> = ({ locationName, address, className 
             layoutId={`map-${id}`}
             type='button'
             onClick={() => setIsOpen(true)}
-            className='tc-button-neumorph flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-brand-blue/15 px-4 text-sm font-bold text-brand-ink outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20'
+            className='tc-button-neumorph flex h-12 w-auto items-center justify-center gap-2 rounded-lg border border-brand-blue/15 px-5 text-sm font-bold text-brand-ink outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20'
             transition={transition}
             whileTap={reducedMotion ? undefined : { scale: 0.98 }}
           >
