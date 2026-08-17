@@ -15,6 +15,7 @@ interface DonationAmountWheelProps {
   id?: string;
   value: number | null;
   onValueChange: (value: number | null) => void;
+  onValueCommit?: (value: number | null) => void;
   min?: number;
   max?: number;
   step?: number;
@@ -73,6 +74,7 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
   id = 'donation-amount',
   value,
   onValueChange,
+  onValueCommit,
   min = 0.51,
   max = 100_000,
   step = 5,
@@ -113,7 +115,12 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
   const frameTimeRef = useRef(0);
   const wheelTimerRef = useRef<number | null>(null);
   const manualCommitTimerRef = useRef<number | null>(null);
+  const commitWhenSettledRef = useRef(false);
   const reducedMotion = useReducedMotion();
+
+  const commitValue = useCallback((nextValue: number | null) => {
+    onValueCommit?.(nextValue);
+  }, [onValueCommit]);
 
   const layoutItems = useCallback((position: number) => {
     itemRefs.current.forEach((element) => {
@@ -169,10 +176,14 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
 
     if (settled) {
       frameRef.current = null;
+      if (commitWhenSettledRef.current) {
+        commitWhenSettledRef.current = false;
+        commitValue(valueFromIndex(selectedRef.current));
+      }
       return;
     }
     frameRef.current = window.requestAnimationFrame(runFrame);
-  }, [layoutItems, reducedMotion, syncSelection]);
+  }, [commitValue, layoutItems, reducedMotion, syncSelection, valueFromIndex]);
 
   const startLoop = useCallback(() => {
     if (frameRef.current !== null) return;
@@ -248,6 +259,7 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
       setAnchorIndex(-1);
       setImmediatePosition(-1);
       onValueChange(null);
+      commitValue(null);
       setEditing(false);
       setAwaitingManualEntry(false);
       return;
@@ -267,6 +279,7 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
     setAnchorIndex(nextIndex);
     setImmediatePosition(nextIndex);
     onValueChange(nextValue);
+    commitValue(nextValue);
     setDraft(formatDonationNumber(nextValue));
     setEditing(false);
     setAwaitingManualEntry(false);
@@ -305,7 +318,9 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
     targetRef.current = destination;
     if (reducedMotion) {
       setImmediatePosition(destination);
+      commitValue(valueFromIndex(destination));
     } else {
+      commitWhenSettledRef.current = true;
       startLoop();
     }
   };
@@ -341,11 +356,16 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
           moved: false,
         };
         event.currentTarget.setPointerCapture(event.pointerId);
+        if (wheelTimerRef.current !== null) {
+          window.clearTimeout(wheelTimerRef.current);
+          wheelTimerRef.current = null;
+        }
         if (frameRef.current !== null) {
           window.cancelAnimationFrame(frameRef.current);
           frameRef.current = null;
         }
         targetRef.current = positionRef.current;
+        commitWhenSettledRef.current = false;
       }}
       onPointerMove={(event) => {
         const drag = dragRef.current;
@@ -377,10 +397,13 @@ const DonationAmountWheel: React.FC<DonationAmountWheelProps> = ({
         if (editing) inputRef.current?.blur();
         const normalizedDelta = clamp(event.deltaY / ROW_HEIGHT, -0.72, 0.72);
         targetRef.current = clamp(targetRef.current + normalizedDelta, -1, maxIndex);
+        commitWhenSettledRef.current = false;
         startLoop();
         if (wheelTimerRef.current !== null) window.clearTimeout(wheelTimerRef.current);
         wheelTimerRef.current = window.setTimeout(() => {
+          wheelTimerRef.current = null;
           targetRef.current = clamp(Math.round(targetRef.current), -1, maxIndex);
+          commitWhenSettledRef.current = true;
           startLoop();
         }, 180);
       }}

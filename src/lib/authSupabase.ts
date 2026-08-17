@@ -12,20 +12,23 @@
  */
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { isCompleteEmailCode, normalizeEmailCode } from './emailVerification';
+import { normalizeCnpj, normalizePhone } from './organizationProfile';
 import type {
   AccountType,
   AppUser,
   EditableUserProfile,
   Listener,
+  NgoProfileDetails,
   SignUpResult,
 } from './authTypes';
 
 /** Google is a full-page redirect, so the chosen role has to survive leaving
  *  the app entirely. */
 const PENDING_ROLE_KEY = 'tc-pending-account-type';
-const EMAIL_CODE_LENGTH = 8;
 
-const PROFILE_SELECT = 'id,email,name,avatar_url,credits,account_type';
+const PROFILE_SELECT = 'id,email,name,avatar_url,credits,account_type,ngo_profile';
+const NGO_PROFILE_SELECT = 'description,category,goal,instagram,phone,cnpj,address';
 const OPTIONAL_SCHEMA_CODES = new Set(['42P01', '42703', 'PGRST202', 'PGRST205']);
 const warnedOptionalSchema = new Set<string>();
 
@@ -36,6 +39,21 @@ type ProfileRow = {
   avatar_url: string | null;
   credits: number | null;
   account_type: string | null;
+  ngo_profile: unknown;
+};
+
+type NgoProfileRow = {
+  description: string | null;
+  category: string | null;
+  goal: string | null;
+  instagram: string | null;
+  phone: string | null;
+  cnpj: string | null;
+  address: string | null;
+};
+
+type DonorProfileRow = {
+  credits: number | null;
 };
 
 const listeners = new Set<Listener>();
@@ -58,6 +76,21 @@ const safeText = (value: unknown): string => (typeof value === 'string' ? value 
 const safeCredits = (value: unknown): number => {
   const n = Number(value ?? 0);
   return Number.isFinite(n) && n >= 0 ? n : 0;
+};
+
+const safeNgoProfile = (value: unknown): NgoProfileDetails | null => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const profile = value as Record<string, unknown>;
+  const details = {
+    description: safeText(profile.description).trim(),
+    category: safeText(profile.category).trim(),
+    goal: safeText(profile.goal).trim(),
+    instagram: safeText(profile.instagram).trim(),
+    phone: safeText(profile.phone).trim(),
+    cnpj: safeText(profile.cnpj).trim(),
+    address: safeText(profile.address).trim(),
+  };
+  return Object.values(details).some(Boolean) ? details : null;
 };
 
 const logOptionalSchemaIssue = (where: string, error: { code?: string; message?: string }) => {
@@ -95,6 +128,7 @@ const fromMetadata = (user: User): AppUser => {
     // Temporary compatibility until credits move fully to a protected table.
     credits: safeCredits(meta.credits),
     accountType: accountTypeFrom(meta.account_type),
+    ngoProfile: safeNgoProfile(meta.ngo_profile),
   };
 };
 
@@ -105,6 +139,7 @@ const fromProfile = (profile: ProfileRow, user: User): AppUser => ({
   avatar: profile.avatar_url || null,
   credits: safeCredits(profile.credits),
   accountType: accountTypeFrom(profile.account_type),
+  ngoProfile: safeNgoProfile(profile.ngo_profile),
 });
 
 const loadAppUser = async (user: User): Promise<AppUser> => {
@@ -121,7 +156,37 @@ const loadAppUser = async (user: User): Promise<AppUser> => {
     return fallback;
   }
 
-  return data ? fromProfile(data, user) : fallback;
+  const appUser = data ? fromProfile(data, user) : fallback;
+
+  if (appUser.accountType === 'ngo') {
+    const { data: ngoProfile, error: ngoError } = await client()
+      .from('ngo_profiles')
+      .select(NGO_PROFILE_SELECT)
+      .eq('user_id', user.id)
+      .maybeSingle<NgoProfileRow>();
+
+    if (ngoError) {
+      if (isOptionalSchemaIssue(ngoError)) logOptionalSchemaIssue('ngo-profile-load', ngoError);
+      else console.error('Could not load organization profile:', ngoError);
+    } else if (ngoProfile) {
+      appUser.ngoProfile = safeNgoProfile(ngoProfile) ?? appUser.ngoProfile;
+    }
+  } else {
+    const { data: donorProfile, error: donorError } = await client()
+      .from('donor_profiles')
+      .select('credits')
+      .eq('user_id', user.id)
+      .maybeSingle<DonorProfileRow>();
+
+    if (donorError) {
+      if (isOptionalSchemaIssue(donorError)) logOptionalSchemaIssue('donor-profile-load', donorError);
+      else console.error('Could not load donor profile:', donorError);
+    } else if (donorProfile) {
+      appUser.credits = safeCredits(donorProfile.credits);
+    }
+  }
+
+  return appUser;
 };
 
 const updateProfileRole = async (accountType: AccountType): Promise<void> => {
@@ -232,8 +297,16 @@ export const signUp = async (
     },
   });
   if (error) throw error;
-  // Account created but no session => e-mail confirmation is ON.
-  if (!data.session) return { user: null, needsEmailConfirmation: true };
+  // The e-mail itself is the source of truth. A session must never let a new
+  // account skip the code step while its address is still unconfirmed.
+  if (!data.session || !data.user?.email_confirmed_at) {
+    if (data.session) {
+      const { error: signOutError } = await client().auth.signOut();
+      if (signOutError) throw signOutError;
+      publish(null);
+    }
+    return { user: null, needsEmailConfirmation: true };
+  }
   const user = data.user ? await loadAppUser(data.user) : null;
   publish(user);
   return { user, needsEmailConfirmation: false };
@@ -242,10 +315,10 @@ export const signUp = async (
 export const verifyEmailCode = async (
   email: string,
   code: string,
-  _accountType: AccountType = 'donor',
+  accountType: AccountType = 'donor',
 ): Promise<AppUser> => {
-  const token = code.replace(/\D/g, '');
-  if (token.length !== EMAIL_CODE_LENGTH) throw new Error('invalid-code');
+  const token = normalizeEmailCode(code);
+  if (!isCompleteEmailCode(token)) throw new Error('invalid-code');
 
   const { data, error } = await client().auth.verifyOtp({
     email: email.trim(),
@@ -256,7 +329,17 @@ export const verifyEmailCode = async (
   if (error) throw error;
   if (!data.user) throw new Error('no-user');
 
-  const user = await loadAppUser(data.user);
+  let confirmedUser = data.user;
+  if (accountTypeFrom(confirmedUser.user_metadata?.account_type) !== accountType) {
+    const { data: updated, error: updateError } = await client().auth.updateUser({
+      data: { account_type: accountType },
+    });
+    if (updateError) throw updateError;
+    confirmedUser = updated.user ?? confirmedUser;
+  }
+
+  await updateProfileRole(accountType);
+  const user = await loadAppUser(confirmedUser);
   publish(user);
   return user;
 };
@@ -302,6 +385,19 @@ export const updateUser = async (patch: EditableUserProfile): Promise<AppUser | 
     metadata.avatar = patch.avatar;
     profile.avatar_url = patch.avatar;
   }
+  if (patch.ngoProfile !== undefined) {
+    const ngoProfile = patch.ngoProfile ? {
+      description: patch.ngoProfile.description.trim(),
+      category: patch.ngoProfile.category.trim(),
+      goal: patch.ngoProfile.goal.trim(),
+      instagram: patch.ngoProfile.instagram.trim(),
+      phone: normalizePhone(patch.ngoProfile.phone),
+      cnpj: normalizeCnpj(patch.ngoProfile.cnpj),
+      address: patch.ngoProfile.address.trim().replace(/\s+/g, ' '),
+    } : null;
+    metadata.ngo_profile = ngoProfile;
+    profile.ngo_profile = ngoProfile;
+  }
   if (Object.keys(metadata).length === 0) return cached;
 
   const { data: result, error } = await client().auth.updateUser({ data: metadata });
@@ -319,6 +415,26 @@ export const updateUser = async (patch: EditableUserProfile): Promise<AppUser | 
   if (profileError) {
     if (isOptionalSchemaIssue(profileError)) logOptionalSchemaIssue('profile-update', profileError);
     else console.error('Could not update profile row:', profileError);
+  }
+
+  if (patch.ngoProfile) {
+    const { error: ngoProfileError } = await client()
+      .from('ngo_profiles')
+      .update({
+        description: patch.ngoProfile.description.trim(),
+        category: patch.ngoProfile.category.trim(),
+        goal: patch.ngoProfile.goal.trim(),
+        instagram: patch.ngoProfile.instagram.trim() || null,
+        phone: normalizePhone(patch.ngoProfile.phone) || null,
+        cnpj: normalizeCnpj(patch.ngoProfile.cnpj),
+        address: patch.ngoProfile.address.trim().replace(/\s+/g, ' '),
+      })
+      .eq('user_id', userId);
+
+    if (ngoProfileError) {
+      if (isOptionalSchemaIssue(ngoProfileError)) logOptionalSchemaIssue('ngo-profile-update', ngoProfileError);
+      else console.error('Could not update organization profile:', ngoProfileError);
+    }
   }
 
   const user = updatedProfile ? fromProfile(updatedProfile, result.user) : await loadAppUser(result.user);

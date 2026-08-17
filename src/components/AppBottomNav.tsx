@@ -15,7 +15,6 @@ const AppBottomNav: React.FC<AppBottomNavProps> = ({ activeKey, user }) => {
     activeKey,
     isLoggedIn: Boolean(user),
     onHome: () => navigate('/'),
-    onApoiar: () => navigate('/?view=marketplace'),
     onStories: () => navigate('/?view=stories'),
     onPerfil: () => navigate(user ? defaultDestForAccount(user.accountType) : '/donor/auth'),
   });

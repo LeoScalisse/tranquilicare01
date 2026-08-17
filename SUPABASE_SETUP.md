@@ -89,16 +89,16 @@ O login com Google nao passa por isso; o e-mail ja vem verificado pelo Google.
 
 ### Confirmacao por codigo
 
-Para o fluxo atual do app, edite o template **Confirm signup**, mantenha `{{ .Token }}` visivel no HTML e use o modelo pronto em `supabase/email_templates/confirm-signup.html`. Remova o link `{{ .ConfirmationURL }}` se quiser somente o codigo de 8 digitos.
+Para o fluxo atual do app, edite o template **Confirm signup**, mantenha `{{ .Token }}` visivel no HTML e use o modelo pronto em `supabase/email_templates/confirm-signup.html`. Remova o link `{{ .ConfirmationURL }}` se quiser somente o codigo.
 
 O app confirma com `verifyOtp({ email, token, type: 'email' })` e reenvia com `resend({ type: 'signup' })`.
 
-O modelo separa automaticamente o codigo de 8 digitos em grupos de 4 com um hifen. O app remove essa separacao antes de validar. O modelo usa a logo em `/tranquilicare-logo.png`. Em producao, essa imagem precisa estar publicada em uma URL HTTPS acessivel; em testes locais, o Gmail nao consegue acessar `localhost`.
+O Supabase hospedado usa 6 digitos por padrao. Se quiser manter o formato visual 4 + 4, configure o comprimento do OTP de email como 8 no painel. O app aceita codigos de 6 a 8 digitos para nao bloquear contas enquanto essa configuracao estiver divergente. O modelo separa automaticamente codigos de 8 digitos em grupos de 4 com um hifen. O app remove essa separacao antes de validar. O modelo usa a logo em `/tranquilicare-logo.png`. Em producao, essa imagem precisa estar publicada em uma URL HTTPS acessivel; em testes locais, o Gmail nao consegue acessar `localhost`.
 
 ### Quando o email nao chega
 
 1. Abra **Logs > Logs Explorer**, selecione a fonte **Auth** e confira o horario da tentativa.
-2. Se estiver usando o SMTP padrao do Supabase, ele e limitado a enderecos autorizados da equipe e possui limite baixo para testes.
+2. Se estiver usando o SMTP padrao do Supabase, ele envia apenas para enderecos autorizados da equipe e permite somente 2 mensagens por hora. O app tambem bloqueia o reenvio por 60 segundos para respeitar a janela minima do Auth.
 3. Com SMTP proprio, confirme host, porta, usuario, senha e remetente; depois veja o log de entrega do provedor.
 4. Verifique Spam/Promocoes e a lista de supressao/bounces do provedor. Se houver rastreamento de links, desative-o para emails do Auth.
 
@@ -111,9 +111,28 @@ arquivo versionado neste projeto:
 supabase/schema.sql
 ```
 
-Ele cria `public.profiles`, trigger para novos usuarios, backfill dos usuarios
-existentes, RLS e permissoes de coluna. O navegador pode alterar apenas `name` e
-`avatar_url`; `credits` e `account_type` ficam protegidos contra update direto.
+Ele cria tres camadas de perfil:
+
+- `public.profiles`: identidade comum, com nome, e-mail, avatar e tipo de conta.
+- `public.donor_profiles`: dados exclusivos de doadores, com os creditos ainda
+  mantidos como compatibilidade ate existir um ledger.
+- `public.ngo_profiles`: CNPJ, endereco, descricao, categoria, objetivo,
+  Instagram, telefone e status de verificacao da organizacao.
+
+As tres tabelas usam RLS. Cada conta le seus proprios dados; uma ONG so se torna
+publicamente legivel quando o status for `approved`. CNPJ e telefone possuem
+restricoes de formato no banco, e o navegador nao pode alterar creditos, tipo de
+conta ou status.
+
+Se `supabase/schema.sql` ja foi executado anteriormente, rode apenas a migracao
+nova no SQL Editor:
+
+```text
+supabase/migrations/20260815_organized_user_profiles.sql
+```
+
+Ela faz o backfill das contas existentes sem apagar o campo JSON legado. Isso
+mantem a aplicacao compativel durante a transicao para as tabelas estruturadas.
 
 O app ja tenta usar essa tabela quando ela existe. Se ela ainda nao foi criada,
 ele continua funcionando com fallback em `user_metadata`, para nao quebrar o
@@ -167,7 +186,7 @@ A função rejeita a doação enquanto a conta não estiver pronta. Isso evita c
 
 ### Créditos na conta do doador
 
-A coluna `profiles.credits` não deve representar dinheiro real. Para adicionar créditos pagos e distribuir depois, a próxima fase precisa de um ledger imutável com depósitos, consumo, estornos, chargebacks, idempotência e reconciliação. Também precisamos validar o modelo jurídico e contábil brasileiro antes de manter saldo de terceiros. Por isso o Checkout direto foi ligado primeiro; não há saldo pré-pago falso no fluxo atual.
+As colunas `profiles.credits` e `donor_profiles.credits` não devem representar dinheiro real. A segunda existe apenas para iniciar a separação dos dados por tipo de perfil, preservando compatibilidade. Para adicionar créditos pagos e distribuir depois, a próxima fase precisa de um ledger imutável com depósitos, consumo, estornos, chargebacks, idempotência e reconciliação. Também precisamos validar o modelo jurídico e contábil brasileiro antes de manter saldo de terceiros.
 ## Como o codigo esta organizado
 
 | Arquivo | Papel |
@@ -177,7 +196,7 @@ A coluna `profiles.credits` não deve representar dinheiro real. Para adicionar 
 | `src/lib/authSupabase.ts` | Implementacao real: sessao, Google, profiles e fallback em metadata. |
 | `src/lib/authLocal.ts` | Mock usado enquanto o Supabase nao esta configurado. |
 | `src/pages/AuthCallback.tsx` | Rota `/auth/callback`: recebe o retorno do Google. |
-| `supabase/schema.sql` | Schema seguro para `profiles`, RLS e RPC de tipo de conta inicial. |
+| `supabase/schema.sql` | Schema seguro para perfis comuns, doadores e ONGs, com RLS e RPC de tipo de conta inicial. |
 
 ## Ainda pendente
 

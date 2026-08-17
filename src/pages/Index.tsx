@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { View, NGO } from '../types';
 import { demoNgos } from '@/data/demoNgos';
 import { getUser, onAuthChange, authReady, signOut, defaultDestForAccount, AppUser } from '@/lib/auth';
@@ -35,6 +35,7 @@ const TranquiliCareApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.HOME);
   const [viewingNGO, setViewingNGO] = useState<NGO | null>(null);
   const [user, setUser] = useState<AppUser | null>(getUser);
+  const [authHydrated, setAuthHydrated] = useState(false);
   const [confirmedDonation, setConfirmedDonation] = useState<DonationRow | null>(null);
   const [celebrationPhase, setCelebrationPhase] = useState<'idle' | 'card' | 'dialog'>('idle');
   const handledCheckout = useRef<string | null>(null);
@@ -42,7 +43,6 @@ const TranquiliCareApp: React.FC = () => {
   const requestedView = searchParams.get('view');
   const paymentStatus = searchParams.get('payment');
   const checkoutSessionId = searchParams.get('session_id');
-  const userId = user?.id ?? null;
   const userEmail = user?.email ?? null;
 
   // `getUser()` is only populated synchronously by the local mock. With
@@ -50,9 +50,17 @@ const TranquiliCareApp: React.FC = () => {
   // reports *future* changes — so resync once explicitly, or the header sits
   // logged-out after a refresh.
   useEffect(() => {
+    let active = true;
     const unsubscribe = onAuthChange(setUser);
-    authReady.then(() => setUser(getUser()));
-    return unsubscribe;
+    void authReady.finally(() => {
+      if (!active) return;
+      setUser(getUser());
+      setAuthHydrated(true);
+    });
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
   const handleProfileClick = () => {
@@ -67,6 +75,12 @@ const TranquiliCareApp: React.FC = () => {
   const handleSelectNGO = (ngo: NGO) => {
     navigate(`/ong/${ngo.id}`);
   };
+
+  const scrollToCauses = useCallback((behavior: ScrollBehavior = 'smooth') => {
+    window.requestAnimationFrame(() => {
+      document.getElementById('causas')?.scrollIntoView({ behavior, block: 'start' });
+    });
+  }, []);
 
   const handleVerificationDiscovery = useCallback(() => {
     saveDiscoveryOrigin(window.location, VERIFICATION_DISCOVERY_TRIGGER_ID);
@@ -121,17 +135,25 @@ const TranquiliCareApp: React.FC = () => {
   }, [currentView]);
 
   useEffect(() => {
-    if (requestedView === 'marketplace') setCurrentView(View.MARKETPLACE);
+    if (requestedView === 'marketplace') {
+      navigate('/#causas', { replace: true });
+      return;
+    }
     if (requestedView === 'stories') setCurrentView(View.STORIES);
     if (paymentStatus === 'cancelled') toast('Pagamento cancelado. Nenhuma doação foi concluída.');
-  }, [paymentStatus, requestedView]);
+  }, [navigate, paymentStatus, requestedView]);
+
+  useEffect(() => {
+    if (location.hash !== '#causas') return undefined;
+    const frame = window.requestAnimationFrame(() => scrollToCauses('auto'));
+    return () => window.cancelAnimationFrame(frame);
+  }, [location.hash, scrollToCauses]);
 
   useEffect(() => {
     if (
       paymentStatus !== 'success'
       || !checkoutSessionId
-      || !userId
-      || !userEmail
+      || !authHydrated
       || handledCheckout.current === checkoutSessionId
       || pendingCheckout.current === checkoutSessionId
     ) {
@@ -162,7 +184,7 @@ const TranquiliCareApp: React.FC = () => {
         console.error('Could not finish donation confirmation experience:', error);
         toast('Seu pagamento está sendo confirmado. O impacto será atualizado automaticamente.');
       });
-  }, [checkoutSessionId, paymentStatus, userEmail, userId]);
+  }, [authHydrated, checkoutSessionId, paymentStatus, userEmail]);
 
   const handleDonationAnimationComplete = useCallback(() => {
     if (!confirmedDonation) return;
@@ -172,6 +194,11 @@ const TranquiliCareApp: React.FC = () => {
     setCelebrationPhase('idle');
     setConfirmedDonation(null);
   }, [confirmedDonation]);
+
+  const handleCreateAccountAfterDonation = useCallback(() => {
+    handleDonationAnimationComplete();
+    navigate('/donor/auth?mode=signup');
+  }, [handleDonationAnimationComplete, navigate]);
 
   const confirmedNgoName = confirmedDonation
     ? ngos.find((ngo) => ngo.id === confirmedDonation.ngo_id)?.name ?? 'esta causa'
@@ -188,7 +215,7 @@ const TranquiliCareApp: React.FC = () => {
         ownedNgoId={null}
         verifiedCount={ngos.filter((ngo) => ngo.verified).length}
         onLogin={() => navigate('/donor/auth')}
-        onExplore={() => setCurrentView(View.MARKETPLACE)}
+        onExplore={scrollToCauses}
         onStories={() => setCurrentView(View.STORIES)}
         onVerificationDiscovery={handleVerificationDiscovery}
         onDonationDiscovery={handleDonationDiscovery}
@@ -204,8 +231,6 @@ const TranquiliCareApp: React.FC = () => {
     switch (currentView) {
       case View.HOME:
         return renderHome();
-      case View.MARKETPLACE:
-        return <Marketplace ngos={ngos} onSelectNGO={handleSelectNGO} onSupportNGO={handleSelectNGO} />;
       case View.STORIES:
         return (
           <Stories
@@ -232,6 +257,7 @@ const TranquiliCareApp: React.FC = () => {
         onProfileClick={handleProfileClick}
         onLogout={handleLogout}
         onDonorLogin={() => navigate('/donor/auth')}
+        onAbout={() => navigate('/sobre')}
       />
       <main className="animate-fade-in">{renderView()}</main>
 
@@ -240,7 +266,12 @@ const TranquiliCareApp: React.FC = () => {
           open={celebrationPhase === 'dialog'}
           amountCents={confirmedDonation.amount}
           ngoName={confirmedNgoName}
-          onTransferComplete={() => setCelebrationPhase('card')}
+          isLoggedIn={Boolean(user)}
+          onCreateAccount={handleCreateAccountAfterDonation}
+          onTransferComplete={() => {
+            if (user) setCelebrationPhase('card');
+            else handleDonationAnimationComplete();
+          }}
         />
       )}
 
@@ -253,6 +284,7 @@ const TranquiliCareApp: React.FC = () => {
             TRANQUILI<span className="text-brand-blue">CARE</span>
           </p>
           <p>© 2025 TranquiliCare. Conectando corações, mudando o mundo.</p>
+          <Link to='/sobre' className='mt-3 inline-flex font-semibold text-brand-blue hover:underline'>Sobre o TranquiliCare</Link>
         </div>
       </footer>
     </div>

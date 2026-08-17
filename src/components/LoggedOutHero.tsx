@@ -144,7 +144,7 @@ const LoggedOutHero: React.FC<LoggedOutHeroProps> = ({
               </em>
             </h1>
             <p className='font-narrative mt-5 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg'>
-              Conheça organizações verificadas, descubra histórias reais e escolha como participar.
+              Conheça as histórias por trás de cada causa, participe com confiança e acompanhe o que acontece depois.
             </p>
             <div className='mt-7 flex flex-col gap-3 sm:flex-row'>
               <button
@@ -161,7 +161,7 @@ const LoggedOutHero: React.FC<LoggedOutHeroProps> = ({
                 className='inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border-2 border-border bg-background px-6 py-3 text-sm font-bold text-brand-ink transition-colors hover:border-brand-blue hover:text-brand-blue'
               >
                 <Images size={18} />
-                Ver histórias reais
+                Conhecer histórias
               </button>
             </div>
             <button
@@ -174,7 +174,7 @@ const LoggedOutHero: React.FC<LoggedOutHeroProps> = ({
               aria-label='Descobrir como o valor escolhido chega à organização'
             >
               <HandHeart size={19} className='text-brand-blue' />
-              100% da doação escolhida é destinada à organização.
+              100% da sua doação chega na ONG.
               <ArrowRight size={15} className='text-brand-blue transition-transform group-hover:translate-x-1' aria-hidden='true' />
             </button>
           </motion.div>
