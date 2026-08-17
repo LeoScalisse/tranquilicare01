@@ -35,6 +35,19 @@ export interface NGOPost {
   ngoImage?: string;
 }
 
+export type ImpactMeasurementType = 'direct' | 'estimated' | 'collective';
+
+export interface ImpactMetric {
+  id: string;
+  value: number | string;
+  label: string;
+  unit?: string;
+  context?: string;
+  measurementType?: ImpactMeasurementType;
+  source?: string;
+  updatedAt?: string;
+}
+
 export interface NGO {
   id: string;
   name: string;
@@ -42,15 +55,19 @@ export interface NGO {
   category: string;
   goal: string;
   image: string;
+  coverImage?: string;
   email: string;
   instagram: string;
   phone?: string;
+  cnpj?: string;
+  address?: string;
   verified: boolean;
   status?: 'pending' | 'approved' | 'rejected';
   posts: NGOPost[];
+  impactMetrics?: ImpactMetric[];
 }
 
-/** A time-boxed "vaquinha relâmpago" (flash fundraiser) shown above the NGOs. */
+/** A time-boxed fundraiser shown above the NGOs. */
 export interface FlashCampaign {
   id: string;
   title: string;
@@ -67,7 +84,6 @@ export interface FlashCampaign {
 
 export enum View {
   HOME = 'HOME',
-  MARKETPLACE = 'MARKETPLACE',
   STORIES = 'STORIES',
   NGO_PROFILE = 'NGO_PROFILE',
 }

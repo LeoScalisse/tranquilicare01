@@ -3,6 +3,7 @@ import React, {
   useEffect,
   useImperativeHandle,
   useRef,
+  useState,
 } from 'react';
 import {
   motion,
@@ -16,20 +17,26 @@ import { cn } from '@/lib/utils';
 type SmoothInputProps = React.ComponentPropsWithoutRef<'input'> & {
   wrapperClassName?: string;
   caretClassName?: string;
+  animatedCaret?: boolean;
 };
 
 const isFirefox = typeof navigator !== 'undefined' && /firefox|fxios/i.test(navigator.userAgent);
 const isChromium = typeof navigator !== 'undefined' && /chrome|chromium|crios/i.test(navigator.userAgent);
 const PASSWORD_CHAR = isFirefox ? '\u25cf' : '\u2022';
-const ANIMATED_TYPES = new Set(['text', 'password', 'email', 'search', 'tel', 'url']);
+// Native email inputs do not expose a reliable selectionStart API in browsers.
+// Auth fields use type=text + inputMode=email so their smooth caret stays exact.
+const ANIMATED_TYPES = new Set(['text', 'password', 'search', 'tel', 'url']);
 
 const SmoothInput = forwardRef<HTMLInputElement, SmoothInputProps>(({
   className,
   wrapperClassName,
   caretClassName,
+  animatedCaret = true,
   onBlur,
   onChange,
   onClick,
+  onCompositionEnd,
+  onCompositionStart,
   onFocus,
   onKeyUp,
   onScroll,
@@ -43,6 +50,9 @@ const SmoothInput = forwardRef<HTMLInputElement, SmoothInputProps>(({
   const inputRef = useRef<HTMLInputElement>(null);
   const measureRef = useRef<HTMLSpanElement>(null);
   const frameRef = useRef<number | null>(null);
+  const trackingFrameRef = useRef<number | null>(null);
+  const lastCaretStateRef = useRef('');
+  const [isComposing, setIsComposing] = useState(false);
   const caretX = useMotionValue(0);
   const caretTop = useMotionValue(0);
   const caretHeight = useMotionValue(16);
@@ -51,8 +61,11 @@ const SmoothInput = forwardRef<HTMLInputElement, SmoothInputProps>(({
   const springCaretX = useSpring(caretX, reducedMotion
     ? { stiffness: 10_000, damping: 100, mass: 0.1 }
     : { stiffness: 720, damping: 38, mass: 0.34 });
-  const supportsAnimatedCaret = ANIMATED_TYPES.has(type);
+  const supportsAnimatedCaret = animatedCaret && ANIMATED_TYPES.has(type);
+  const rendersAnimatedCaret = supportsAnimatedCaret && !isComposing;
+  const trackingEnabledRef = useRef(supportsAnimatedCaret);
   const updateCaretRef = useRef<(target: HTMLInputElement) => void>(() => undefined);
+  trackingEnabledRef.current = supportsAnimatedCaret;
 
   useImperativeHandle(forwardedRef, () => inputRef.current as HTMLInputElement);
 
@@ -137,6 +150,42 @@ const SmoothInput = forwardRef<HTMLInputElement, SmoothInputProps>(({
     });
   };
 
+  const stopCaretTracking = () => {
+    if (trackingFrameRef.current !== null) {
+      window.cancelAnimationFrame(trackingFrameRef.current);
+      trackingFrameRef.current = null;
+    }
+    lastCaretStateRef.current = '';
+  };
+
+  const startCaretTracking = (target: HTMLInputElement) => {
+    stopCaretTracking();
+
+    const track = () => {
+      if (document.activeElement !== target || !trackingEnabledRef.current) {
+        trackingFrameRef.current = null;
+        return;
+      }
+
+      const caretState = [
+        target.value,
+        target.selectionStart,
+        target.selectionEnd,
+        target.selectionDirection,
+        target.scrollLeft,
+        target.clientWidth,
+      ].join('|');
+
+      if (caretState !== lastCaretStateRef.current) {
+        lastCaretStateRef.current = caretState;
+        updateCaretRef.current(target);
+      }
+      trackingFrameRef.current = window.requestAnimationFrame(track);
+    };
+
+    trackingFrameRef.current = window.requestAnimationFrame(track);
+  };
+
   useEffect(() => {
     const input = inputRef.current;
     if (input && document.activeElement === input) scheduleCaretUpdate(input);
@@ -163,6 +212,7 @@ const SmoothInput = forwardRef<HTMLInputElement, SmoothInputProps>(({
 
     return () => {
       if (frameRef.current !== null) window.cancelAnimationFrame(frameRef.current);
+      stopCaretTracking();
       observer.disconnect();
       document.removeEventListener('selectionchange', handleSelectionChange);
       document.fonts.removeEventListener('loadingdone', syncIfFocused);
@@ -178,12 +228,14 @@ const SmoothInput = forwardRef<HTMLInputElement, SmoothInputProps>(({
         type={type}
         value={value}
         className={cn('relative z-[1]', className)}
-        style={supportsAnimatedCaret ? { ...style, caretColor: 'transparent' } : style}
+        style={rendersAnimatedCaret ? { ...style, caretColor: 'transparent' } : style}
         onFocus={(event) => {
           scheduleCaretUpdate(event.currentTarget);
+          startCaretTracking(event.currentTarget);
           onFocus?.(event);
         }}
         onBlur={(event) => {
+          stopCaretTracking();
           caretOpacity.set(0);
           onBlur?.(event);
         }}
@@ -194,6 +246,17 @@ const SmoothInput = forwardRef<HTMLInputElement, SmoothInputProps>(({
         onClick={(event) => {
           scheduleCaretUpdate(event.currentTarget);
           onClick?.(event);
+        }}
+        onCompositionStart={(event) => {
+          setIsComposing(true);
+          caretOpacity.set(0);
+          onCompositionStart?.(event);
+        }}
+        onCompositionEnd={(event) => {
+          setIsComposing(false);
+          scheduleCaretUpdate(event.currentTarget);
+          startCaretTracking(event.currentTarget);
+          onCompositionEnd?.(event);
         }}
         onKeyUp={(event) => {
           scheduleCaretUpdate(event.currentTarget);

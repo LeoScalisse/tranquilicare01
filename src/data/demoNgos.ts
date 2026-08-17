@@ -13,7 +13,7 @@ const profileImage = (initials: string, bg: string, accent: string) =>
     </svg>
   `);
 
-const storyImage = (title: string, bg: string, accent: string) =>
+const storyImage = (_title: string, bg: string, accent: string) =>
   svgDataUri(`
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1125">
       <defs>
@@ -25,9 +25,7 @@ const storyImage = (title: string, bg: string, accent: string) =>
       <rect width="900" height="1125" fill="url(#g)"/>
       <circle cx="710" cy="180" r="130" fill="#fff" opacity=".18"/>
       <circle cx="180" cy="900" r="180" fill="#fff" opacity=".14"/>
-      <rect x="92" y="740" width="716" height="240" rx="42" fill="#fff" opacity=".92"/>
-      <text x="450" y="850" text-anchor="middle" font-family="Arial, sans-serif" font-size="54" font-weight="800" fill="#172554">${title}</text>
-      <text x="450" y="925" text-anchor="middle" font-family="Arial, sans-serif" font-size="30" fill="#475569">TranquiliCare demo</text>
+      <path d="M110 760c150-120 280-90 390 30s210 145 300 70v265H90z" fill="#fff" opacity=".1"/>
     </svg>
   `);
 
@@ -40,7 +38,8 @@ export const demoNgos: NGO[] = [
     category: 'Saúde Mental',
     goal:
       'Criar rodas de conversa semanais e oferecer 200 atendimentos de escuta qualificada por mês.',
-    image: profileImage('AS', '#38b6ff', '#ffd957'),
+    image: '/images/tranquilicare-heart-transparent.png',
+    coverImage: '/images/abraco-sereno-cover.webp',
     email: 'contato@abracosereno.org',
     instagram: '@abracosereno',
     phone: '(11) 98888-0101',

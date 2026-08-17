@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { ArrowRight, Check, HeartHandshake, Sparkles, X } from 'lucide-react';
+import { ArrowRight, Check, HeartHandshake, Sparkles, UserPlus, X } from 'lucide-react';
 import { formatBRL } from '@/lib/impact';
 import logo from '@/assets/logo.png';
 import ShareCameraButton from './ShareCameraButton';
@@ -10,6 +10,8 @@ interface Props {
   open: boolean;
   amountCents: number;
   ngoName: string;
+  isLoggedIn: boolean;
+  onCreateAccount: () => void;
   onTransferComplete: () => void;
 }
 
@@ -20,7 +22,14 @@ interface Destination {
 
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
-const DonationThankYouDialog: React.FC<Props> = ({ open, amountCents, ngoName, onTransferComplete }) => {
+const DonationThankYouDialog: React.FC<Props> = ({
+  open,
+  amountCents,
+  ngoName,
+  isLoggedIn,
+  onCreateAccount,
+  onTransferComplete,
+}) => {
   const [canClose, setCanClose] = useState(false);
   const [departing, setDeparting] = useState(false);
   const [destination, setDestination] = useState<Destination>({ x: 0, y: 0 });
@@ -81,7 +90,7 @@ const DonationThankYouDialog: React.FC<Props> = ({ open, amountCents, ngoName, o
           <motion.section
             ref={contentRef}
             data-share-root
-            className='fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-[470px] overflow-hidden rounded-3xl border border-white/60 bg-card shadow-[0_28px_90px_rgba(2,45,72,0.48)] outline-none'
+            className='fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[470px] overflow-x-hidden overflow-y-auto rounded-3xl border border-white/60 bg-card shadow-[0_28px_90px_rgba(2,45,72,0.48)] outline-none'
             style={{ translate: '-50% -50%', transformOrigin: 'center' }}
             initial={{ opacity: 0, scale: 0.92, y: 24 }}
             animate={departing
@@ -225,6 +234,35 @@ const DonationThankYouDialog: React.FC<Props> = ({ open, amountCents, ngoName, o
                     Impacto compartilhado
                   </span>
                 </motion.div>
+
+                {!isLoggedIn && (
+                  <motion.div
+                    className='mt-5 rounded-2xl border border-brand-blue/25 bg-brand-blue/10 p-4'
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: motionDuration, delay: reducedMotion ? 0 : 0.44, ease: EASE_OUT }}
+                  >
+                    <div className='flex items-start gap-3'>
+                      <span className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-blue text-[#075d91]'>
+                        <UserPlus className='h-5 w-5' />
+                      </span>
+                      <div>
+                        <p className='font-semibold text-brand-ink'>Continue acompanhando esta jornada</p>
+                        <p className='mt-1 text-sm leading-6 text-muted-foreground'>
+                          Sua doação foi concluída. Sem uma conta, você não poderá medir seu impacto com precisão nem receber atualizações sobre a jornada deste apoio.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type='button'
+                      onClick={onCreateAccount}
+                      className='mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-[#075d91] px-4 py-3 text-sm font-bold text-white transition-colors hover:bg-[#064f7b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue focus-visible:ring-offset-2'
+                    >
+                      Criar minha conta
+                      <ArrowRight className='h-4 w-4' />
+                    </button>
+                  </motion.div>
+                )}
 
                 <motion.div
                   className='mt-5 flex items-end justify-between gap-4'

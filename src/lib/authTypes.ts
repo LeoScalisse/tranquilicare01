@@ -1,5 +1,15 @@
 export type AccountType = 'donor' | 'ngo';
 
+export interface NgoProfileDetails {
+  description: string;
+  category: string;
+  goal: string;
+  instagram: string;
+  phone: string;
+  cnpj: string;
+  address: string;
+}
+
 /** The shape the UI works with, regardless of which backend produced it. */
 export interface AppUser {
   id: string;
@@ -8,10 +18,11 @@ export interface AppUser {
   avatar: string | null;
   credits: number;
   accountType: AccountType;
+  ngoProfile?: NgoProfileDetails | null;
 }
 
 /** Fields the user is allowed to edit directly from the browser. */
-export type EditableUserProfile = Partial<Pick<AppUser, 'name' | 'avatar'>>;
+export type EditableUserProfile = Partial<Pick<AppUser, 'name' | 'avatar' | 'ngoProfile'>>;
 
 export type Listener = (user: AppUser | null) => void;
 

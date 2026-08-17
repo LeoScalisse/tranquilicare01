@@ -190,7 +190,7 @@ const VerificationDiscovery: React.FC<VerificationDiscoveryProps> = ({ presentat
 
   const exploreVerifiedOrganizations = useCallback(() => {
     clearDiscoveryOrigin();
-    navigate('/?view=marketplace');
+    navigate('/#causas');
   }, [navigate]);
 
   return (

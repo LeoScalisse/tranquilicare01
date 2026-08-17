@@ -276,7 +276,7 @@ const DonorProfile: React.FC = () => {
         <div className='mt-8 grid gap-9 lg:grid-cols-[minmax(0,1fr)_320px]'>
           <div className='space-y-9'>
             <section>
-              <div className='mb-4 flex items-end justify-between'><div><p className='text-xs font-bold uppercase tracking-[0.14em] text-brand-blue'>Seu impacto</p><h2 className='font-display text-2xl font-semibold'>Estatísticas</h2></div><button onClick={() => navigate('/?view=marketplace')} className='text-sm font-bold text-brand-blue hover:underline'>Fazer uma doação</button></div>
+              <div className='mb-4 flex items-end justify-between'><div><p className='text-xs font-bold uppercase tracking-[0.14em] text-brand-blue'>Seu impacto</p><h2 className='font-display text-2xl font-semibold'>Estatísticas</h2></div><button onClick={() => navigate('/#causas')} className='text-sm font-bold text-brand-blue hover:underline'>Fazer uma doação</button></div>
               <ImpactStatCarousel cards={[
                 { id: 'total', title: 'Total doado', value: formatBRL(animatedTotal), description: 'A soma das contribuições que você destinou às causas acompanhadas.', icon: Heart, color: 'bg-brand-blue' },
                 { id: 'donations', title: 'Doações', value: String(stats.count), description: 'Cada apoio registrado no seu histórico de impacto.', icon: Gift, color: 'bg-[#7657d6]' },
@@ -309,7 +309,7 @@ const DonorProfile: React.FC = () => {
                 {recentDonations.length ? recentDonations.map((donation, index) => {
                   const ngo = demoNgos.find((item) => item.id === donation.ngo_id);
                   return <div key={donation.id} className={`flex items-center gap-3 p-4 ${index ? 'border-t border-border' : ''}`}><img src={ngo?.image || logo} alt='' className='h-11 w-11 rounded-lg object-cover' /><div className='min-w-0 flex-1'><p className='truncate font-bold'>{ngo?.name || 'Causa apoiada'}</p><p className='text-xs text-muted-foreground'>{new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(donation.created_at))}</p></div><span className='font-bold text-brand-blue'>{formatBRL(donation.amount)}</span></div>;
-                }) : <div className='p-7 text-center'><Heart className='mx-auto text-brand-blue/35' /><p className='mt-2 font-bold'>Seu primeiro apoio começa aqui</p><button onClick={() => navigate('/?view=marketplace')} className='mt-2 text-sm font-bold text-brand-blue'>Explorar causas</button></div>}
+                }) : <div className='p-7 text-center'><Heart className='mx-auto text-brand-blue/35' /><p className='mt-2 font-bold'>Seu primeiro apoio começa aqui</p><button onClick={() => navigate('/#causas')} className='mt-2 text-sm font-bold text-brand-blue'>Explorar causas</button></div>}
               </div>
             </section>
           </div>
@@ -328,7 +328,7 @@ const DonorProfile: React.FC = () => {
             <section>
               <h2 className='mb-4 font-display text-xl font-semibold'>Causas apoiadas</h2>
               <div className='overflow-hidden rounded-lg border-2 border-border'>
-                {supportedNgos.length ? supportedNgos.slice(0, 4).map((ngo, index) => <button key={ngo.id} onClick={() => navigate('/?view=marketplace')} className={`flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-secondary/60 ${index ? 'border-t border-border' : ''}`}><img src={ngo.image} alt='' className='h-10 w-10 rounded-lg object-cover' /><span className='min-w-0 flex-1'><span className='block truncate text-sm font-bold'>{ngo.name}</span><span className='block text-xs text-muted-foreground'>{ngo.category}</span></span><ChevronRight size={17} className='text-muted-foreground' /></button>) : <div className='p-6 text-center text-sm text-muted-foreground'>As organizações que você apoiar aparecerão aqui.</div>}
+                {supportedNgos.length ? supportedNgos.slice(0, 4).map((ngo, index) => <button key={ngo.id} onClick={() => navigate('/#causas')} className={`flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-secondary/60 ${index ? 'border-t border-border' : ''}`}><img src={ngo.image} alt='' className='h-10 w-10 rounded-lg object-cover' /><span className='min-w-0 flex-1'><span className='block truncate text-sm font-bold'>{ngo.name}</span><span className='block text-xs text-muted-foreground'>{ngo.category}</span></span><ChevronRight size={17} className='text-muted-foreground' /></button>) : <div className='p-6 text-center text-sm text-muted-foreground'>As organizações que você apoiar aparecerão aqui.</div>}
               </div>
             </section>
 

@@ -105,6 +105,7 @@ const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
 
   const holdPersonalDonation = Boolean(
     celebratingDonation
+    && userId
     && celebratingDonation.donor_id === userId
     && releasedDonationId !== celebratingDonation.id,
   );

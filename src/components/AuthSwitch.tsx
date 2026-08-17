@@ -12,7 +12,6 @@ import {
   resendSignupCode,
   canUseGoogle,
   defaultDestForAccount,
-  needsProfileSetup,
   AccountType,
 } from '@/lib/auth';
 import { BrandedText } from '../utils';
@@ -39,12 +38,25 @@ import { buildMobileNavItems } from './mobileNavItems';
 import logo from '@/assets/logo.png';
 import HowItWorks, { type JourneyStep } from '@/components/ui/how-it-works';
 import { SmoothInput } from '@/components/ui/smooth-input';
+import {
+  EMAIL_CODE_MAX_LENGTH,
+  isCompleteEmailCode,
+  normalizeEmailCode,
+} from '@/lib/emailVerification';
 
 type Side = AccountType;
 type Mode = 'login' | 'signup';
 type JourneyStage = 0 | 1 | 2;
 
+type AuthJourneyProgress = {
+  confirmationEmail: string | null;
+  journeyReady: boolean;
+  pendingDestination: string;
+  resendAvailableAt: number;
+};
+
 const SPRING = { duration: 0.34, ease: [0.22, 1, 0.36, 1] as const };
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const inputClass =
   'w-full px-4 py-3.5 bg-secondary border-2 border-transparent focus:border-brand-blue focus:bg-background rounded-2xl outline-none transition-all';
@@ -152,22 +164,37 @@ type VerificationCodeInputProps = {
   disabled?: boolean;
 };
 
-const CODE_LENGTH = 8;
+const RESEND_COOLDOWN_SECONDS = 60;
+
+const authErrorCode = (error: unknown): string => {
+  if (!error || typeof error !== 'object' || !('code' in error)) return '';
+  return typeof error.code === 'string' ? error.code.toLowerCase() : '';
+};
+
+const isEmailNotConfirmedError = (error: unknown): boolean =>
+  authErrorCode(error) === 'email_not_confirmed'
+  || (error instanceof Error && error.message.toLowerCase().includes('email not confirmed'));
 
 const VerificationCodeInput: React.FC<VerificationCodeInputProps> = ({ value, onChange, disabled }) => {
   const refs = useRef<Array<HTMLInputElement | null>>([]);
-  const digits = Array.from({ length: CODE_LENGTH }, (_, index) => value[index] ?? '');
+  const digits = Array.from({ length: EMAIL_CODE_MAX_LENGTH }, (_, index) => value[index] ?? '');
 
-  const emit = (nextDigits: string[]) => onChange(nextDigits.join('').replace(/\D/g, '').slice(0, CODE_LENGTH));
+  const emit = (nextDigits: string[]) => onChange(normalizeEmailCode(nextDigits.join('')));
 
   const focusInput = (index: number) => refs.current[index]?.focus();
 
   const setDigit = (index: number, raw: string) => {
-    const digit = raw.replace(/\D/g, '').slice(-1);
+    const normalized = normalizeEmailCode(raw);
+    if (normalized.length > 1) {
+      onChange(normalized);
+      focusInput(Math.min(normalized.length, EMAIL_CODE_MAX_LENGTH) - 1);
+      return;
+    }
+    const digit = normalized.slice(-1);
     const next = [...digits];
     next[index] = digit;
     emit(next);
-    if (digit && index < CODE_LENGTH - 1) focusInput(index + 1);
+    if (digit && index < EMAIL_CODE_MAX_LENGTH - 1) focusInput(index + 1);
   };
 
   const handleKeyDown = (index: number, event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -179,11 +206,11 @@ const VerificationCodeInput: React.FC<VerificationCodeInputProps> = ({ value, on
       focusInput(index - 1);
     }
     if (event.key === 'ArrowLeft' && index > 0) focusInput(index - 1);
-    if (event.key === 'ArrowRight' && index < CODE_LENGTH - 1) focusInput(index + 1);
+    if (event.key === 'ArrowRight' && index < EMAIL_CODE_MAX_LENGTH - 1) focusInput(index + 1);
   };
 
   const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
-    const pasted = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, CODE_LENGTH);
+    const pasted = normalizeEmailCode(event.clipboardData.getData('text'));
     if (!pasted) return;
     event.preventDefault();
     onChange(pasted);
@@ -191,29 +218,31 @@ const VerificationCodeInput: React.FC<VerificationCodeInputProps> = ({ value, on
   };
 
   return (
-    <div className="flex items-center justify-center gap-1 sm:gap-2" aria-label="Código de verificação de 8 dígitos">
-      {digits.map((digit, index) => (
-        <React.Fragment key={index}>
-          {index === 4 && <span className="mx-0 h-px w-3 rounded-full bg-border sm:mx-1 sm:w-5" aria-hidden="true" />}
-          <input
-            ref={(node) => {
-              refs.current[index] = node;
-            }}
-            type="text"
-            inputMode="numeric"
-            autoComplete={index === 0 ? 'one-time-code' : 'off'}
-            pattern="[0-9]*"
-            maxLength={1}
-            disabled={disabled}
-            value={digit}
-            onChange={(event) => setDigit(index, event.target.value)}
-            onKeyDown={(event) => handleKeyDown(index, event)}
-            onPaste={handlePaste}
-            className={`mx-0 h-11 w-9 rounded-xl border-2 bg-[#f8feff] p-1 text-center text-xl font-bold text-brand-ink shadow-[inset_0_1px_0_rgba(255,255,255,0.9),0_4px_12px_rgba(17,54,79,0.08)] outline-none transition-[border-color,background-color,box-shadow,transform] duration-300 ease-out focus:-translate-y-0.5 focus:border-brand-blue focus:bg-background focus:ring-4 focus:ring-brand-blue/15 disabled:opacity-60 sm:h-12 sm:w-12 ${digit ? 'border-brand-blue/55 bg-brand-blue/10 shadow-[inset_0_0_0_1px_rgba(55,181,247,0.08),0_6px_16px_rgba(55,181,247,0.14)]' : 'border-brand-blue/25 hover:border-brand-blue/45'}`}
-            aria-label={`Digito ${index + 1}`}
-          />
-        </React.Fragment>
-      ))}
+    <div className="verification-code-grid" aria-label="Código de verificação de até 8 dígitos">
+      <div className="verification-code-row">
+        {digits.map((digit, index) => (
+          <React.Fragment key={index}>
+            {index === 4 && <span className="verification-code-separator" aria-hidden="true" />}
+            <input
+              ref={(node) => {
+                refs.current[index] = node;
+              }}
+              type="text"
+              inputMode="numeric"
+              autoComplete={index === 0 ? 'one-time-code' : 'off'}
+              pattern="[0-9]*"
+              maxLength={index === 0 ? EMAIL_CODE_MAX_LENGTH : 1}
+              disabled={disabled}
+              value={digit}
+              onChange={(event) => setDigit(index, event.target.value)}
+              onKeyDown={(event) => handleKeyDown(index, event)}
+              onPaste={handlePaste}
+              className={`verification-code-input${digit ? ' verification-code-input--filled' : ''}`}
+              aria-label={`Digito ${index + 1}`}
+            />
+          </React.Fragment>
+        ))}
+      </div>
     </div>
   );
 };
@@ -224,33 +253,68 @@ const VerificationCodeInput: React.FC<VerificationCodeInputProps> = ({ value, on
 interface AuthFormProps {
   role: Side;
   activeStep: JourneyStage;
+  progress: AuthJourneyProgress;
+  onProgressChange: (patch: Partial<AuthJourneyProgress>) => void;
   onStepChange: (step: JourneyStage) => void;
   onStepComplete: (step: JourneyStage) => void;
 }
 
-const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onStepComplete }) => {
+const AuthForm: React.FC<AuthFormProps> = ({
+  role,
+  activeStep,
+  progress,
+  onProgressChange,
+  onStepChange,
+  onStepComplete,
+}) => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const cfg = ROLE[role];
+  const nameInputId = `${role}-signup-name`;
+  const emailInputId = `${role}-auth-email`;
+  const passwordInputId = `${role}-auth-password`;
+  const confirmPasswordInputId = `${role}-auth-confirm-password`;
 
   const [mode, setMode] = useState<Mode>(searchParams.get('mode') === 'signup' ? 'signup' : 'login');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  /** Set when the account was created but e-mail confirmation is required, so
-   *  there's no session to navigate with yet. */
-  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [confirmationCode, setConfirmationCode] = useState('');
   const [verifyingCode, setVerifyingCode] = useState(false);
   const [resendingCode, setResendingCode] = useState(false);
-  const [journeyReady, setJourneyReady] = useState(false);
-  const [pendingDestination, setPendingDestination] = useState(defaultDestForAccount(role));
+  const [cooldownClock, setCooldownClock] = useState(() => Date.now());
+  const [handoffLoading, setHandoffLoading] = useState(false);
+  const { confirmationEmail, journeyReady, pendingDestination, resendAvailableAt } = progress;
+  const awaitingConfirmation = Boolean(confirmationEmail);
+  const confirmationCodeReady = isCompleteEmailCode(confirmationCode);
+  const resendCooldown = Math.max(0, Math.ceil((resendAvailableAt - cooldownClock) / 1000));
 
-  const validateSignup = () => {
-    if (mode !== 'signup') return true;
+  useEffect(() => {
+    const remaining = resendAvailableAt - Date.now();
+    if (remaining <= 0) return undefined;
+    const timer = window.setTimeout(() => {
+      setCooldownClock(Date.now());
+    }, Math.min(1000, remaining));
+    return () => window.clearTimeout(timer);
+  }, [cooldownClock, resendAvailableAt]);
+
+  const validateForm = () => {
+    if (!EMAIL_PATTERN.test(email.trim())) {
+      toast.error('Digite um e-mail válido.');
+      return false;
+    }
+    if (mode !== 'signup') {
+      if (!password) {
+        toast.error('Digite sua senha.');
+        return false;
+      }
+      return true;
+    }
     if (!name.trim()) {
       toast.error(role === 'ngo' ? 'Informe o nome da organização.' : 'Informe seu nome para criar a conta.');
       return false;
@@ -259,22 +323,29 @@ const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onS
       toast.error('A senha deve ter pelo menos 6 caracteres.');
       return false;
     }
+    if (password !== confirmPassword) {
+      toast.error('As senhas não são iguais.');
+      return false;
+    }
     return true;
   };
 
   /** Maps Supabase's English auth errors to something a Brazilian user can act on. */
   const messageFor = (err: unknown): string => {
+    const code = authErrorCode(err);
     const raw = err instanceof Error ? err.message.toLowerCase() : '';
-    if (raw.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
-    if (raw.includes('email not confirmed')) return 'Confirme seu e-mail antes de entrar.';
-    if (raw.includes('invalid-code')) return 'Digite o código de 8 dígitos enviado por e-mail.';
-    if (raw.includes('token has expired') || raw.includes('otp') || raw.includes('invalid token'))
+    if (code === 'invalid_credentials' || raw.includes('invalid login credentials')) return 'E-mail ou senha incorretos.';
+    if (code === 'email_not_confirmed' || raw.includes('email not confirmed')) return 'Confirme seu e-mail antes de entrar.';
+    if (raw.includes('invalid-code')) return 'Digite todos os dígitos do código enviado por e-mail.';
+    if (code === 'otp_expired' || raw.includes('token has expired') || raw.includes('otp') || raw.includes('invalid token'))
       return 'Código inválido ou expirado. Confira o e-mail ou solicite um novo código.';
-    if (raw.includes('already registered')) return 'Esse e-mail já tem conta. Tente entrar.';
-    if (raw.includes('email address not authorized'))
+    if (code === 'email_exists' || raw.includes('already registered')) return 'Esse e-mail já tem conta. Tente entrar.';
+    if (code === 'email_address_not_authorized' || raw.includes('email address not authorized'))
       return 'O e-mail de teste do Supabase não está autorizado. Configure um SMTP próprio ou autorize este endereço.';
-    if (raw.includes('rate limit') || raw.includes('too many requests'))
-      return 'Limite de envio atingido. Aguarde alguns minutos e tente reenviar o código.';
+    if (code === 'over_email_send_rate_limit' || code === 'over_request_rate_limit' || raw.includes('rate limit') || raw.includes('too many requests'))
+      return 'Limite de envio atingido. Aguarde até uma hora e tente reenviar o código.';
+    if (code === 'email_provider_disabled') return 'O cadastro por e-mail está desativado no Supabase.';
+    if (code === 'email_address_invalid') return 'Este endereço de e-mail não é aceito pelo provedor.';
     if (raw.includes('smtp') || raw.includes('error sending confirmation email') || raw.includes('email provider'))
       return 'O Supabase não conseguiu enviar o e-mail. Confira o SMTP e os logs de autenticação.';
     if (raw.includes('supabase-disabled') || raw.includes('google-unavailable'))
@@ -282,8 +353,67 @@ const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onS
     return 'Erro ao processar. Tente novamente.';
   };
 
-  const goAfterAuth = (dest: string) =>
-    navigate(searchParams.get('redirect') || dest, { replace: true });
+  const goAfterAuth = (dest: string) => {
+    if (handoffLoading) return;
+    setHandoffLoading(true);
+
+    const destination = searchParams.get('redirect') || dest;
+    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const transitionDocument = document as AuthViewTransitionDocument;
+    const supportsViewTransition = !reducedMotion
+      && typeof transitionDocument.startViewTransition === 'function';
+    const navigateToDestination = () => flushSync(() => {
+      navigate(destination, { replace: true });
+    });
+
+    window.scrollTo({
+      top: document.documentElement.scrollHeight,
+      left: 0,
+      behavior: reducedMotion ? 'auto' : 'smooth',
+    });
+
+    if (!supportsViewTransition) {
+      window.setTimeout(navigateToDestination, reducedMotion ? 0 : 220);
+      return;
+    }
+
+    window.setTimeout(() => {
+      const root = document.documentElement;
+      root.dataset.tcAuthHandoffVt = 'active';
+      try {
+        const transition = transitionDocument.startViewTransition!(navigateToDestination);
+        transition.ready
+          .then(() => {
+            root.animate(
+              { transform: ['translateY(0)', 'translateY(-100%)'] },
+              {
+                duration: 780,
+                easing: 'cubic-bezier(0.32, 0.72, 0, 1)',
+                fill: 'forwards',
+                pseudoElement: '::view-transition-old(root)',
+              },
+            );
+            root.animate(
+              { transform: ['translateY(100%)', 'translateY(0)'] },
+              {
+                duration: 780,
+                easing: 'cubic-bezier(0.32, 0.72, 0, 1)',
+                fill: 'forwards',
+                pseudoElement: '::view-transition-new(root)',
+              },
+            );
+          })
+          .catch(() => undefined);
+        const clearTransitionState = () => {
+          delete root.dataset.tcAuthHandoffVt;
+        };
+        transition.finished.then(clearTransitionState, clearTransitionState);
+      } catch {
+        delete root.dataset.tcAuthHandoffVt;
+        navigateToDestination();
+      }
+    }, 180);
+  };
 
   const handleGoogle = async () => {
     // Expected state before the backend is set up — explain it, don't log noise.
@@ -304,14 +434,18 @@ const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onS
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!validateSignup()) return;
+    if (!validateForm()) return;
+    const normalizedEmail = email.trim();
     setLoading(true);
     try {
       if (mode === 'login') {
-        const user = await signIn(email, password, role);
+        const user = await signIn(normalizedEmail, password, role);
         toast.success('Login realizado com sucesso!');
-        setPendingDestination(defaultDestForAccount(user.accountType));
-        setJourneyReady(true);
+        onProgressChange({
+          confirmationEmail: null,
+          pendingDestination: user.accountType === 'ngo' ? '/ngo/profile' : '/',
+          journeyReady: true,
+        });
         onStepComplete(0);
         if (role === 'ngo') {
           onStepChange(1);
@@ -320,19 +454,26 @@ const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onS
           onStepChange(2);
         }
       } else {
-        const { user, needsEmailConfirmation } = await signUp(email, name, password, role);
+        const { user, needsEmailConfirmation } = await signUp(normalizedEmail, name.trim(), password, role);
         onStepComplete(0);
         if (needsEmailConfirmation) {
           setConfirmationCode('');
-          setAwaitingConfirmation(true);
+          onProgressChange({
+            confirmationEmail: normalizedEmail,
+            journeyReady: false,
+            resendAvailableAt: Date.now() + RESEND_COOLDOWN_SECONDS * 1000,
+          });
           onStepChange(1);
           toast.success('Enviamos um código de verificação para seu e-mail.');
           return;
         }
         toast.success(role === 'ngo' ? 'Organização cadastrada com sucesso!' : 'Conta criada com sucesso!');
-        const dest = defaultDestForAccount(user?.accountType ?? role);
-        setPendingDestination(needsProfileSetup(user) ? `${dest}?setup=1` : dest);
-        setJourneyReady(true);
+        const dest = role === 'ngo' ? '/ngo/profile?setup=1' : '/';
+        onProgressChange({
+          confirmationEmail: null,
+          pendingDestination: dest,
+          journeyReady: true,
+        });
         if (role === 'ngo') {
           onStepChange(1);
         } else {
@@ -342,6 +483,21 @@ const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onS
       }
     } catch (err) {
       console.error('Auth error:', err);
+      if (mode === 'login' && isEmailNotConfirmedError(err)) {
+        setConfirmationCode('');
+        onProgressChange({ confirmationEmail: normalizedEmail, journeyReady: false, resendAvailableAt: 0 });
+        onStepComplete(0);
+        onStepChange(1);
+        try {
+          await resendSignupCode(normalizedEmail);
+          onProgressChange({ resendAvailableAt: Date.now() + RESEND_COOLDOWN_SECONDS * 1000 });
+          toast.success('Enviamos um novo código de verificação para seu e-mail.');
+        } catch (resendError) {
+          console.error('Unconfirmed login resend error:', resendError);
+          toast.error(messageFor(resendError));
+        }
+        return;
+      }
       toast.error(messageFor(err));
     } finally {
       setLoading(false);
@@ -350,19 +506,21 @@ const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onS
 
   const handleVerifyCode = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (confirmationCode.length !== CODE_LENGTH) {
-      toast.error('Digite o código de 8 dígitos enviado por e-mail.');
+    if (!confirmationCodeReady) {
+      toast.error('Digite todos os dígitos do código enviado por e-mail.');
       return;
     }
 
     setVerifyingCode(true);
     try {
-      const user = await verifyEmailCode(email, confirmationCode, role);
+      const user = await verifyEmailCode(confirmationEmail ?? email.trim(), confirmationCode, role);
       toast.success('E-mail confirmado com sucesso!');
-      const dest = defaultDestForAccount(user.accountType);
-      setPendingDestination(needsProfileSetup(user) ? `${dest}?setup=1` : dest);
-      setJourneyReady(true);
-      setAwaitingConfirmation(false);
+      const dest = role === 'ngo' ? '/ngo/profile?setup=1' : '/';
+      onProgressChange({
+        confirmationEmail: null,
+        pendingDestination: dest,
+        journeyReady: true,
+      });
       if (role === 'ngo') {
         onStepChange(1);
       } else {
@@ -378,10 +536,12 @@ const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onS
   };
 
   const handleResendCode = async () => {
+    if (resendCooldown > 0) return;
     setResendingCode(true);
     try {
-      await resendSignupCode(email);
+      await resendSignupCode(confirmationEmail ?? email.trim());
       setConfirmationCode('');
+      onProgressChange({ resendAvailableAt: Date.now() + RESEND_COOLDOWN_SECONDS * 1000 });
       toast.success('Enviamos um novo código para seu e-mail.');
     } catch (err) {
       console.error('Resend verification code error:', err);
@@ -408,7 +568,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onS
 
         <form onSubmit={handleVerifyCode} className="space-y-4">
           <div className="rounded-2xl bg-secondary px-4 py-3 text-sm text-muted-foreground">
-            Código enviado para <span className="font-bold text-brand-ink">{email}</span>
+            Código enviado para <span className="font-bold text-brand-ink">{confirmationEmail}</span>
           </div>
 
           <div className="space-y-2">
@@ -425,7 +585,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onS
 
           <button
             type="submit"
-            disabled={verifyingCode || confirmationCode.length !== CODE_LENGTH}
+            disabled={verifyingCode || !confirmationCodeReady}
             className={`tc-button-3d btn-shine w-full py-3.5 ${cfg.submitBg} ${cfg.submitText} rounded-2xl font-bold shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2`}
           >
             {verifyingCode ? <Loader2 size={19} className="animate-spin" /> : null}
@@ -444,11 +604,15 @@ const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onS
           <button
             type="button"
             onClick={handleResendCode}
-            disabled={resendingCode}
+            disabled={resendingCode || resendCooldown > 0}
             className="inline-flex items-center justify-center gap-2 text-sm font-bold text-brand-blue hover:underline disabled:opacity-50"
           >
             {resendingCode ? <Loader2 size={15} className="animate-spin" /> : null}
-            Reenviar código
+            {resendingCode
+              ? 'Reenviando...'
+              : resendCooldown > 0
+                ? `Reenviar em ${resendCooldown}s`
+                : 'Reenviar código'}
           </button>
         </div>
       </div>
@@ -542,10 +706,12 @@ const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onS
             <button
               type='button'
               onClick={() => goAfterAuth(pendingDestination)}
-              className={`tc-button-3d btn-shine mt-8 inline-flex min-h-12 items-center gap-2 rounded-2xl px-7 font-bold ${role === 'ngo' ? 'tc-button-3d-yellow text-brand-ink' : 'text-white'}`}
+              disabled={handoffLoading}
+              className={`tc-button-3d btn-shine mt-8 inline-flex min-h-12 items-center gap-2 rounded-2xl px-7 font-bold disabled:opacity-60 ${role === 'ngo' ? 'tc-button-3d-yellow text-brand-ink' : 'text-white'}`}
             >
-              {role === 'ngo' ? 'Configurar minha organização' : 'Explorar causas'}
-              <ArrowRight size={18} />
+              {handoffLoading ? <Loader2 size={18} className='animate-spin' /> : null}
+              {role === 'ngo' ? 'Configurar minha organização' : 'Ir para o início'}
+              {!handoffLoading ? <ArrowRight size={18} /> : null}
             </button>
           ) : (
             <button type='button' onClick={() => onStepChange(0)} className='mt-8 inline-flex items-center gap-2 font-bold text-brand-blue'><ArrowLeft size={18} /> Começar pela primeira etapa</button>
@@ -607,7 +773,7 @@ const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onS
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
         <AnimatePresence initial={false}>
           {mode === 'signup' && (
             <motion.div
@@ -617,42 +783,111 @@ const AuthForm: React.FC<AuthFormProps> = ({ role, activeStep, onStepChange, onS
               transition={{ duration: 0.25 }}
               className="space-y-2 overflow-hidden"
             >
-              <label className={labelClass}>
+              <label className={labelClass} htmlFor={nameInputId}>
                 <User size={17} className="text-brand-blue" />
                 {role === 'ngo' ? 'Nome da organização' : 'Nome do Doador'}
               </label>
-              <SmoothInput type="text" required={mode === 'signup'} value={name} onChange={(e) => setName(e.target.value)} className={inputClass} placeholder={cfg.namePlaceholder} />
+              <SmoothInput
+                id={nameInputId}
+                name="name"
+                type="text"
+                autoComplete="name"
+                required={mode === 'signup'}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className={inputClass}
+                placeholder={cfg.namePlaceholder}
+              />
             </motion.div>
           )}
         </AnimatePresence>
 
         <div className="space-y-2">
-          <label className={labelClass}>
+          <label className={labelClass} htmlFor={emailInputId}>
             <Mail size={17} className="text-brand-blue" />
             E-mail
           </label>
-          <SmoothInput type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} placeholder={cfg.emailPlaceholder} />
+          <SmoothInput
+            id={emailInputId}
+            name="email"
+            type="text"
+            inputMode="email"
+            autoComplete="email"
+            autoCapitalize="none"
+            spellCheck={false}
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className={inputClass}
+            placeholder={cfg.emailPlaceholder}
+          />
         </div>
 
         <div className="space-y-2">
-          <label className={labelClass}>
+          <label className={labelClass} htmlFor={passwordInputId}>
             <Lock size={17} className="text-brand-blue" />
             Senha
           </label>
           <div className="relative">
             <SmoothInput
+              id={passwordInputId}
+              name="password"
               type={showPassword ? 'text' : 'password'}
+              autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className={`${inputClass} pr-12`}
               placeholder={mode === 'signup' ? 'Mínimo 6 caracteres' : '••••••••'}
             />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20"
+              aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+            >
               {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
             </button>
           </div>
         </div>
+
+        <AnimatePresence initial={false}>
+          {mode === 'signup' && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.25 }}
+              className="space-y-2 overflow-hidden"
+            >
+              <label className={labelClass} htmlFor={confirmPasswordInputId}>
+                <Lock size={17} className="text-brand-blue" />
+                Confirme sua senha
+              </label>
+              <div className="relative">
+                <SmoothInput
+                  id={confirmPasswordInputId}
+                  name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className={`${inputClass} pr-12`}
+                  placeholder="Repita sua senha"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20"
+                  aria-label={showConfirmPassword ? 'Ocultar confirmação de senha' : 'Mostrar confirmação de senha'}
+                >
+                  {showConfirmPassword ? <EyeOff size={19} /> : <Eye size={19} />}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <button
           type="submit"
@@ -714,6 +949,20 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
   const [side, setSide] = useState<Side>(initialSide);
   const [activeSteps, setActiveSteps] = useState<Record<Side, JourneyStage>>({ donor: 0, ngo: 0 });
   const [completedSteps, setCompletedSteps] = useState<Record<Side, JourneyStage[]>>({ donor: [], ngo: [] });
+  const [authProgress, setAuthProgress] = useState<Record<Side, AuthJourneyProgress>>({
+    donor: {
+      confirmationEmail: null,
+      journeyReady: false,
+      pendingDestination: defaultDestForAccount('donor'),
+      resendAvailableAt: 0,
+    },
+    ngo: {
+      confirmationEmail: null,
+      journeyReady: false,
+      pendingDestination: defaultDestForAccount('ngo'),
+      resendAvailableAt: 0,
+    },
+  });
   const [openStage, setOpenStage] = useState<JourneyStage | null>(null);
   const [contentVisible, setContentVisible] = useState(true);
   const [roleTransitioning, setRoleTransitioning] = useState(false);
@@ -863,7 +1112,6 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
     activeKey: 'perfil',
     isLoggedIn: false,
     onHome: () => navigate('/'),
-    onApoiar: () => navigate('/?view=marketplace'),
     onStories: () => navigate('/?view=stories'),
     onPerfil: () => {
       setSide('donor');
@@ -978,6 +1226,13 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
                 key={side}
                 role={side}
                 activeStep={openStage ?? activeStep}
+                progress={authProgress[side]}
+                onProgressChange={(patch) => {
+                  setAuthProgress((current) => ({
+                    ...current,
+                    [side]: { ...current[side], ...patch },
+                  }));
+                }}
                 onStepChange={changeStep}
                 onStepComplete={completeStep}
               />

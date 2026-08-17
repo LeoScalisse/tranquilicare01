@@ -19,6 +19,7 @@ import NGOAccountProfile from './pages/NGOAccountProfile';
 import NGOPublicProfile from './pages/NGOPublicProfile';
 import AuthCallback from './pages/AuthCallback';
 import NotFound from './pages/NotFound';
+import About from './pages/About';
 import { matchesDiscoveryOrigin, readDiscoveryOrigin } from '@/lib/discoveryNavigation';
 
 const VerificationDiscovery = lazy(() => import('./pages/VerificationDiscovery'));
@@ -68,6 +69,7 @@ const AppRoutes = () => {
         <Route path='/ngo/profile' element={<NGOAccountProfile />} />
         <Route path='/ong/:ngoId' element={<NGOPublicProfile />} />
         <Route path='/auth/callback' element={<AuthCallback />} />
+        <Route path='/sobre' element={<About />} />
         <Route
           path='/descobertas/verificacao'
           element={(

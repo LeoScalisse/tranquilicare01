@@ -17,6 +17,7 @@ export interface NgoCategoryDefinition {
     border: string;
     chipText: string;
     chipBg: string;
+    sectionBg: string;
   };
 }
 
@@ -26,13 +27,14 @@ export const ngoCategories: NgoCategoryDefinition[] = [
     label: 'Educação',
     aliases: ['educação', 'educacao'],
     sealSrc: educacaoSeal,
-    sectionTitle: 'Aprender transforma futuros',
+    sectionTitle: 'Onde o futuro começa',
     theme: {
       text: 'text-blue-700',
       bg: 'bg-blue-100',
       border: 'border-blue-200',
       chipText: 'text-blue-700',
       chipBg: 'bg-blue-100',
+      sectionBg: 'bg-[#CFE2FF]',
     },
   },
   {
@@ -40,13 +42,14 @@ export const ngoCategories: NgoCategoryDefinition[] = [
     label: 'Saúde',
     aliases: ['saúde', 'saude'],
     sealSrc: saudeSeal,
-    sectionTitle: 'Cuidado que chega junto',
+    sectionTitle: 'Cuidado que chega a quem precisa',
     theme: {
       text: 'text-emerald-700',
       bg: 'bg-emerald-100',
       border: 'border-emerald-200',
       chipText: 'text-emerald-700',
       chipBg: 'bg-emerald-100',
+      sectionBg: 'bg-[#CDEEDC]',
     },
   },
   {
@@ -54,13 +57,14 @@ export const ngoCategories: NgoCategoryDefinition[] = [
     label: 'Saúde Mental',
     aliases: ['saúde mental', 'saude mental'],
     sealSrc: saudeMentalSeal,
-    sectionTitle: 'Cuidando da mente',
+    sectionTitle: 'Para ninguém enfrentar tudo sozinho',
     theme: {
       text: 'text-[#9C6500]',
       bg: 'bg-[#FFF7D6]',
       border: 'border-[#F4C44E]',
       chipText: 'text-[#9C6500]',
       chipBg: 'bg-[#FFF7D6]',
+      sectionBg: 'bg-[#FFE89A]',
     },
   },
   {
@@ -68,13 +72,14 @@ export const ngoCategories: NgoCategoryDefinition[] = [
     label: 'Social',
     aliases: ['social', 'desenvolvimento social'],
     sealSrc: socialSeal,
-    sectionTitle: 'Impacto social pertinho de você',
+    sectionTitle: 'Mudanças que começam perto',
     theme: {
       text: 'text-violet-700',
       bg: 'bg-violet-100',
       border: 'border-violet-200',
       chipText: 'text-violet-700',
       chipBg: 'bg-violet-100',
+      sectionBg: 'bg-[#E0CEF6]',
     },
   },
   {
@@ -82,13 +87,14 @@ export const ngoCategories: NgoCategoryDefinition[] = [
     label: 'Pets',
     aliases: ['pets', 'proteção animal', 'protecao animal'],
     sealSrc: petsSeal,
-    sectionTitle: 'Amigos de quatro patas',
+    sectionTitle: 'Para quem alegra nossos dias',
     theme: {
       text: 'text-orange-700',
       bg: 'bg-orange-100',
       border: 'border-orange-200',
       chipText: 'text-orange-700',
       chipBg: 'bg-orange-100',
+      sectionBg: 'bg-[#FFD4BD]',
     },
   },
   {
@@ -96,13 +102,14 @@ export const ngoCategories: NgoCategoryDefinition[] = [
     label: 'Meio Ambiente',
     aliases: ['meio ambiente', 'ambiente'],
     sealSrc: ambienteSeal,
-    sectionTitle: 'Cuidando do planeta',
+    sectionTitle: 'Cuidar do lugar que todos chamamos de casa',
     theme: {
       text: 'text-green-700',
       bg: 'bg-green-100',
       border: 'border-green-200',
       chipText: 'text-green-700',
       chipBg: 'bg-green-100',
+      sectionBg: 'bg-[#CEEAC8]',
     },
   },
 ];
@@ -123,6 +130,7 @@ const fallbackTheme = {
   border: 'border-slate-200',
   chipText: 'text-slate-700',
   chipBg: 'bg-slate-100',
+  sectionBg: 'bg-[#DDE6EA]',
 };
 
 const normalizeCategory = (category: string) => category.trim().toLocaleLowerCase('pt-BR');
@@ -143,6 +151,7 @@ export const getNgoCategoryTheme = (category: string) => {
       border: 'border-border',
       chipText: 'text-brand-ink',
       chipBg: 'bg-secondary',
+      sectionBg: 'bg-[#CDE8EE]',
     };
   }
   return getNgoCategory(category)?.theme ?? fallbackTheme;

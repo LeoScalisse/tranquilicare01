@@ -44,11 +44,18 @@ Deno.serve(async (request) => {
   if (request.method !== 'POST') return fail('Method not allowed', 405);
 
   const authHeader = request.headers.get('Authorization');
-  if (!authHeader?.startsWith('Bearer ')) return fail('Authentication required', 401);
+  let donor: { id: string; email?: string } | null = null;
 
-  const token = authHeader.slice('Bearer '.length);
-  const { data: userData, error: userError } = await userClient.auth.getUser(token);
-  if (userError || !userData.user) return fail('Authentication required', 401);
+  if (authHeader?.startsWith('Bearer ')) {
+    const token = authHeader.slice('Bearer '.length);
+    const { data: userData } = await userClient.auth.getUser(token);
+    if (userData.user) {
+      donor = {
+        id: userData.user.id,
+        ...(userData.user.email ? { email: userData.user.email } : {}),
+      };
+    }
+  }
 
   let body: { ngoId?: unknown; campaignId?: unknown; amountCents?: unknown };
   try {
@@ -97,7 +104,7 @@ Deno.serve(async (request) => {
   const donationId = crypto.randomUUID();
   const metadata = {
     donation_id: donationId,
-    donor_id: userData.user.id,
+    ...(donor ? { donor_id: donor.id } : {}),
     ngo_id: ngoId,
     ...(campaignId ? { campaign_id: campaignId } : {}),
     donation_amount_cents: String(amountCents),
@@ -106,7 +113,7 @@ Deno.serve(async (request) => {
 
   const { error: donationError } = await adminClient.from('donations').insert({
     id: donationId,
-    donor_id: userData.user.id,
+    donor_id: donor?.id ?? null,
     ngo_id: ngoId,
     campaign_id: campaignId,
     stripe_account_id: paymentAccount.stripe_account_id,
@@ -121,6 +128,7 @@ Deno.serve(async (request) => {
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       client_reference_id: donationId,
+      ...(donor?.email ? { customer_email: donor.email } : {}),
       line_items: [
         {
           price_data: {

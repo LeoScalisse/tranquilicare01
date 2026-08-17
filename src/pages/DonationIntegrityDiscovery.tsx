@@ -95,6 +95,37 @@ const storyCurrency = new Intl.NumberFormat('pt-BR', {
   maximumFractionDigits: 2,
 });
 
+interface StoryDonationAmountPickerProps {
+  value: number | null;
+  onValueCommit: (value: number | null) => void;
+}
+
+const StoryDonationAmountPicker = React.memo<StoryDonationAmountPickerProps>(({
+  value,
+  onValueCommit,
+}) => {
+  const [liveValue, setLiveValue] = React.useState(value);
+
+  React.useEffect(() => {
+    setLiveValue(value);
+  }, [value]);
+
+  return (
+    <DonationAmountWheel
+      id='story-donation-amount'
+      value={liveValue}
+      onValueChange={setLiveValue}
+      onValueCommit={onValueCommit}
+      min={0.51}
+      max={100_000}
+      step={5}
+      label='Valor escolhido para a história'
+    />
+  );
+});
+
+StoryDonationAmountPicker.displayName = 'StoryDonationAmountPicker';
+
 const DonationIntegrityDiscovery: React.FC<DonationIntegrityDiscoveryProps> = ({
   presentation = 'page',
 }) => {
@@ -146,8 +177,14 @@ const DonationIntegrityDiscovery: React.FC<DonationIntegrityDiscoveryProps> = ({
 
   const exploreCauses = useCallback(() => {
     clearDiscoveryOrigin();
-    navigate('/?view=marketplace');
+    navigate('/#causas');
   }, [navigate]);
+
+  const commitStoryDonationAmount = useCallback((amount: number | null) => {
+    React.startTransition(() => {
+      setStoryDonationAmount(amount);
+    });
+  }, []);
 
   const setupItems = useMemo(
     () => [
@@ -223,14 +260,9 @@ const DonationIntegrityDiscovery: React.FC<DonationIntegrityDiscoveryProps> = ({
                   <h3 className='mb-10 text-center font-display text-[clamp(2.6rem,12vw,5rem)] font-semibold leading-[1.12] text-brand-ink sm:text-7xl sm:leading-[1.06] lg:text-8xl'>
                     E você escolhe ajudar com<span className='text-brand-blue'>:</span>
                   </h3>
-                  <DonationAmountWheel
-                    id='story-donation-amount'
+                  <StoryDonationAmountPicker
                     value={storyDonationAmount}
-                    onValueChange={setStoryDonationAmount}
-                    min={0.51}
-                    max={100_000}
-                    step={5}
-                    label='Valor escolhido para a história'
+                    onValueCommit={commitStoryDonationAmount}
                   />
                   {storyDonationAmount === null && (
                     <p className='mt-6 max-w-md text-center text-sm font-semibold leading-6 text-muted-foreground'>

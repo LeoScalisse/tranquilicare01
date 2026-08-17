@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from '../types';
 import { BrandedText } from '../utils';
-import { Images, HandHeart, UserCircle, LogOut, LogIn } from 'lucide-react';
+import { HandHeart, Info, UserCircle, LogOut, LogIn } from 'lucide-react';
 import CosmosNav from './CosmosNav';
 import { buildMobileNavItems } from './mobileNavItems';
 import logo from '@/assets/logo.png';
@@ -14,6 +14,7 @@ interface HeaderProps {
   onProfileClick?: () => void;
   onLogout?: () => void;
   onDonorLogin?: () => void;
+  onAbout?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -24,6 +25,7 @@ const Header: React.FC<HeaderProps> = ({
   onProfileClick,
   onLogout,
   onDonorLogin,
+  onAbout,
 }) => {
   const isLoggedIn = Boolean(currentUserEmail);
   const navItemClass = (view: View) => `
@@ -35,10 +37,9 @@ const Header: React.FC<HeaderProps> = ({
 
   const mobileNavItems = buildMobileNavItems({
     activeKey:
-      currentView === View.HOME ? 'home' : currentView === View.MARKETPLACE ? 'apoiar' : currentView === View.STORIES ? 'historias' : null,
+      currentView === View.HOME ? 'home' : currentView === View.STORIES ? 'historias' : null,
     isLoggedIn,
     onHome: () => setCurrentView(View.HOME),
-    onApoiar: () => setCurrentView(View.MARKETPLACE),
     onStories: () => setCurrentView(View.STORIES),
     onPerfil: () => (isLoggedIn ? onProfileClick?.() : onDonorLogin?.()),
   });
@@ -62,17 +63,17 @@ const Header: React.FC<HeaderProps> = ({
 
         <nav className="hidden md:flex items-center gap-2">
           <button
-            onClick={() => setCurrentView(View.MARKETPLACE)}
-            className={navItemClass(View.MARKETPLACE)}
+            onClick={onAbout}
+            className='flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-muted-foreground transition-all duration-300 hover:bg-brand-blue/10 hover:text-brand-ink'
           >
-            <HandHeart size={18} />
-            <BrandedText text="Explorar causas" />
+            <Info size={18} />
+            Sobre
           </button>
           <button
             onClick={() => setCurrentView(View.STORIES)}
             className={navItemClass(View.STORIES)}
           >
-            <Images size={18} />
+            <HandHeart size={18} />
             <BrandedText text="Histórias" />
           </button>
 

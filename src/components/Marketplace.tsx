@@ -1,23 +1,24 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NGO, FlashCampaign } from '../types';
-import { Search, Star, HeartHandshake, ChevronRight, Clock, Zap } from 'lucide-react';
-import LoveHeart from '@/components/ui/love-heart';
+import { Search, HeartHandshake, ChevronRight, Clock } from 'lucide-react';
 import { flashCampaigns } from '@/data/flashCampaigns';
 import {
   getNgoCategorySectionTitle,
   getNgoCategoryTheme,
+  getNgoCategory,
   NGO_CATEGORY_ORDER,
 } from '@/data/ngoCategories';
 import { formatBRL } from '@/lib/impact';
 import { SmoothInput } from '@/components/ui/smooth-input';
+import CauseShowcaseCard from '@/components/marketplace/CauseShowcaseCard';
 
 const SEARCH_PLACEHOLDERS = [
-  'Busque por causas',
-  'Busque por ONGs',
-  "Busque por 'perto de mim'",
-  'Busque por saúde mental',
-  'Busque por impacto social',
+  'Busque uma causa...',
+  'Uma ONG...',
+  'Algo perto de você...',
+  'Saúde mental...',
+  'Educação...',
 ];
 
 const FAV_KEY = 'tc-favorites';
@@ -37,58 +38,11 @@ interface MarketplaceProps {
   embedded?: boolean;
 }
 
-/**
- * Per-segment pastel theme. `text`/`bg`/`border` style the category pill under
- * each card; `chipText`/`chipBg` drive the neumorphic filter chips (chipBg is
- * the pastel fill shown when a chip is pressed/sunken).
- */
-/** Airbnb-style card content: image + save-heart, then name + colored category pill. */
-const NgoCardContent: React.FC<{
-  ngo: NGO;
-  saved: boolean;
-  onToggleSave: (id: string) => void;
-  compact?: boolean;
-}> = ({ ngo, saved, onToggleSave, compact = false }) => {
-  const theme = getNgoCategoryTheme(ngo.category);
-  const storiesCount = ngo.posts?.length ?? 0;
-
-  return (
-    <>
-      <div className="relative aspect-[20/19] overflow-hidden rounded-2xl bg-muted">
-        <img
-          src={ngo.image}
-          alt={ngo.name}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-        />
-        <span className="absolute right-2 top-2 z-10">
-          <LoveHeart
-            checked={saved}
-            onChange={() => onToggleSave(ngo.id)}
-            label={saved ? 'Remover dos favoritos' : 'Salvar nos favoritos'}
-          />
-        </span>
-      </div>
-
-      <div className="pt-3">
-        <div className="flex items-start justify-between gap-2">
-          <h3 className="line-clamp-1 font-display text-[15px] font-semibold text-brand-ink">{ngo.name}</h3>
-          {storiesCount > 0 && (
-            <span className="flex shrink-0 items-center gap-1 text-sm font-medium text-brand-ink">
-              <Star size={13} className="fill-brand-yellow text-brand-yellow" />
-              {storiesCount}
-            </span>
-          )}
-        </div>
-        <span className={`mt-1.5 inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${theme.bg} ${theme.text} ${theme.border}`}>
-          {ngo.category}
-        </span>
-        {!compact && (
-          <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground/90">{ngo.goal}</p>
-        )}
-      </div>
-    </>
-  );
+const getSectionBackground = (key: string, category: string | null) => {
+  if (category) return getNgoCategoryTheme(category).sectionBg;
+  if (key === 'featured') return 'bg-[#CBEAF1]';
+  if (key === 'new-stories') return 'bg-[#FFDFAB]';
+  return 'bg-[#DDE6EA]';
 };
 
 /** Live countdown to a timestamp; re-ticks each minute (fine for d/h/m display). */
@@ -138,10 +92,6 @@ const FlashCampaignCard: React.FC<{ campaign: FlashCampaign; onOpen: (c: FlashCa
           className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
-        <span className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-brand-yellow px-2.5 py-1 text-xs font-bold text-brand-ink shadow-sm">
-          <Zap size={13} className="fill-brand-ink" />
-          Relâmpago
-        </span>
         <span
           className={`absolute right-3 top-3 flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold shadow-sm backdrop-blur ${done ? 'bg-gray-500/90 text-white' : 'bg-brand-ink/85 text-white'}`}
         >
@@ -220,10 +170,25 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
   // enough cards to feel like a row; thin/leftover ones fold into a grid so a
   // single-card "carousel" never looks broken with sparse data.
   const { rows, leftovers } = useMemo(() => {
-    const rows: { key: string; title: string; items: NGO[]; category: string | null }[] = [];
+    const rows: { key: string; title: string; items: NGO[]; category: string | null; storyPreview?: boolean }[] = [];
     const verified = ngos.filter((n) => n.verified);
     if (ngos.length >= 5 && verified.length >= 3) {
-      rows.push({ key: 'featured', title: 'ONGs em destaque', items: verified, category: null });
+      rows.push({ key: 'featured', title: 'Causas para conhecer', items: verified, category: null });
+    }
+    const withRecentStories = ngos
+      .filter((ngo) => ngo.posts?.length)
+      .sort((a, b) => (
+        Math.max(...b.posts.map((post) => post.timestamp))
+        - Math.max(...a.posts.map((post) => post.timestamp))
+      ));
+    if (withRecentStories.length > 0) {
+      rows.push({
+        key: 'new-stories',
+        title: 'Novas histórias por aqui',
+        items: withRecentStories,
+        category: null,
+        storyPreview: true,
+      });
     }
     const leftovers: NGO[] = [];
     for (const cat of categories.filter((c) => c !== 'Todas')) {
@@ -231,8 +196,8 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
       if (items.length >= 2) rows.push({ key: cat, title: getNgoCategorySectionTitle(cat), items, category: cat });
       else leftovers.push(...items);
     }
-    return { rows: embedded ? rows.slice(0, 2) : rows, leftovers };
-  }, [ngos, categories, embedded]);
+    return { rows, leftovers };
+  }, [ngos, categories]);
 
   const isSearching = searchTerm.trim().length > 0;
   const isCategoryFilter = selectedCategory !== 'Todas';
@@ -245,7 +210,12 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
     if (ngo) onSelectNGO(ngo);
   };
 
-  const cardProps = (ngo: NGO) => ({ ngo, saved: favorites.has(ngo.id), onToggleSave: toggleFavorite });
+  const cardProps = (ngo: NGO) => ({
+    ngo,
+    saved: favorites.has(ngo.id),
+    onToggleSave: toggleFavorite,
+    onOpen: onSelectNGO,
+  });
 
   const EmptyState = () => (
     <div className="py-16 flex flex-col items-center">
@@ -253,16 +223,20 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-yellow/20">
           <HeartHandshake className="h-8 w-8 text-brand-ink/60" />
         </div>
-        <p className="font-display text-xl font-semibold text-brand-ink mb-1">Nenhuma organização encontrada</p>
+        <p className="font-display text-xl font-semibold text-brand-ink mb-1">Não encontramos nenhuma causa por aqui.</p>
         <p className="text-muted-foreground text-sm">
-          Tente outra busca ou explore uma categoria diferente — toda causa merece ser descoberta.
+          Tente outro termo ou explore uma categoria.
         </p>
       </div>
     </div>
   );
 
   return (
-    <div className={`max-w-7xl mx-auto px-4 ${embedded ? 'py-6' : 'py-10 min-h-screen'}`}>
+    <div
+      id={embedded ? 'causas' : undefined}
+      className={`w-full scroll-mt-24 ${embedded ? 'pt-6' : 'min-h-screen pt-10'}`}
+    >
+      <div className='mx-auto max-w-7xl px-4'>
       <div className={`${embedded ? 'mb-6' : 'mb-8'} space-y-5`}>
         <div className="px-1 space-y-2">
           <h2 className={`font-display font-semibold text-brand-ink ${embedded ? 'text-2xl md:text-3xl' : 'text-3xl md:text-4xl'}`}>
@@ -270,7 +244,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
           </h2>
           {!embedded && (
             <p className="text-muted-foreground max-w-xl">
-              Cada organização aqui passou por verificação. Explore, salve suas favoritas e faça parte da história.
+              Explore organizações, salve suas causas favoritas e acompanhe novas histórias.
             </p>
           )}
         </div>
@@ -334,128 +308,87 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
           })}
         </div>
       </div>
+      </div>
 
-      {/* ---- SEARCH RESULTS: plain grid ---- */}
-      {mode === 'search' &&
-        (searchedNgos.length === 0 ? (
+      {mode === 'search' && <div className='mx-auto max-w-7xl px-4 pb-12'>
+        {searchedNgos.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-8">
-            {searchedNgos.map((ngo) => (
-              <div
-                key={ngo.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => onSelectNGO(ngo)}
-                onKeyDown={(e) => e.key === 'Enter' && onSelectNGO(ngo)}
-                className="group cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 rounded-2xl"
-              >
-                <NgoCardContent {...cardProps(ngo)} />
-              </div>
-            ))}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {searchedNgos.map((ngo) => <CauseShowcaseCard key={ngo.id} {...cardProps(ngo)} className='w-full' />)}
           </div>
-        ))}
+        )}</div>}
 
-      {/* ---- CATEGORY FILTER: framer-motion layout grid (clean reflow) ---- */}
-      {mode === 'category' &&
-        (categoryNgos.length === 0 ? (
+      {mode === 'category' && <div className='mx-auto max-w-7xl px-4 pb-12'>
+        {categoryNgos.length === 0 ? (
           <EmptyState />
         ) : (
           <motion.div
             layout
-            className="relative grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-8"
+            className="relative grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
           >
             <AnimatePresence mode="popLayout">
               {categoryNgos.map((ngo) => (
-                <motion.div
-                  key={ngo.id}
-                  layout
-                  initial={{ opacity: 0, scale: 0.92 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.92 }}
-                  transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-                  onClick={() => onSelectNGO(ngo)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === 'Enter' && onSelectNGO(ngo)}
-                  className="group cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 rounded-2xl"
-                >
-                  <NgoCardContent {...cardProps(ngo)} />
+                <motion.div key={ngo.id} layout initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.94 }} transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}>
+                  <CauseShowcaseCard {...cardProps(ngo)} className='w-full' />
                 </motion.div>
               ))}
             </AnimatePresence>
           </motion.div>
-        ))}
+        )}</div>}
 
-      {/* ---- DEFAULT: flash fundraisers + Airbnb-style themed carousels ---- */}
       {mode === 'sections' && (
-        <div className="space-y-10">
+        <div className='space-y-6 px-3 pb-12 md:px-5'>
           {flashCampaigns.length > 0 && (
-            <section>
-              <div className="mb-1 flex items-center gap-2">
-                <Zap size={22} className="fill-brand-yellow text-brand-yellow" />
-                <h3 className="font-display text-xl md:text-2xl font-semibold text-brand-ink">Vaquinhas relâmpago</h3>
-              </div>
-              <p className="mb-4 text-sm text-muted-foreground">Campanhas com prazo — cada minuto conta.</p>
-              <div className="flex gap-4 overflow-x-auto pb-3 -mx-4 px-4 snap-x snap-mandatory no-scrollbar">
-                {flashCampaigns.map((c) => (
-                  <FlashCampaignCard key={c.id} campaign={c} onOpen={openCampaign} />
-                ))}
+            <section className='mx-auto max-w-[1400px] overflow-hidden rounded-[28px] bg-[#FFD5C2] py-9 md:rounded-[34px]'>
+              <div className='mx-auto max-w-7xl px-4'>
+                <h3 className="mb-1 font-display text-xl font-semibold text-brand-ink md:text-2xl">Vaquinhas</h3>
+                <p className="mb-5 text-sm text-muted-foreground">Campanhas com um objetivo e um tempo para acontecer.</p>
+                <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-3 no-scrollbar">
+                  {flashCampaigns.map((campaign) => <FlashCampaignCard key={campaign.id} campaign={campaign} onOpen={openCampaign} />)}
+                </div>
               </div>
             </section>
           )}
 
-          {rows.map((row) => (
-            <section key={row.key}>
-              <button
-                type="button"
-                onClick={() => row.category && setSelectedCategory(row.category)}
-                className={`group/head mb-4 flex items-center gap-1.5 ${row.category ? '' : 'cursor-default'}`}
-                disabled={!row.category}
-              >
-                <h3 className="font-display text-xl md:text-2xl font-semibold text-brand-ink">{row.title}</h3>
-                {row.category && (
-                  <ChevronRight size={22} className="text-brand-ink transition-transform group-hover/head:translate-x-0.5" />
-                )}
-              </button>
-              <div className="flex gap-4 overflow-x-auto pb-3 -mx-4 px-4 snap-x snap-mandatory no-scrollbar">
-                {row.items.map((ngo) => (
-                  <div
-                    key={ngo.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => onSelectNGO(ngo)}
-                    onKeyDown={(e) => e.key === 'Enter' && onSelectNGO(ngo)}
-                    className="group w-[44%] sm:w-56 lg:w-64 shrink-0 snap-start cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 rounded-2xl"
-                  >
-                    <NgoCardContent {...cardProps(ngo)} compact />
+          {rows.map((row) => {
+            const categoryDefinition = row.category ? getNgoCategory(row.category) : null;
+            return (
+              <section key={row.key} className={`mx-auto max-w-[1400px] overflow-hidden rounded-[28px] py-9 md:rounded-[34px] ${getSectionBackground(row.key, row.category)}`}>
+                <div className='mx-auto max-w-7xl px-4'>
+                  <div className='mb-5 flex items-start gap-3'>
+                    {categoryDefinition && <img src={categoryDefinition.sealSrc} alt='' className='h-9 w-9 shrink-0 object-contain' />}
+                    {row.category ? (
+                      <div className='min-w-0'>
+                        <button type='button' onClick={() => setSelectedCategory(row.category!)} className='group/head flex min-w-0 items-center gap-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue'>
+                          <h3 className='text-balance font-display text-xl font-semibold text-brand-ink md:text-2xl'>{row.title}</h3>
+                          <ChevronRight size={22} className='shrink-0 text-brand-ink transition-transform group-hover/head:translate-x-0.5' aria-hidden='true' />
+                        </button>
+                      </div>
+                    ) : (
+                      <h3 className='text-balance font-display text-xl font-semibold text-brand-ink md:text-2xl'>{row.title}</h3>
+                    )}
                   </div>
-                ))}
-              </div>
-            </section>
-          ))}
+                  <div className='-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-3 no-scrollbar md:gap-5'>
+                    {row.items.map((ngo) => <CauseShowcaseCard key={ngo.id} {...cardProps(ngo)} storyPreview={row.storyPreview} className='w-[78vw] max-w-[320px] shrink-0 snap-start sm:w-[300px]' />)}
+                  </div>
+                </div>
+              </section>
+            );
+          })}
 
-          {!embedded && leftovers.length > 0 && (
-            <section>
-              <h3 className="mb-4 font-display text-xl md:text-2xl font-semibold text-brand-ink">Mais causas para conhecer</h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-5 gap-y-8">
-                {leftovers.map((ngo) => (
-                  <div
-                    key={ngo.id}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => onSelectNGO(ngo)}
-                    onKeyDown={(e) => e.key === 'Enter' && onSelectNGO(ngo)}
-                    className="group cursor-pointer text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 rounded-2xl"
-                  >
-                    <NgoCardContent {...cardProps(ngo)} />
-                  </div>
-                ))}
+          {leftovers.length > 0 && (
+            <section className='mx-auto max-w-[1400px] overflow-hidden rounded-[28px] bg-[#E3D5F0] py-9 md:rounded-[34px]'>
+              <div className='mx-auto max-w-7xl px-4'>
+                <h3 className="mb-5 font-display text-xl font-semibold text-brand-ink md:text-2xl">Mais causas para conhecer</h3>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {leftovers.map((ngo) => <CauseShowcaseCard key={ngo.id} {...cardProps(ngo)} className='w-full' />)}
+                </div>
               </div>
             </section>
           )}
 
-          {rows.length === 0 && leftovers.length === 0 && flashCampaigns.length === 0 && <EmptyState />}
+          {rows.length === 0 && leftovers.length === 0 && flashCampaigns.length === 0 && <div className='mx-auto max-w-7xl px-4'><EmptyState /></div>}
         </div>
       )}
     </div>

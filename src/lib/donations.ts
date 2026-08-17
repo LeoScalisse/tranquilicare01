@@ -17,6 +17,11 @@ type CheckoutDonationRow = {
   status: 'pending' | 'succeeded' | 'failed' | 'refunded';
 };
 
+type PublicCheckoutConfirmation = {
+  status?: CheckoutDonationRow['status'];
+  donation?: Omit<CheckoutDonationRow, 'donor_id' | 'status'>;
+};
+
 export const createDonationCheckout = async (input: DonationCheckoutInput): Promise<string> => {
   if (!supabase) throw new Error('payments-not-configured');
 
@@ -43,17 +48,75 @@ export const createDonationCheckout = async (input: DonationCheckoutInput): Prom
   return url;
 };
 
-/**
- * Resolves only after the signed Stripe webhook marks this user's checkout as
- * succeeded. The select and Realtime event are both protected by donations RLS.
- */
-export const waitForDonationConfirmation = (
+const waitForAnonymousDonationConfirmation = (
   sessionId: string,
-  donorEmail: string | null,
   timeoutMs = 60_000,
 ): Promise<DonationRow> => {
   if (!supabase) return Promise.reject(new Error('payments-not-configured'));
-  if (!sessionId.startsWith('cs_')) return Promise.reject(new Error('invalid-checkout-session'));
+
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let checking = false;
+
+    const cleanup = () => {
+      window.clearInterval(pollTimer);
+      window.clearTimeout(timeoutTimer);
+    };
+
+    const check = async () => {
+      if (checking || settled) return;
+      checking = true;
+      const { data, error } = await supabase.functions.invoke<PublicCheckoutConfirmation>(
+        'confirm-checkout-session',
+        { body: { sessionId } },
+      );
+      checking = false;
+
+      if (settled) return;
+      if (error) {
+        console.error('Could not confirm anonymous checkout donation:', error);
+        return;
+      }
+      if (data?.status === 'failed' || data?.status === 'refunded') {
+        settled = true;
+        cleanup();
+        reject(new Error('payment-not-succeeded'));
+        return;
+      }
+      if (data?.status !== 'succeeded' || !data.donation) return;
+
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve({
+        id: data.donation.id,
+        amount: Number(data.donation.amount_cents) || 0,
+        donor_id: null,
+        donor_email: null,
+        created_at: data.donation.created_at,
+        ngo_id: data.donation.ngo_id,
+        stripe_checkout_session_id: data.donation.stripe_checkout_session_id,
+      });
+    };
+
+    const pollTimer = window.setInterval(() => void check(), 1500);
+    const timeoutTimer = window.setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      reject(new Error('payment-confirmation-timeout'));
+    }, timeoutMs);
+
+    void check();
+  });
+};
+
+const waitForAuthenticatedDonationConfirmation = (
+  sessionId: string,
+  donorEmail: string,
+  timeoutMs = 60_000,
+): Promise<DonationRow> => {
+  if (!supabase) return Promise.reject(new Error('payments-not-configured'));
 
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -132,4 +195,16 @@ export const waitForDonationConfirmation = (
 
     void check();
   });
+};
+
+/** Resolves only after Stripe and the signed webhook confirm the checkout. */
+export const waitForDonationConfirmation = (
+  sessionId: string,
+  donorEmail: string | null,
+  timeoutMs = 60_000,
+): Promise<DonationRow> => {
+  if (!sessionId.startsWith('cs_')) return Promise.reject(new Error('invalid-checkout-session'));
+  return donorEmail
+    ? waitForAuthenticatedDonationConfirmation(sessionId, donorEmail, timeoutMs)
+    : waitForAnonymousDonationConfirmation(sessionId, timeoutMs);
 };
