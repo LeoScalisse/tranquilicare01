@@ -31,12 +31,21 @@
   background: hsl(var(--background));
 }
 
+.scroll-expand__ambient {
+  position: absolute;
+  inset: 0;
+  background: hsl(var(--brand-blue) / 0.54);
+  opacity: 0;
+  pointer-events: none;
+  will-change: opacity;
+}
+
 .scroll-expand__frame {
   position: absolute;
   inset: 0;
   overflow: hidden;
   clip-path: inset(21% 21% 21% 21% round 18px);
-  will-change: clip-path;
+  will-change: clip-path, filter;
 }
 
 .scroll-expand__media {
@@ -145,6 +154,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .scroll-expand__frame,
+  .scroll-expand__ambient,
   .scroll-expand__media,
   .scroll-expand__overlay,
   .scroll-expand__title,

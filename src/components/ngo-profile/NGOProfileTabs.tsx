@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 
 import { getNgoCategoryTheme } from '@/data/ngoCategories';
+import ExpandableVideoPlayer from '@/components/ui/expandable-video-player';
 import { ImpactMetric, NGO, NGOPost } from '@/types';
 
 interface CauseTabProps {
@@ -42,7 +43,17 @@ export const NGOCauseTab: React.FC<CauseTabProps> = ({ ngo, onOpenGoal }) => {
   const categoryTheme = getNgoCategoryTheme(ngo.category);
 
   return (
-    <div className='max-w-3xl'>
+    <div className='mx-auto max-w-3xl'>
+      {ngo.causeVideo && (
+        <div data-testid='cause-video-region' className='flex justify-center pb-8 pt-6 sm:pt-8'>
+          <ExpandableVideoPlayer
+            src={ngo.causeVideo}
+            poster={ngo.coverImage}
+            title={`A causa de ${ngo.name} em movimento`}
+            triggerLabel={`Assistir ao vídeo da causa ${ngo.name}`}
+          />
+        </div>
+      )}
       <button
         type='button'
         onClick={onOpenGoal}

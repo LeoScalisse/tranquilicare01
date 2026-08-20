@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -39,6 +39,43 @@ describe('NGOProfile cause-led architecture', () => {
     const dialog = screen.getByRole('dialog', { name: 'O que queremos tornar possível' });
     expect(dialog.textContent).toContain(demoNgos[0].goal);
     expect(dialog.firstElementChild?.className).toContain('bg-[#FFF7D6]');
+  });
+
+  it('expands the Abraço Sereno cause video and closes it with Escape', async () => {
+    renderProfile();
+
+    const trigger = screen.getByRole('button', { name: 'Assistir ao vídeo da causa Abraço Sereno' });
+    expect(trigger.querySelector('video')?.getAttribute('src')).toContain('video-player.mp4');
+
+    fireEvent.click(trigger);
+
+    const dialog = screen.getByRole('dialog', { name: 'A causa de Abraço Sereno em movimento' });
+    expect(dialog.closest('[data-video-overlay]')?.parentElement).toBe(document.body);
+    expect(dialog.querySelector('video')?.hasAttribute('controls')).toBe(true);
+    const closeButton = dialog.querySelector('button');
+    await waitFor(() => {
+      expect(document.activeElement).toBe(closeButton);
+    });
+
+    fireEvent.keyDown(closeButton!, { key: 'Escape' });
+    await waitFor(() => {
+      expect(document.body.style.overflow).toBe('');
+      expect(document.activeElement).toBe(trigger);
+    });
+  });
+
+  it('centers the cause video with breathing room below the profile tabs', () => {
+    renderProfile();
+
+    const region = screen.getByTestId('cause-video-region');
+    expect(region.className).toContain('justify-center');
+    expect(region.className).toContain('pt-6');
+  });
+
+  it('does not render a cause video when the organization has none', () => {
+    renderProfile(demoNgos[1]);
+
+    expect(screen.queryByRole('button', { name: /Assistir ao vídeo da causa/i })).toBeNull();
   });
 
   it('keeps stories and impact as different experiences', async () => {

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { View, NGO } from '../types';
 import { demoNgos } from '@/data/demoNgos';
 import { getUser, onAuthChange, authReady, signOut, defaultDestForAccount, AppUser } from '@/lib/auth';
@@ -257,7 +257,6 @@ const TranquiliCareApp: React.FC = () => {
         onProfileClick={handleProfileClick}
         onLogout={handleLogout}
         onDonorLogin={() => navigate('/donor/auth')}
-        onAbout={() => navigate('/sobre')}
       />
       <main className="animate-fade-in">{renderView()}</main>
 
@@ -284,7 +283,6 @@ const TranquiliCareApp: React.FC = () => {
             TRANQUILI<span className="text-brand-blue">CARE</span>
           </p>
           <p>© 2025 TranquiliCare. Conectando corações, mudando o mundo.</p>
-          <Link to='/sobre' className='mt-3 inline-flex font-semibold text-brand-blue hover:underline'>Sobre o TranquiliCare</Link>
         </div>
       </footer>
     </div>

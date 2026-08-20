@@ -1,4 +1,4 @@
-import { act, fireEvent, render, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import Stories from '@/components/Stories';
@@ -72,6 +72,19 @@ describe('Stories infinite feed', () => {
     expect(likeButton.querySelector('img')?.getAttribute('src')).toBe(
       '/tranquilicare-heart.png',
     );
+  });
+
+  it('uses the window as the only vertical scroller for the expanded feed', () => {
+    const { container } = render(
+      <Stories onOpenNGO={vi.fn()} />,
+    );
+
+    const scrollExpand = container.querySelector('.scroll-expand');
+    const feed = container.querySelector('.scroll-expand__overlay')?.firstElementChild;
+
+    expect(scrollExpand?.classList.contains('scroll-expand--window')).toBe(true);
+    expect(feed?.classList.contains('overflow-y-auto')).toBe(false);
+    expect(feed?.classList.contains('overflow-y-hidden')).toBe(true);
   });
 
   it('morphs the comment action into an input and submits with Enter', async () => {
@@ -150,5 +163,43 @@ describe('Stories infinite feed', () => {
     expect(within(shareMenu).getByRole('menuitem', { name: /WhatsApp/i, hidden: true })).not.toBeNull();
     expect(within(shareMenu).getByRole('menuitem', { name: /Instagram/i, hidden: true })).not.toBeNull();
     expect(within(shareMenu).getByRole('menuitem', { name: /TranquiliCare/i, hidden: true })).not.toBeNull();
+  });
+
+  it('opens existing comments with a long press and keeps a short click for writing', async () => {
+    vi.useFakeTimers();
+    const { container } = render(
+      <Stories onOpenNGO={vi.fn()} />,
+    );
+
+    const firstStory = container.querySelector('article') as HTMLElement;
+    const commentButton = within(firstStory).getByRole('button', {
+      name: 'Comentar',
+      hidden: true,
+    });
+
+    fireEvent.pointerDown(commentButton, { pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 10 });
+    await act(async () => {
+      vi.advanceTimersByTime(550);
+    });
+
+    expect(screen.getByRole('dialog', { name: 'Comentários da história' })).not.toBeNull();
+    expect(screen.getByText('Marina Costa')).not.toBeNull();
+    expect(within(firstStory).queryByRole('textbox', {
+      name: 'Escreva um comentário',
+      hidden: true,
+    })).toBeNull();
+
+    vi.useRealTimers();
+  });
+
+  it('does not show a repost action', () => {
+    const { container } = render(
+      <Stories onOpenNGO={vi.fn()} />,
+    );
+
+    expect(within(container).queryAllByRole('button', {
+      name: 'Recompartilhar',
+      hidden: true,
+    })).toHaveLength(0);
   });
 });
