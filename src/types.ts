@@ -56,6 +56,7 @@ export interface NGO {
   goal: string;
   image: string;
   coverImage?: string;
+  causeVideo?: string;
   email: string;
   instagram: string;
   phone?: string;

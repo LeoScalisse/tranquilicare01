@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from '../types';
 import { BrandedText } from '../utils';
-import { HandHeart, Info, UserCircle, LogOut, LogIn } from 'lucide-react';
+import { HandHeart, UserCircle, LogOut, LogIn } from 'lucide-react';
 import CosmosNav from './CosmosNav';
 import { buildMobileNavItems } from './mobileNavItems';
 import logo from '@/assets/logo.png';
@@ -14,7 +14,6 @@ interface HeaderProps {
   onProfileClick?: () => void;
   onLogout?: () => void;
   onDonorLogin?: () => void;
-  onAbout?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -25,7 +24,6 @@ const Header: React.FC<HeaderProps> = ({
   onProfileClick,
   onLogout,
   onDonorLogin,
-  onAbout,
 }) => {
   const isLoggedIn = Boolean(currentUserEmail);
   const navItemClass = (view: View) => `
@@ -62,13 +60,6 @@ const Header: React.FC<HeaderProps> = ({
         </div>
 
         <nav className="hidden md:flex items-center gap-2">
-          <button
-            onClick={onAbout}
-            className='flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-muted-foreground transition-all duration-300 hover:bg-brand-blue/10 hover:text-brand-ink'
-          >
-            <Info size={18} />
-            Sobre
-          </button>
           <button
             onClick={() => setCurrentView(View.STORIES)}
             className={navItemClass(View.STORIES)}

@@ -1,4 +1,5 @@
 import { NGO } from '../types';
+import abracoSerenoCauseVideo from '@/assets/videos/video-player.mp4';
 
 const svgDataUri = (svg: string) =>
   `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
@@ -40,6 +41,7 @@ export const demoNgos: NGO[] = [
       'Criar rodas de conversa semanais e oferecer 200 atendimentos de escuta qualificada por mês.',
     image: '/images/tranquilicare-heart-transparent.png',
     coverImage: '/images/abraco-sereno-cover.webp',
+    causeVideo: abracoSerenoCauseVideo,
     email: 'contato@abracosereno.org',
     instagram: '@abracosereno',
     phone: '(11) 98888-0101',

@@ -10,7 +10,6 @@ import {
   MoreHorizontal,
   PenLine,
   Play,
-  Repeat2,
   Send,
   ShieldCheck,
   Video,
@@ -18,7 +17,10 @@ import {
 } from 'lucide-react';
 
 import ScrollExpand from '@/components/ui/scroll-expand';
-import { MorphingCommentButton } from '@/components/ui/morphing-comment-button';
+import {
+  MorphingCommentButton,
+  type StoryComment,
+} from '@/components/ui/morphing-comment-button';
 import StoryShareSheet from '@/components/ui/story-share-sheet';
 import { demoNgos } from '@/data/demoNgos';
 
@@ -62,6 +64,27 @@ const SIMULATED_CAPTIONS = [
   'Hoje foi dia de acompanhar resultados, acolher pessoas e preparar a próxima atividade.',
   'A comunidade esteve presente em mais uma ação construída de forma coletiva.',
   'O apoio continua se transformando em experiências que fortalecem vínculos.',
+];
+
+const SIMULATED_COMMENTS: StoryComment[] = [
+  {
+    id: 'comment-marina',
+    author: 'Marina Costa',
+    text: 'É muito bonito acompanhar esse cuidado acontecendo de perto.',
+    timestamp: '12 min',
+  },
+  {
+    id: 'comment-rafael',
+    author: 'Rafael Lima',
+    text: 'Obrigado por compartilharem os próximos passos com tanta clareza.',
+    timestamp: '38 min',
+  },
+  {
+    id: 'comment-luiza',
+    author: 'Luiza Martins',
+    text: 'Essa história me ajudou a conhecer melhor a causa.',
+    timestamp: '1 h',
+  },
 ];
 
 const createSimulatedStories = (
@@ -298,6 +321,7 @@ const StoryFeed: React.FC<StoryFeedProps> = ({
 
                 <MorphingCommentButton
                   count={commentCount}
+                  comments={SIMULATED_COMMENTS}
                   expanded={commenting}
                   onExpandedChange={(expanded) => {
                     setActiveCommentId((current) => (
@@ -329,9 +353,6 @@ const StoryFeed: React.FC<StoryFeedProps> = ({
                       transition={actionVisibilityTransition}
                       className='flex items-center gap-1 sm:gap-2'
                     >
-                      <button type='button' className='hidden min-h-10 items-center gap-1.5 rounded-lg px-2 transition-colors hover:bg-brand-blue/10 hover:text-brand-blue sm:inline-flex' aria-label='Recompartilhar'>
-                        <Repeat2 size={19} />
-                      </button>
                       <StoryShareSheet storyId={story.id} storyTitle={story.caption || `História de ${story.ngoName}`} />
                     </motion.div>
                   )}
@@ -466,16 +487,16 @@ const Stories: React.FC<StoriesProps> = ({
       <ScrollExpand
         contentPreview
         scrollHint='Role para entrar no feed'
-        startWidth={68}
-        startHeight={68}
+        startWidth={62}
+        startHeight={62}
         startRadius={18}
         scrollDistance={0.68}
-        holdDistance={0.18}
+        holdDistance={0}
         smoothing={0.055}
         overlayScrim={0}
         useWindowScroll
       >
-        <div ref={feedScrollerRef} className='h-full w-full overflow-y-auto overscroll-y-auto bg-background text-brand-ink'>
+        <div ref={feedScrollerRef} className='h-full w-full overflow-y-hidden bg-background text-brand-ink'>
           <header className='sticky top-0 z-20 border-b border-brand-ink/10 bg-background/95 backdrop-blur-xl'>
             <div className='mx-auto flex min-h-16 max-w-2xl items-center gap-3 px-4 sm:px-6'>
               <span className='grid h-9 w-9 shrink-0 place-items-center rounded-full bg-brand-yellow text-brand-ink'>

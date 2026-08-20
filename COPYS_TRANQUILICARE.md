@@ -202,11 +202,15 @@ O inventário inclui textos visíveis, placeholders, mensagens de sucesso e erro
 | Organização verificada | Nome acessível do selo | ONG verificada | Acessibilidade | `src/components/Stories.tsx:216` |
 | Mais opções | Botão no cabeçalho do post | Sempre | Menu contextual | `src/components/Stories.tsx:233` |
 | Curtir história / Remover curtida | Botão de reação | Conforme estado | Reação | `src/components/Stories.tsx:289` |
-| Comentar | Botão de interação recolhido | Campo fechado | Abrir o compositor de comentário | `src/components/ui/morphing-comment-button.tsx:137` |
-| Escreva um comentário... | Placeholder do campo expansível | Campo aberto | Orientar a resposta | `src/components/ui/morphing-comment-button.tsx:114` |
-| Escreva um comentário | Nome acessível do campo expansível | Campo aberto | Acessibilidade | `src/components/ui/morphing-comment-button.tsx:115` |
-| Enviar comentário | Nome acessível do botão de envio | Campo aberto | Publicar o comentário | `src/components/ui/morphing-comment-button.tsx:137` |
-| Recompartilhar | Botão de interação | Desktop | Distribuição | `src/components/Stories.tsx:331` |
+| Comentar | Botão de interação recolhido e CTA do card | Campo fechado ou card aberto | Abrir o compositor com clique e mantê-lo disponível junto aos comentários | `src/components/ui/morphing-comment-button.tsx` |
+| Escreva um comentário... | Placeholder do campo expansível | Campo aberto | Orientar a resposta | `src/components/ui/morphing-comment-button.tsx` |
+| Escreva um comentário | Nome acessível do campo expansível | Campo aberto | Acessibilidade | `src/components/ui/morphing-comment-button.tsx` |
+| Enviar comentário | Nome acessível do botão de envio | Campo aberto | Publicar o comentário | `src/components/ui/morphing-comment-button.tsx` |
+| Comentários | Título do card animado | Pressão longa no botão de comentário | Identificar a conversa da publicação | `src/components/ui/morphing-comment-button.tsx` |
+| Comentários da história | Nome acessível do card | Card aberto | Contextualizar o diálogo para tecnologia assistiva | `src/components/ui/morphing-comment-button.tsx` |
+| Fechar comentários | Nome acessível do fundo e do botão de fechar | Card aberto | Encerrar a leitura | `src/components/ui/morphing-comment-button.tsx` |
+| {quantidade} comentários | Rodapé do card | Card aberto | Informar o volume da conversa | `src/components/ui/morphing-comment-button.tsx` |
+| Ainda não há comentários por aqui. | Estado vazio do card | Publicação sem comentários | Explicar a ausência de respostas | `src/components/ui/morphing-comment-button.tsx` |
 | Compartilhar | Botão de interação | Sempre | Abrir opções de distribuição | `src/components/ui/story-share-sheet.tsx` |
 | Compartilhar por | Cabeçalho do menu | Menu aberto | Identificar as opções | `src/components/ui/story-share-sheet.tsx` |
 | WhatsApp / Enviar em uma conversa | Primeira opção | Menu aberto | Compartilhar pelo WhatsApp | `src/components/ui/story-share-sheet.tsx` |
@@ -276,21 +280,6 @@ Fonte: `src/components/Stories.tsx:55`.
 | Histórias | Item central da barra inferior | Sempre | Abrir o feed de histórias | `src/components/mobileNavItems.tsx:36` |
 | Perfil | Terceiro item da barra inferior | Pessoa autenticada | Abrir o perfil | `src/components/mobileNavItems.tsx:43` |
 | Entrar | Terceiro item da barra inferior | Pessoa não autenticada | Abrir autenticação | `src/components/mobileNavItems.tsx:43` |
-
-### Página Sobre
-
-| Copy atual | Onde aparece | Quando aparece | Função | Fonte |
-|---|---|---|---|---|
-| Voltar ao início | Ação no cabeçalho | Sempre | Retornar à página inicial | `src/pages/About.tsx` |
-| SOBRE | Eyebrow da página | Sempre | Identificar a área institucional | `src/pages/About.tsx` |
-| Conheça o TranquiliCare | Título principal | Sempre | Apresentar a marca | `src/pages/About.tsx` |
-| Um jeito mais humano de conhecer causas, apoiar organizações e acompanhar o que acontece depois. | Texto introdutório | Sempre | Resumir a proposta da plataforma | `src/pages/About.tsx` |
-| Nossa história | Rótulo sobre a miniatura | Antes de abrir o vídeo | Contextualizar o conteúdo | `src/components/ui/youtube-video-popover.tsx` |
-| A história por trás do TranquiliCare | Título da miniatura e do modal | Sempre | Nomear o vídeo | `src/pages/About.tsx` |
-| Assistir | Botão sobre a miniatura | Antes de abrir o vídeo | Abrir o player | `src/components/ui/youtube-video-popover.tsx` |
-| Fechar vídeo | Nome acessível do fundo e do botão de fechar | Player aberto | Encerrar o modal | `src/components/ui/youtube-video-popover.tsx` |
-
----
 
 ## 5. Conhecer a plataforma: página inicial para visitantes
 
@@ -478,6 +467,10 @@ Fonte: `src/components/Stories.tsx:55`.
 
 | Copy atual | Onde aparece | Quando aparece | Função | Fonte |
 |---|---|---|---|---|
+| Assistir | Ação sobre o preview pequeno | A organização possui vídeo da causa | Expandir o player | `src/components/ui/expandable-video-player.tsx` |
+| Assistir ao vídeo da causa {nome} | Nome acessível do preview | A organização possui vídeo da causa | Identificar a ação e sua organização | `src/components/ngo-profile/NGOProfileTabs.tsx` |
+| A causa de {nome} em movimento | Nome acessível do player expandido | Player aberto | Contextualizar o vídeo exibido | `src/components/ngo-profile/NGOProfileTabs.tsx` |
+| Fechar vídeo | Nome acessível do fundo e do botão de fechar | Player aberto | Encerrar o player | `src/components/ui/expandable-video-player.tsx` |
 | Objetivo atual | Rótulo da única linha de objetivo | Sempre | Identificar a prioridade atual | `src/components/ngo-profile/NGOProfileTabs.tsx` |
 | Conhecer o objetivo da causa | Nome acessível da linha de objetivo | Sempre | Abrir o objetivo completo | `src/components/ngo-profile/NGOProfileTabs.tsx` |
 
@@ -928,7 +921,7 @@ Esta seção não altera a aplicação. Ela registra inconsistências encontrada
 |---|---|
 | Marca, SEO e compartilhamento | `index.html`, `src/pages/Index.tsx` |
 | Navegação | `src/components/Header.tsx`, `src/components/mobileNavItems.tsx`, `src/components/CosmosNav.tsx` |
-| Página Sobre e vídeo institucional | `src/pages/About.tsx`, `src/components/ui/youtube-video-popover.tsx` |
+| Vídeo da causa no perfil da ONG | `src/components/ui/expandable-video-player.tsx`, `src/components/ngo-profile/NGOProfileTabs.tsx` |
 | Home visitante | `src/components/LoggedOutHero.tsx` |
 | Dashboard autenticado | `src/components/ImpactDashboard.tsx` |
 | Causas e campanhas | `src/components/Marketplace.tsx`, `src/data/ngoCategories.ts`, `src/data/flashCampaigns.ts` |

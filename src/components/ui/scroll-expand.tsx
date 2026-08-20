@@ -71,6 +71,7 @@ const ScrollExpand = ({
   const rootRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const ambientRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -78,7 +79,6 @@ const ScrollExpand = ({
   const scrimRef = useRef<HTMLDivElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
   const wasInteractiveRef = useRef(false);
-  const exitingRef = useRef(false);
   const propsRef = useRef({
     startWidth,
     startHeight,
@@ -116,7 +116,7 @@ const ScrollExpand = ({
     const config = propsRef.current;
     const eased = smoothstep(0, 1, progress);
     const compact = root.clientWidth < 640;
-    const restingWidth = compact ? Math.max(config.startWidth, 86) : config.startWidth;
+    const restingWidth = compact ? Math.max(config.startWidth, 82) : config.startWidth;
     const restingHeight = config.contentPreview
       ? restingWidth
       : compact ? Math.max(config.startHeight, 62) : config.startHeight;
@@ -127,6 +127,10 @@ const ScrollExpand = ({
     const radius = config.startRadius + (config.endRadius - config.startRadius) * eased;
 
     frame.style.clipPath = `inset(${insetY}% ${insetX}% ${insetY}% ${insetX}% round ${radius}px)`;
+    frame.style.filter = `drop-shadow(0 ${Math.round(18 * (1 - eased))}px ${Math.round(34 * (1 - eased))}px rgb(11 54 80 / ${0.2 * (1 - eased)}))`;
+    if (ambientRef.current) {
+      ambientRef.current.style.opacity = `${0.72 * smoothstep(0.02, 0.78, progress)}`;
+    }
     media.style.transform = config.contentPreview
       ? 'none'
       : `scale(${config.mediaZoom + (1 - config.mediaZoom) * eased})`;
@@ -172,7 +176,6 @@ const ScrollExpand = ({
         if (contentScroller instanceof HTMLElement) contentScroller.scrollTop = 0;
       }
       wasInteractiveRef.current = interactive;
-      if (progress < 0.4) exitingRef.current = false;
     }
   }, []);
 
@@ -183,20 +186,30 @@ const ScrollExpand = ({
     if (!root || !track || !stage) return;
 
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const overlayChild = overlayRef.current?.firstElementChild;
+    const contentScroller = overlayChild instanceof HTMLElement ? overlayChild : null;
     let animationFrame = 0;
+    let mutationFrame = 0;
     let current = 0;
     let target = 0;
     let stageHeight = 0;
+    let expansionDistance = 0;
+    let contentScrollDistance = 0;
     let running = false;
 
     const measure = () => {
       const config = propsRef.current;
       stageHeight = useWindowScroll ? window.innerHeight : root.clientHeight;
       if (stageHeight <= 0) return;
+      expansionDistance = stageHeight * Math.max(0.01, config.scrollDistance);
+      contentScrollDistance = useWindowScroll && config.contentPreview && contentScroller
+        ? Math.max(0, contentScroller.scrollHeight - stageHeight)
+        : 0;
       stage.style.height = `${stageHeight}px`;
-      track.style.height = `${stageHeight * (
-        1 + Math.max(0, config.scrollDistance) + Math.max(0, config.holdDistance)
-      )}px`;
+      track.style.height = `${stageHeight
+        + expansionDistance
+        + contentScrollDistance
+        + stageHeight * Math.max(0, config.holdDistance)}px`;
       const width = root.clientWidth || stageHeight;
       stage.style.setProperty('--se-title-size', `${clamp(width * 0.065, 28, 72)}px`);
     };
@@ -204,11 +217,23 @@ const ScrollExpand = ({
     const readProgress = () => {
       const config = propsRef.current;
       if (!config.enabled) return 1;
-      const span = stageHeight * Math.max(0.01, config.scrollDistance);
       if (useWindowScroll) {
-        return clamp(-track.getBoundingClientRect().top / span, 0, 1);
+        return clamp(-track.getBoundingClientRect().top / expansionDistance, 0, 1);
       }
-      return clamp(root.scrollTop / span, 0, 1);
+      return clamp(root.scrollTop / expansionDistance, 0, 1);
+    };
+
+    const syncContentScroll = () => {
+      if (!useWindowScroll || !propsRef.current.contentPreview || !contentScroller) return;
+      const trackOffset = Math.max(0, -track.getBoundingClientRect().top);
+      const nextScrollTop = clamp(
+        trackOffset - expansionDistance,
+        0,
+        contentScrollDistance,
+      );
+      if (Math.abs(contentScroller.scrollTop - nextScrollTop) > 0.5) {
+        contentScroller.scrollTop = nextScrollTop;
+      }
     };
 
     const tick = () => {
@@ -233,6 +258,7 @@ const ScrollExpand = ({
 
     const onScroll = () => {
       target = readProgress();
+      syncContentScroll();
       if (propsRef.current.smoothing <= 0 || reduceMotion) {
         current = target;
         applyProgress(current);
@@ -246,6 +272,7 @@ const ScrollExpand = ({
       target = readProgress();
       current = target;
       applyProgress(current);
+      syncContentScroll();
     };
 
     measure();
@@ -258,54 +285,21 @@ const ScrollExpand = ({
     window.addEventListener('resize', onResize);
     const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(onResize);
     resizeObserver?.observe(root);
-
-    const contentScroller = overlayRef.current?.firstElementChild;
-    let touchStartY = 0;
-    const exitToPreview = () => {
-      if (!useWindowScroll || exitingRef.current) return;
-      exitingRef.current = true;
-      const trackTop = window.scrollY + track.getBoundingClientRect().top;
-      window.scrollTo({
-        top: Math.max(0, trackTop),
-        behavior: reduceMotion ? 'auto' : 'smooth',
-      });
-    };
-    const onContentWheel = (event: WheelEvent) => {
-      if (
-        !wasInteractiveRef.current
-        || !(contentScroller instanceof HTMLElement)
-        || contentScroller.scrollTop > 1
-        || event.deltaY >= -10
-      ) return;
-      event.preventDefault();
-      exitToPreview();
-    };
-    const onContentTouchStart = (event: TouchEvent) => {
-      touchStartY = event.touches[0]?.clientY ?? 0;
-    };
-    const onContentTouchMove = (event: TouchEvent) => {
-      if (
-        !wasInteractiveRef.current
-        || !(contentScroller instanceof HTMLElement)
-        || contentScroller.scrollTop > 1
-        || (event.touches[0]?.clientY ?? 0) - touchStartY < 26
-      ) return;
-      event.preventDefault();
-      exitToPreview();
-    };
-
-    contentScroller?.addEventListener('wheel', onContentWheel, { passive: false });
-    contentScroller?.addEventListener('touchstart', onContentTouchStart, { passive: true });
-    contentScroller?.addEventListener('touchmove', onContentTouchMove, { passive: false });
+    const mutationObserver = contentScroller && typeof MutationObserver !== 'undefined'
+      ? new MutationObserver(() => {
+          if (mutationFrame) cancelAnimationFrame(mutationFrame);
+          mutationFrame = requestAnimationFrame(onResize);
+        })
+      : null;
+    mutationObserver?.observe(contentScroller, { childList: true, subtree: true });
 
     return () => {
       if (animationFrame) cancelAnimationFrame(animationFrame);
+      if (mutationFrame) cancelAnimationFrame(mutationFrame);
       scroller.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onResize);
       resizeObserver?.disconnect();
-      contentScroller?.removeEventListener('wheel', onContentWheel);
-      contentScroller?.removeEventListener('touchstart', onContentTouchStart);
-      contentScroller?.removeEventListener('touchmove', onContentTouchMove);
+      mutationObserver?.disconnect();
     };
   }, [applyProgress, useWindowScroll]);
 
@@ -337,6 +331,7 @@ const ScrollExpand = ({
     >
       <div ref={trackRef} className='scroll-expand__track'>
         <div ref={stageRef} className='scroll-expand__stage'>
+          <div ref={ambientRef} className='scroll-expand__ambient' aria-hidden='true' />
           <div ref={frameRef} className='scroll-expand__frame'>
             <div ref={mediaRef} className='scroll-expand__media'>
               {contentPreview ? null : preview ? (
