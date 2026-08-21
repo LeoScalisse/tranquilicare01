@@ -141,7 +141,7 @@ Deno.serve(async (request) => {
         {
           price_data: {
             currency: 'brl',
-            product_data: { name: 'Taxa TranquiliCare (5%)' },
+            product_data: { name: 'Apoio ao TranquiliCare (5%)' },
             unit_amount: platformFeeCents,
           },
           quantity: 1,

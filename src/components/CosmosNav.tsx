@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { motion, LayoutGroup } from 'framer-motion';
+import { motion, LayoutGroup, useReducedMotion, type Transition } from 'framer-motion';
 
 export interface CosmosNavItem {
   key: string;
@@ -14,7 +14,8 @@ interface CosmosNavProps {
   items: CosmosNavItem[];
 }
 
-const SPRING = { duration: 0.34, ease: [0.22, 1, 0.36, 1] as const };
+const SPRING: Transition = { type: 'spring', bounce: 0, duration: 0.28 };
+const REDUCED_TRANSITION: Transition = { duration: 0.01 };
 
 // Frosted-glass look (from the reference): backdrop blur + saturation, a glass
 // rim built from inset white highlights, and a soft drop shadow — all in one
@@ -24,14 +25,14 @@ const RIM =
   'shadow-[inset_2px_2px_5px_-2px_rgba(255,255,255,0.6),inset_-2px_-2px_5px_2px_rgba(255,255,255,0.35),inset_0_-2px_0_rgba(255,255,255,0.2),0_12px_34px_rgba(16,42,67,0.22)]';
 
 /** Icon-only circle used inside a grouped (non-active) pill. */
-const CompactItem: React.FC<{ item: CosmosNavItem }> = ({ item }) => (
+const CompactItem: React.FC<{ item: CosmosNavItem; reduceMotion: boolean }> = ({ item, reduceMotion }) => (
   <motion.button
-    initial={{ opacity: 0, scale: 0.7 }}
+    initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.92 }}
     animate={{ opacity: 1, scale: 1 }}
-    transition={SPRING}
+    transition={reduceMotion ? REDUCED_TRANSITION : SPRING}
     onClick={item.onClick}
     aria-label={item.label}
-    whileTap={{ scale: 0.88 }}
+    whileTap={reduceMotion ? undefined : { scale: 0.96 }}
     className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-background/25"
   >
     {item.icon}
@@ -39,31 +40,32 @@ const CompactItem: React.FC<{ item: CosmosNavItem }> = ({ item }) => (
 );
 
 /** A rounded glass pill grouping one or more non-active items together. */
-const GroupPill: React.FC<{ items: CosmosNavItem[] }> = ({ items }) => (
+const GroupPill: React.FC<{ items: CosmosNavItem[]; reduceMotion: boolean }> = ({ items, reduceMotion }) => (
   <motion.div
     layout
-    transition={SPRING}
+    transition={reduceMotion ? REDUCED_TRANSITION : SPRING}
     className={`flex items-center gap-1 rounded-full border border-white/30 bg-brand-blue/40 p-1.5 ${GLASS} ${RIM}`}
   >
     {items.map((item) => (
-      <CompactItem key={item.key} item={item} />
+      <CompactItem key={item.key} item={item} reduceMotion={reduceMotion} />
     ))}
   </motion.div>
 );
 
 /** The active section — in evidence: a light glass chip with brand-blue content. */
-const ProminentPill: React.FC<{ item: CosmosNavItem }> = ({ item }) => (
+const ProminentPill: React.FC<{ item: CosmosNavItem; reduceMotion: boolean }> = ({ item, reduceMotion }) => (
   <motion.button
     layout
-    transition={SPRING}
+    transition={reduceMotion ? REDUCED_TRANSITION : SPRING}
     onClick={item.onClick}
     aria-label={item.label}
-    className={`flex items-center gap-2 rounded-full border border-white/60 bg-background/85 p-1.5 pr-4 text-brand-blue ${GLASS} ${RIM} active:scale-95`}
+    whileTap={reduceMotion ? undefined : { scale: 0.975 }}
+    className={`flex items-center gap-2 rounded-full border border-white/60 bg-background/85 p-1.5 pr-4 text-brand-blue ${GLASS} ${RIM}`}
   >
     <motion.span
-      initial={{ scale: 0.7, opacity: 0 }}
+      initial={reduceMotion ? { opacity: 0 } : { scale: 0.92, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      transition={SPRING}
+      transition={reduceMotion ? REDUCED_TRANSITION : SPRING}
       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-blue/15 text-brand-blue"
     >
       {item.icon}
@@ -91,6 +93,7 @@ const ProminentPill: React.FC<{ item: CosmosNavItem }> = ({ item }) => (
  * because the icon changes parent while those parents also animate layout.
  */
 const CosmosNav: React.FC<CosmosNavProps> = ({ items }) => {
+  const reduceMotion = useReducedMotion() ?? false;
   if (typeof document === 'undefined') return null;
 
   const activeIndex = items.findIndex((i) => i.active);
@@ -107,9 +110,9 @@ const CosmosNav: React.FC<CosmosNavProps> = ({ items }) => {
     >
       <LayoutGroup id="cosmos-nav">
         <div className="flex items-center gap-2">
-          {before.length > 0 && <GroupPill items={before} />}
-          {active && <ProminentPill item={active} />}
-          {after.length > 0 && <GroupPill items={after} />}
+          {before.length > 0 && <GroupPill items={before} reduceMotion={reduceMotion} />}
+          {active && <ProminentPill item={active} reduceMotion={reduceMotion} />}
+          {after.length > 0 && <GroupPill items={after} reduceMotion={reduceMotion} />}
         </div>
       </LayoutGroup>
     </div>,

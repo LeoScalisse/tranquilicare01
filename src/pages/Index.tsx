@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { View, NGO } from '../types';
 import { demoNgos } from '@/data/demoNgos';
+import { loadMarketplaceNgos } from '@/lib/ngos';
 import { getUser, onAuthChange, authReady, signOut, defaultDestForAccount, AppUser } from '@/lib/auth';
 import Header from '../components/Header';
 import ImpactDashboard from '../components/ImpactDashboard';
@@ -24,10 +25,6 @@ import {
   VERIFICATION_DISCOVERY_TRIGGER_ID,
 } from '@/lib/discoveryNavigation';
 
-// No backend yet: the marketplace runs on the local demo dataset. This is the
-// seam where a real fetch returns once a new database is wired up.
-const ngos: NGO[] = demoNgos;
-
 const TranquiliCareApp: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -35,6 +32,7 @@ const TranquiliCareApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.HOME);
   const [viewingNGO, setViewingNGO] = useState<NGO | null>(null);
   const [user, setUser] = useState<AppUser | null>(getUser);
+  const [ngos, setNgos] = useState<NGO[]>(demoNgos);
   const [authHydrated, setAuthHydrated] = useState(false);
   const [confirmedDonation, setConfirmedDonation] = useState<DonationRow | null>(null);
   const [celebrationPhase, setCelebrationPhase] = useState<'idle' | 'card' | 'dialog'>('idle');
@@ -62,6 +60,15 @@ const TranquiliCareApp: React.FC = () => {
       unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!authHydrated) return undefined;
+    let active = true;
+    void loadMarketplaceNgos(user).then((nextNgos) => {
+      if (active) setNgos(nextNgos);
+    });
+    return () => { active = false; };
+  }, [authHydrated, user]);
 
   const handleProfileClick = () => {
     navigate(user ? defaultDestForAccount(user.accountType) : '/donor/auth');
@@ -212,7 +219,7 @@ const TranquiliCareApp: React.FC = () => {
         userEmail={user?.email ?? null}
         isLoggedIn={Boolean(user)}
         accountType={user?.accountType ?? null}
-        ownedNgoId={null}
+        ownedNgoId={user?.accountType === 'ngo' ? user.id : null}
         verifiedCount={ngos.filter((ngo) => ngo.verified).length}
         onLogin={() => navigate('/donor/auth')}
         onExplore={scrollToCauses}

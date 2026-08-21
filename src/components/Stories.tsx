@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 
 import ScrollExpand from '@/components/ui/scroll-expand';
+import ScrollIdleCue from '@/components/ui/scroll-idle-cue';
+import CircularStoryGallery from '@/components/ui/circular-story-gallery';
 import {
   MorphingCommentButton,
   type StoryComment,
@@ -390,6 +392,7 @@ const Stories: React.FC<StoriesProps> = ({
   const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [draft, setDraft] = useState('');
   const [simulatedBatches, setSimulatedBatches] = useState(INITIAL_SIMULATED_BATCHES);
+  const [expandProgress, setExpandProgress] = useState(0);
   const feedScrollerRef = useRef<HTMLDivElement>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
@@ -486,15 +489,17 @@ const Stories: React.FC<StoriesProps> = ({
 
       <ScrollExpand
         contentPreview
-        scrollHint='Role para entrar no feed'
-        startWidth={62}
-        startHeight={62}
-        startRadius={18}
+        restingOverlay={<ScrollIdleCue active={expandProgress < 0.08} />}
+        onProgressChange={setExpandProgress}
+        startWidth={48}
+        startHeight={48}
+        startShape='circle'
         scrollDistance={0.68}
         holdDistance={0}
         smoothing={0.055}
         overlayScrim={0}
         useWindowScroll
+        surround={<CircularStoryGallery items={feedStories} />}
       >
         <div ref={feedScrollerRef} className='h-full w-full overflow-y-hidden bg-background text-brand-ink'>
           <header className='sticky top-0 z-20 border-b border-brand-ink/10 bg-background/95 backdrop-blur-xl'>

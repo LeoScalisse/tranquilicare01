@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
@@ -26,7 +26,10 @@ import {
   VERIFICATION_DISCOVERY_PATH,
 } from '@/lib/discoveryNavigation';
 import DonationAmountWheel from '@/components/ui/donation-amount-wheel';
+import AppleEdgeGlow from '@/components/ui/apple-edge-glow';
 import ViewOnMap from '@/components/ui/view-on-map';
+import donationEnterSound from '@/assets/audio/apple-intelligence-enter.mp3';
+import donationExitSound from '@/assets/audio/apple-intelligence-exit.mp3';
 import {
   NGOCauseTab,
   NGOImpactTab,
@@ -59,6 +62,8 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [zoomedPost, setZoomedPost] = useState<NGOPost | null>(null);
   const [copiedPhone, setCopiedPhone] = useState(false);
+  const donationEnterAudioRef = useRef<HTMLAudioElement>(null);
+  const donationExitAudioRef = useRef<HTMLAudioElement>(null);
   const categoryDefinition = getNgoCategory(ngo.category);
   const categoryTheme = getNgoCategoryTheme(ngo.category);
   const sealTriggerId = `ngo-verification-seal-${ngo.id}`;
@@ -73,6 +78,29 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
   const isDonationAmountValid = amountCents >= 51 && amountCents <= 10_000_000;
   const platformFeeCents = Math.round(amountCents * 0.05);
   const totalCents = amountCents + platformFeeCents;
+
+  const playDonationSound = (audio: HTMLAudioElement | null) => {
+    if (!audio || import.meta.env.MODE === 'test') return;
+    audio.currentTime = 0;
+    audio.volume = 0.5;
+    try {
+      const playback = audio.play();
+      if (playback) void playback.catch(() => undefined);
+    } catch {
+      // Audio feedback is optional and must never block the donation flow.
+    }
+  };
+
+  const openDonation = () => {
+    playDonationSound(donationEnterAudioRef.current);
+    setShowDonationModal(true);
+  };
+
+  const closeDonation = () => {
+    if (isStartingCheckout) return;
+    playDonationSound(donationExitAudioRef.current);
+    setShowDonationModal(false);
+  };
 
   const startDonation = async () => {
     if (amountCents < 51 || amountCents > 10_000_000) {
@@ -138,6 +166,8 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
 
   return (
     <div className='mx-auto w-full max-w-6xl overflow-x-hidden px-4 pb-24 pt-7 text-brand-ink md:overflow-visible md:pt-10'>
+      <audio ref={donationEnterAudioRef} src={donationEnterSound} preload='auto' aria-hidden='true' />
+      <audio ref={donationExitAudioRef} src={donationExitSound} preload='auto' aria-hidden='true' />
       <AnimatePresence>
         {zoomedPost && (
           <motion.div className='fixed inset-0 z-[120] grid place-items-center bg-brand-ink/90 p-4 backdrop-blur-md' initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setZoomedPost(null)}>
@@ -176,9 +206,10 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
         </ModalShell>
       )}
 
-      {showDonationModal && (
-        <ModalShell onClose={() => !isStartingCheckout && setShowDonationModal(false)} title={`Apoiar ${ngo.name}`} icon={<Heart size={22} />} wide>
-          <p className='mb-4 text-sm font-bold'>Valor destinado à ONG</p>
+      <AnimatePresence>
+        {showDonationModal && (
+          <ModalShell onClose={closeDonation} title={`Apoiar ${ngo.name}`} icon={<Heart size={22} />} wide variant='donation'>
+          <h2 className='mb-4 max-w-sm pr-10 font-display text-xl font-semibold leading-snug text-brand-ink'>Quanto você quer fazer chegar à {ngo.name}?</h2>
           <DonationAmountWheel
             id='donation-amount'
             value={donationAmount}
@@ -186,34 +217,38 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
             min={0.51}
             max={100_000}
             step={5}
-            label='Valor destinado à ONG'
+            label={`Quanto você quer fazer chegar à ${ngo.name}?`}
           />
-          <div className='mt-5 rounded-lg bg-secondary/60 p-4 text-sm'>
-            <div className='flex justify-between gap-4'><span className='text-muted-foreground'>Doação</span><strong>{donationAmount === null ? 'A definir' : formatBRL(amountCents)}</strong></div>
-            <div className='mt-2 flex justify-between gap-4'><span className='text-muted-foreground'>Taxa TranquiliCare (5%)</span><strong>{donationAmount === null ? '—' : formatBRL(platformFeeCents)}</strong></div>
-            <div className='mt-3 flex justify-between border-t border-border pt-3 font-bold'><span>Total</span><span>{donationAmount === null ? '—' : formatBRL(totalCents)}</span></div>
+          <div className='mt-5 rounded-lg border border-brand-ink/8 bg-secondary/45 p-4 text-sm'>
+            <div><span className='block font-semibold text-muted-foreground'>Sua doação para {ngo.name}</span><strong className='mt-0.5 block text-base text-brand-ink'>{donationAmount === null ? 'A definir' : formatBRL(amountCents)}</strong></div>
+            <div className='mt-3'><span className='block font-semibold text-muted-foreground'>Apoio ao TranquiliCare (5%)</span><strong className='mt-0.5 block text-base text-brand-ink'>{donationAmount === null ? '—' : formatBRL(platformFeeCents)}</strong></div>
+            <div className='mt-3 border-t border-border pt-3'><span className='block font-bold text-brand-ink'>Total</span><strong className='mt-0.5 block text-lg text-brand-ink'>{donationAmount === null ? '—' : formatBRL(totalCents)}</strong></div>
           </div>
-          <p className='mt-4 text-xs leading-relaxed text-muted-foreground'>A doação é destinada integralmente à ONG. A taxa de 5% é adicionada ao valor final e o pagamento é processado pela Stripe.</p>
-          <button disabled={isStartingCheckout || !isDonationAmountValid} onClick={startDonation} className='tc-button-3d mt-5 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold text-white disabled:opacity-60'>{isStartingCheckout ? <Loader2 size={18} className='animate-spin' /> : <CreditCard size={18} />}{isStartingCheckout ? 'Abrindo pagamento...' : donationAmount === null ? 'Escolha um valor para continuar' : 'Continuar para pagamento'}</button>
-        </ModalShell>
+          <p className='mt-4 text-sm font-medium text-muted-foreground'>A sua intenção chega inteira.</p>
+          <button disabled={isStartingCheckout || !isDonationAmountValid} onClick={startDonation} className='tc-button-3d mt-5 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold text-white disabled:opacity-60'>{isStartingCheckout ? <Loader2 size={18} className='animate-spin' /> : <CreditCard size={18} />}{isStartingCheckout ? 'Preparando seu pagamento...' : donationAmount === null ? 'Escolha um valor' : 'Continuar'}</button>
+          </ModalShell>
+        )}
+      </AnimatePresence>
+
+      {ngo.coverImage && (
+        <div className='mb-7 aspect-[16/5] w-full overflow-hidden rounded-lg bg-secondary'>
+          <img src={ngo.coverImage} alt='' className='h-full w-full object-cover' />
+        </div>
       )}
 
       <section className='border-b border-border pb-8'>
         <div className='flex flex-col gap-7 md:flex-row md:items-center'>
           <div className='relative w-fit shrink-0'>
             <img src={ngo.image} className='h-36 w-36 rounded-full border-[5px] border-white object-cover shadow-[0_0_0_3px_hsl(var(--brand-blue))] md:h-40 md:w-40' alt={ngo.name} />
-            {ngo.verified && categoryDefinition && (
-              <button
-                id={sealTriggerId}
-                type='button'
-                onClick={openVerificationDiscovery}
-                className='absolute -bottom-1 -right-4 grid h-14 w-14 place-items-center rounded-full transition-transform duration-200 hover:-translate-y-0.5 hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-brand-blue md:-right-5 md:h-16 md:w-16'
-                aria-label={`Conhecer a verificação da categoria ${categoryDefinition.label}`}
-                title={`Selo verificado de ${categoryDefinition.label}`}
-              >
+            {categoryDefinition && (ngo.verified ? (
+              <button id={sealTriggerId} type='button' onClick={openVerificationDiscovery} className='absolute -bottom-1 -right-4 grid h-14 w-14 place-items-center rounded-full transition-transform duration-200 hover:-translate-y-0.5 hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-brand-blue md:-right-5 md:h-16 md:w-16' aria-label={`Conhecer a verificação da categoria ${categoryDefinition.label}`} title={`Selo verificado de ${categoryDefinition.label}`}>
                 <img src={categoryDefinition.sealSrc} alt='' className='h-full w-full object-contain drop-shadow-[0_6px_12px_rgba(15,36,60,0.2)]' />
               </button>
-            )}
+            ) : (
+              <span className='absolute -bottom-1 -right-4 grid h-14 w-14 place-items-center rounded-full md:-right-5 md:h-16 md:w-16' role='img' aria-label={`Selo da categoria ${categoryDefinition.label}`} title={`Categoria ${categoryDefinition.label}`}>
+                <img src={categoryDefinition.sealSrc} alt='' className='h-full w-full object-contain drop-shadow-[0_6px_12px_rgba(15,36,60,0.2)]' />
+              </span>
+            ))}
           </div>
 
           <div className='min-w-0 flex-1'>
@@ -223,19 +258,19 @@ const NGOProfile: React.FC<NGOProfileProps> = ({ ngo, ownerMode = false, onEditP
             </p>
             <h1 className='mt-3 font-display text-4xl font-semibold leading-tight md:text-5xl'>{ngo.name}</h1>
             <p className='font-narrative mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base'>{ngo.description}</p>
-            <div className='mt-5 flex flex-wrap gap-3'>
-              {ownerMode ? <button onClick={onEditProfile} className='tc-button-3d inline-flex items-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white'><Pencil size={17} />Editar perfil</button> : <button onClick={() => setShowDonationModal(true)} className='tc-button-3d inline-flex items-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white'><Heart size={17} className='fill-current' />Apoiar esta causa</button>}
-              <button onClick={() => setShowContactModal(true)} className='tc-button-neumorph inline-flex items-center gap-2 rounded-lg border border-border bg-background px-5 py-2.5 text-sm font-bold transition-colors hover:border-brand-blue hover:text-brand-blue'><MessageCircle size={17} />Falar com a organização</button>
-              {ngo.address && <ViewOnMap locationName={ngo.name} address={ngo.address} />}
+            <div className='mt-5 grid w-full gap-3 sm:flex sm:flex-wrap'>
+            {ownerMode ? <button onClick={onEditProfile} className='tc-button-3d inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold text-white sm:w-auto'><Pencil size={17} />Editar perfil</button> : <button onClick={openDonation} className='tc-button-3d inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white sm:w-auto'><Heart size={17} className='fill-current' />Apoiar esta causa</button>}
+              <button onClick={() => setShowContactModal(true)} className='tc-button-neumorph inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-5 py-2.5 text-sm font-bold transition-colors hover:border-brand-blue hover:text-brand-blue sm:w-auto'><MessageCircle size={17} />Falar com a organização</button>
+              {ngo.address && <ViewOnMap locationName={ngo.name} address={ngo.address} latitude={ngo.latitude} longitude={ngo.longitude} />}
             </div>
           </div>
         </div>
       </section>
 
       <div className='sticky top-16 z-20 -mx-4 mt-2 border-b border-border bg-background/95 px-4 backdrop-blur md:static md:mx-0 md:mt-0 md:px-0'>
-        <div className='flex overflow-x-auto'>
-          <div role='tablist' aria-label='Conteúdo do perfil da organização' className='flex w-full'>
-            {tabs.map((tab, index) => <button id={`ngo-tab-${ngo.id}-${tab.id}`} key={tab.id} type='button' role='tab' aria-selected={activeTab === tab.id} aria-controls={`ngo-panel-${ngo.id}-${tab.id}`} tabIndex={activeTab === tab.id ? 0 : -1} onClick={() => setActiveTab(tab.id)} onKeyDown={(event) => moveTabFocus(event, index)} className={`relative min-w-[112px] flex-1 px-4 py-4 text-sm font-bold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-blue ${activeTab === tab.id ? 'text-brand-blue' : 'text-muted-foreground hover:text-brand-ink'}`}>{tab.label}{activeTab === tab.id && <motion.span layoutId={`ngo-tab-${ngo.id}`} className='absolute inset-x-4 bottom-0 h-0.5 bg-brand-blue' />}</button>)}
+        <div className='w-full'>
+          <div role='tablist' aria-label='Conteúdo do perfil da organização' className='grid w-full grid-cols-3'>
+            {tabs.map((tab, index) => <button id={`ngo-tab-${ngo.id}-${tab.id}`} key={tab.id} type='button' role='tab' aria-selected={activeTab === tab.id} aria-controls={`ngo-panel-${ngo.id}-${tab.id}`} tabIndex={activeTab === tab.id ? 0 : -1} onClick={() => setActiveTab(tab.id)} onKeyDown={(event) => moveTabFocus(event, index)} className={`relative min-w-0 px-1 py-4 text-sm font-bold transition-colors sm:px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-blue ${activeTab === tab.id ? 'text-brand-blue' : 'text-muted-foreground hover:text-brand-ink'}`}>{tab.label}{activeTab === tab.id && <motion.span layoutId={`ngo-tab-${ngo.id}`} className='absolute inset-x-2 bottom-0 h-0.5 bg-brand-blue sm:inset-x-4' />}</button>)}
           </div>
         </div>
       </div>
@@ -259,15 +294,32 @@ interface ModalShellProps {
   wide?: boolean;
   headerClassName?: string;
   iconClassName?: string;
+  variant?: 'default' | 'donation';
 }
 
-const ModalShell: React.FC<ModalShellProps> = ({ title, icon, children, onClose, wide, headerClassName, iconClassName }) => (
-  <div className='fixed inset-0 z-[110] grid place-items-center bg-brand-ink/70 p-4 backdrop-blur-sm' onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-    <motion.div role='dialog' aria-modal='true' aria-label={title} initial={{ opacity: 0, y: 18, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} className={`w-full overflow-hidden rounded-lg bg-background shadow-2xl ${wide ? 'max-w-md' : 'max-w-sm'}`}>
-      <div className={`flex items-center justify-between border-b px-5 py-4 ${headerClassName || 'border-brand-ink bg-brand-ink text-white'}`}><div className='flex items-center gap-2.5'><span className={iconClassName || 'text-brand-yellow'}>{icon}</span><h3 className='font-display text-xl font-semibold'>{title}</h3></div><button onClick={onClose} className='grid h-9 w-9 place-items-center rounded-full bg-background text-brand-blue shadow-sm' aria-label='Fechar'><X size={19} /></button></div>
-      <div className='p-5 md:p-6'>{children}</div>
+const ModalShell: React.FC<ModalShellProps> = ({ title, icon, children, onClose, wide, headerClassName, iconClassName, variant = 'default' }) => {
+  const donation = variant === 'donation';
+  const reduceMotion = useReducedMotion();
+  const backdropTransition = reduceMotion ? { duration: 0.01 } : { duration: 0.34, ease: [0.22, 1, 0.36, 1] as const };
+  const dialogTransition = reduceMotion ? { duration: 0.01 } : { type: 'spring' as const, bounce: 0, duration: 0.3 };
+  return (
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={backdropTransition} className={`fixed inset-0 z-[110] grid place-items-center overflow-y-auto bg-brand-ink/78 p-5 backdrop-blur-md sm:p-8 ${donation ? 'donation-intelligence-frame' : ''}`} onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <AppleEdgeGlow preview={donation} intensity='xl' />
+      <motion.div role='dialog' aria-modal='true' aria-label={title} initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.975 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.985 }} transition={dialogTransition} className={`relative z-10 my-auto w-full overflow-hidden rounded-lg bg-background shadow-2xl ${wide ? 'max-w-md' : 'max-w-sm'}`}>
+        {donation ? (
+          <div className='relative max-h-[calc(100svh-2.5rem)] overflow-y-auto rounded-lg bg-background'>
+            <button onClick={onClose} className='absolute right-4 top-4 z-10 grid h-9 w-9 place-items-center rounded-full bg-secondary text-brand-blue shadow-sm' aria-label='Fechar'><X size={19} /></button>
+            <div className='p-5 md:p-6'>{children}</div>
+          </div>
+        ) : (
+          <>
+            <div className={`flex items-center justify-between border-b px-5 py-4 ${headerClassName || 'border-brand-ink bg-brand-ink text-white'}`}><div className='flex items-center gap-2.5'><span className={iconClassName || 'text-brand-yellow'}>{icon}</span><h3 className='font-display text-xl font-semibold'>{title}</h3></div><button onClick={onClose} className='grid h-9 w-9 place-items-center rounded-full bg-background text-brand-blue shadow-sm' aria-label='Fechar'><X size={19} /></button></div>
+            <div className='p-5 md:p-6'>{children}</div>
+          </>
+        )}
+      </motion.div>
     </motion.div>
-  </div>
-);
+  );
+};
 
 export default NGOProfile;

@@ -1,0 +1,164 @@
+.apple-edge-glow {
+  --apple-edge-size: 35px;
+  --apple-corner-size: 55px;
+  --apple-edge-blur: 10px;
+  position: fixed;
+  z-index: 1;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform-origin: center;
+}
+
+.apple-edge-glow[data-intensity='sm'] {
+  --apple-edge-size: 20px;
+  --apple-corner-size: 34px;
+  --apple-edge-blur: 7px;
+}
+
+.apple-edge-glow[data-intensity='md'] {
+  --apple-edge-size: 26px;
+  --apple-corner-size: 42px;
+  --apple-edge-blur: 8px;
+}
+
+.apple-edge-glow[data-intensity='lg'] {
+  --apple-edge-size: 31px;
+  --apple-corner-size: 48px;
+  --apple-edge-blur: 9px;
+}
+
+.apple-edge-glow__rim,
+.apple-edge-glow__surface {
+  position: absolute;
+  inset: 7px;
+  border-radius: 24px;
+}
+
+.apple-edge-glow__rim {
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.9),
+    0 0 9px 1px rgb(255 255 255 / 0.34);
+}
+
+.apple-edge-glow__surface {
+  overflow: hidden;
+}
+
+.apple-edge-glow__edge,
+.apple-edge-glow__corner {
+  position: absolute;
+  display: block;
+  will-change: transform, opacity;
+}
+
+.apple-edge-glow__edge {
+  filter: blur(var(--apple-edge-blur));
+}
+
+.apple-edge-glow__edge--top {
+  top: 0;
+  right: 0;
+  left: 0;
+  height: var(--apple-edge-size);
+  background: linear-gradient(to bottom, rgb(255 244 91 / 0.94), rgb(255 255 255 / 0.62), transparent);
+  transform-origin: center top;
+  animation: apple-edge-shimmer-horizontal 3s ease-in-out infinite;
+}
+
+.apple-edge-glow__edge--right {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: var(--apple-edge-size);
+  background: linear-gradient(to left, rgb(84 224 255 / 0.94), rgb(255 255 255 / 0.56), transparent);
+  transform-origin: right center;
+  animation: apple-edge-shimmer-vertical 3s ease-in-out 2.25s infinite;
+}
+
+.apple-edge-glow__edge--bottom {
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: var(--apple-edge-size);
+  background: linear-gradient(to top, rgb(56 182 255 / 0.94), rgb(207 248 255 / 0.58), transparent);
+  transform-origin: center bottom;
+  animation: apple-edge-shimmer-horizontal 3s ease-in-out 1.5s infinite;
+}
+
+.apple-edge-glow__edge--left {
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: var(--apple-edge-size);
+  background: linear-gradient(to right, rgb(255 252 210 / 0.9), rgb(255 229 77 / 0.48), transparent);
+  transform-origin: left center;
+  animation: apple-edge-shimmer-vertical 3s ease-in-out 0.75s infinite;
+}
+
+.apple-edge-glow__corner {
+  width: var(--apple-corner-size);
+  height: var(--apple-corner-size);
+  filter: blur(calc(var(--apple-edge-blur) + 2px));
+  opacity: 0.72;
+}
+
+.apple-edge-glow__corner--top-left {
+  top: 0;
+  left: 0;
+  background: radial-gradient(circle at top left, rgb(255 244 91 / 0.8), transparent 70%);
+}
+
+.apple-edge-glow__corner--top-right {
+  top: 0;
+  right: 0;
+  background: radial-gradient(circle at top right, rgb(255 255 255 / 0.78), transparent 70%);
+}
+
+.apple-edge-glow__corner--bottom-right {
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at bottom right, rgb(84 224 255 / 0.82), transparent 70%);
+}
+
+.apple-edge-glow__corner--bottom-left {
+  bottom: 0;
+  left: 0;
+  background: radial-gradient(circle at bottom left, rgb(56 182 255 / 0.76), transparent 70%);
+}
+
+@keyframes apple-edge-shimmer-horizontal {
+  0%, 100% {
+    opacity: 0.54;
+    transform: scaleX(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleX(1.1);
+  }
+}
+
+@keyframes apple-edge-shimmer-vertical {
+  0%, 100% {
+    opacity: 0.54;
+    transform: scaleY(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .apple-edge-glow__edge {
+    animation: none;
+    opacity: 0.78;
+    transform: none;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .apple-edge-glow__rim {
+    box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.95);
+  }
+}

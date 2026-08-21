@@ -12,6 +12,7 @@ import {
 import { formatBRL } from '@/lib/impact';
 import { SmoothInput } from '@/components/ui/smooth-input';
 import CauseShowcaseCard from '@/components/marketplace/CauseShowcaseCard';
+import cowHead from '@/assets/cow-head.png';
 
 const SEARCH_PLACEHOLDERS = [
   'Busque uma causa...',
@@ -121,6 +122,47 @@ const FlashCampaignCard: React.FC<{ campaign: FlashCampaign; onOpen: (c: FlashCa
   );
 };
 
+const CowCampaignSection: React.FC<{
+  campaigns: FlashCampaign[];
+  onOpen: (campaign: FlashCampaign) => void;
+}> = ({ campaigns, onOpen }) => (
+  <section
+    data-cow-campaign-section
+    className='relative mx-auto max-w-[1400px] overflow-hidden rounded-[28px] border border-brand-ink/10 bg-white pb-9 pt-16 shadow-[0_18px_45px_-36px_rgba(13,45,65,0.5)] md:rounded-[34px] md:pt-[4.5rem]'
+  >
+    <span data-cow-spot aria-hidden='true' className='absolute -left-10 top-8 h-24 w-40 rotate-[-18deg] rounded-[48%_52%_42%_58%] bg-black' />
+    <span data-cow-spot aria-hidden='true' className='absolute left-[18%] top-5 h-12 w-20 rotate-[12deg] rounded-[58%_42%_64%_36%] bg-black' />
+    <span data-cow-spot aria-hidden='true' className='absolute right-[20%] top-10 h-16 w-28 rotate-[-14deg] rounded-[44%_56%_38%_62%] bg-black' />
+    <span data-cow-spot aria-hidden='true' className='absolute -right-8 top-[34%] h-24 w-36 rotate-[18deg] rounded-[62%_38%_48%_52%] bg-black' />
+    <span data-cow-spot aria-hidden='true' className='absolute left-[43%] top-[42%] h-16 w-24 rotate-[-10deg] rounded-[62%_38%_54%_46%] bg-black' />
+    <span data-cow-spot aria-hidden='true' className='absolute left-[8%] bottom-7 h-20 w-32 rotate-[8deg] rounded-[38%_62%_57%_43%] bg-black' />
+    <span data-cow-spot aria-hidden='true' className='absolute left-[61%] bottom-5 h-14 w-24 rotate-[-20deg] rounded-[56%_44%_35%_65%] bg-black' />
+    <span data-cow-spot aria-hidden='true' className='absolute -right-8 bottom-10 h-32 w-48 rotate-[16deg] rounded-[55%_45%_60%_40%] bg-black' />
+
+    <img
+      data-cow-head
+      src={cowHead}
+      alt=''
+      aria-hidden='true'
+      className='pointer-events-none absolute left-1/2 top-0 z-20 w-28 -translate-x-1/2 -translate-y-[18%] object-contain drop-shadow-[0_8px_8px_rgba(0,0,0,0.14)] md:w-32'
+    />
+
+    <div className='relative z-10 mx-auto max-w-7xl px-4'>
+      <div className='mb-5 w-fit rounded-lg bg-white/90 px-3 py-2 shadow-sm backdrop-blur-sm'>
+        <h3 className='font-display text-xl font-semibold text-brand-ink md:text-2xl'>Vaquinhas</h3>
+        <p className='mt-1 text-sm text-muted-foreground'>Campanhas com um objetivo e um tempo para acontecer.</p>
+      </div>
+      <div className='-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-3 no-scrollbar'>
+        {campaigns.map((campaign) => (
+          <div key={campaign.id} className='rounded-2xl bg-white/95 p-3 shadow-sm backdrop-blur-sm'>
+            <FlashCampaignCard campaign={campaign} onOpen={onOpen} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+);
+
 const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
@@ -200,8 +242,15 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
   }, [ngos, categories]);
 
   const isSearching = searchTerm.trim().length > 0;
-  const isCategoryFilter = selectedCategory !== 'Todas';
-  const mode: 'search' | 'category' | 'sections' = isSearching ? 'search' : isCategoryFilter ? 'category' : 'sections';
+  const isCampaignFilter = selectedCategory === 'Vaquinhas';
+  const isCategoryFilter = selectedCategory !== 'Todas' && !isCampaignFilter;
+  const mode: 'search' | 'campaigns' | 'category' | 'sections' = isSearching
+    ? 'search'
+    : isCampaignFilter
+      ? 'campaigns'
+      : isCategoryFilter
+        ? 'category'
+        : 'sections';
 
   const categoryNgos = ngos.filter((n) => selectedCategory === 'Todas' || n.category === selectedCategory);
 
@@ -251,8 +300,8 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
 
         {/* Search — rotating placeholder while empty */}
         <div
-          className="marketplace-search-shell relative mx-auto h-14 w-[86%] max-w-xl rounded-full border border-transparent bg-[linear-gradient(143deg,rgba(217,240,244,0.76)_15%,rgba(243,253,255,0.9)_88%)] shadow-[0_12px_24px_-1px_rgba(11,57,84,0.16)] transition-[width,max-width,box-shadow,border-color] duration-500 focus-within:w-full focus-within:max-w-2xl focus-within:border-brand-blue/35 focus-within:shadow-[0_16px_34px_-4px_rgba(11,96,148,0.22)] focus-within:ring-4 focus-within:ring-brand-blue/10 md:w-[72%] lg:mx-0"
-          style={{ transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
+          className="marketplace-search-shell relative mx-auto h-14 w-[86%] max-w-xl rounded-full border border-transparent bg-[linear-gradient(143deg,rgba(217,240,244,0.76)_15%,rgba(243,253,255,0.9)_88%)] shadow-[0_12px_24px_-1px_rgba(11,57,84,0.16)] transition-[width,max-width,box-shadow,border-color] focus-within:w-full focus-within:max-w-2xl focus-within:border-brand-blue/35 focus-within:shadow-[0_16px_34px_-4px_rgba(11,96,148,0.22)] focus-within:ring-4 focus-within:ring-brand-blue/10 md:w-[72%] lg:mx-0"
+          style={{ transitionDuration: '280ms', transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
         >
           <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none z-10">
             <Search className="h-5 w-5 text-brand-blue" />
@@ -294,9 +343,9 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
               <button
                 key={cat}
                 type="button"
-                onClick={() => setSelectedCategory(cat)}
+                onClick={() => setSelectedCategory((current) => current === cat && cat !== 'Todas' ? 'Todas' : cat)}
                 aria-pressed={selected}
-                className={`shrink-0 rounded-full px-5 py-2.5 text-sm font-bold whitespace-nowrap transition-all duration-300 ${theme.chipText} ${
+                className={`tc-motion-control shrink-0 rounded-full px-5 py-2.5 text-sm font-bold whitespace-nowrap transition-[color,background-color,box-shadow,transform] ${theme.chipText} ${
                   selected
                     ? `${theme.chipBg} shadow-[inset_3px_3px_7px_rgba(16,42,67,0.20),inset_-3px_-3px_7px_rgba(255,255,255,0.75)]`
                     : 'bg-background shadow-[4px_4px_10px_rgba(16,42,67,0.12),-4px_-4px_10px_rgba(255,255,255,0.95)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-[inset_3px_3px_6px_rgba(16,42,67,0.16)]'
@@ -306,6 +355,22 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
               </button>
             );
           })}
+          <button
+            type='button'
+            onClick={() => setSelectedCategory((current) => current === 'Vaquinhas' ? 'Todas' : 'Vaquinhas')}
+            aria-label='Vaquinhas'
+            title='Vaquinhas'
+            aria-pressed={isCampaignFilter}
+            className={`tc-motion-control relative grid h-11 w-14 shrink-0 place-items-center overflow-hidden rounded-full border border-brand-ink/10 transition-[background-color,border-color,box-shadow,transform] ${
+              isCampaignFilter
+                ? 'bg-white shadow-[inset_3px_3px_7px_rgba(16,42,67,0.18),inset_-3px_-3px_7px_rgba(255,255,255,0.9)]'
+                : 'bg-white shadow-[4px_4px_10px_rgba(16,42,67,0.12),-4px_-4px_10px_rgba(255,255,255,0.95)] hover:-translate-y-0.5 active:translate-y-0'
+            }`}
+          >
+            <span aria-hidden='true' className='absolute -left-2 top-1 h-5 w-8 rotate-[-20deg] rounded-full bg-black' />
+            <span aria-hidden='true' className='absolute -right-2 bottom-0 h-6 w-8 rotate-[15deg] rounded-full bg-black' />
+            <img data-cow-head src={cowHead} alt='' className='relative z-10 h-9 w-10 object-contain' />
+          </button>
         </div>
       </div>
       </div>
@@ -337,18 +402,16 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
           </motion.div>
         )}</div>}
 
+      {mode === 'campaigns' && (
+        <div className='px-3 pb-28 pt-14 md:px-5 md:pb-12 md:pt-16'>
+          <CowCampaignSection campaigns={flashCampaigns} onOpen={openCampaign} />
+        </div>
+      )}
+
       {mode === 'sections' && (
-        <div className='space-y-6 px-3 pb-12 md:px-5'>
+        <div className='space-y-6 px-3 pb-28 pt-14 md:px-5 md:pb-12 md:pt-16'>
           {flashCampaigns.length > 0 && (
-            <section className='mx-auto max-w-[1400px] overflow-hidden rounded-[28px] bg-[#FFD5C2] py-9 md:rounded-[34px]'>
-              <div className='mx-auto max-w-7xl px-4'>
-                <h3 className="mb-1 font-display text-xl font-semibold text-brand-ink md:text-2xl">Vaquinhas</h3>
-                <p className="mb-5 text-sm text-muted-foreground">Campanhas com um objetivo e um tempo para acontecer.</p>
-                <div className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-3 no-scrollbar">
-                  {flashCampaigns.map((campaign) => <FlashCampaignCard key={campaign.id} campaign={campaign} onOpen={openCampaign} />)}
-                </div>
-              </div>
-            </section>
+            <CowCampaignSection campaigns={flashCampaigns} onOpen={openCampaign} />
           )}
 
           {rows.map((row) => {
@@ -360,7 +423,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({ ngos, onSelectNGO, embedded =
                     {categoryDefinition && <img src={categoryDefinition.sealSrc} alt='' className='h-9 w-9 shrink-0 object-contain' />}
                     {row.category ? (
                       <div className='min-w-0'>
-                        <button type='button' onClick={() => setSelectedCategory(row.category!)} className='group/head flex min-w-0 items-center gap-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue'>
+                        <button type='button' onClick={() => setSelectedCategory((current) => current === row.category ? 'Todas' : row.category!)} className='group/head flex min-w-0 items-center gap-1.5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue'>
                           <h3 className='text-balance font-display text-xl font-semibold text-brand-ink md:text-2xl'>{row.title}</h3>
                           <ChevronRight size={22} className='shrink-0 text-brand-ink transition-transform group-hover/head:translate-x-0.5' aria-hidden='true' />
                         </button>

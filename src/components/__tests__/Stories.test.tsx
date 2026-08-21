@@ -58,6 +58,9 @@ describe('Stories infinite feed', () => {
 
     expect(container.querySelector('.scroll-expand__preview')).toBeNull();
     expect(container.querySelector('.scroll-expand--content-preview')).not.toBeNull();
+    expect(container.querySelector('.scroll-expand--circle')).not.toBeNull();
+    expect(container.querySelector('[data-circular-story-gallery]')).not.toBeNull();
+    expect(container.querySelectorAll('[data-circular-story-card]').length).toBeGreaterThanOrEqual(8);
     expect(liveFeed).not.toBeNull();
     expect(liveFeed?.querySelectorAll('article').length).toBeGreaterThan(12);
 
@@ -72,6 +75,20 @@ describe('Stories infinite feed', () => {
     expect(likeButton.querySelector('img')?.getAttribute('src')).toBe(
       '/tranquilicare-heart.png',
     );
+  });
+
+  it('replaces the written scroll instruction with the idle Lottie cue', async () => {
+    vi.useFakeTimers();
+    const { container } = render(<Stories onOpenNGO={vi.fn()} />);
+    const cue = container.querySelector('[data-scroll-idle-cue]');
+
+    expect(screen.queryByText('Role para entrar no feed')).toBeNull();
+    expect(cue?.getAttribute('data-visible')).toBe('false');
+    await act(async () => { vi.advanceTimersByTime(3000); });
+    expect(cue?.getAttribute('data-visible')).toBe('true');
+    fireEvent.touchStart(window);
+    expect(cue?.getAttribute('data-visible')).toBe('false');
+    vi.useRealTimers();
   });
 
   it('uses the window as the only vertical scroller for the expanded feed', () => {

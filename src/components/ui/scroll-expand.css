@@ -40,6 +40,14 @@
   will-change: opacity;
 }
 
+.scroll-expand__surround {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform-origin: center;
+  will-change: opacity, transform;
+}
+
 .scroll-expand__frame {
   position: absolute;
   inset: 0;
@@ -91,6 +99,16 @@
   pointer-events: none;
   will-change: opacity, transform;
   transform-origin: center;
+}
+
+.scroll-expand__resting-overlay {
+  position: absolute;
+  z-index: 8;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  will-change: opacity;
 }
 
 .scroll-expand--content-preview .scroll-expand__media {
@@ -155,10 +173,18 @@
 @media (prefers-reduced-motion: reduce) {
   .scroll-expand__frame,
   .scroll-expand__ambient,
+  .scroll-expand__surround,
   .scroll-expand__media,
   .scroll-expand__overlay,
+  .scroll-expand__resting-overlay,
   .scroll-expand__title,
   .scroll-expand__hint {
     will-change: auto;
+  }
+}
+
+@media (max-width: 639px) {
+  .scroll-expand--has-preview .scroll-expand__hint {
+    bottom: 6.25rem;
   }
 }

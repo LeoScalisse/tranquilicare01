@@ -166,7 +166,7 @@ O inventário inclui textos visíveis, placeholders, mensagens de sucesso e erro
 | Histórias de impacto | Etiqueta acima do título | Contextualizar a seção | `src/components/Stories.tsx:458` |
 | Histórias aproximam quem transforma. | Título principal | Manifesto curto | `src/components/Stories.tsx:460` |
 | Um só lugar para acompanhar mudanças reais e compartilhar como cada causa continua ganhando vida. | Parágrafo introdutório | Explicar o feed unificado | `src/components/Stories.tsx:463` |
-| Role para entrar no feed | Indicação abaixo da tela reduzida | Ensinar a expansão | `src/components/Stories.tsx:469` |
+| Sem texto: animação de rolagem | Sobre o preview após 3 segundos sem interação | Sugerir a expansão sem instrução escrita | `src/components/ui/scroll-idle-cue.tsx` |
 | Histórias | Cabeçalho interno do feed | Nome da tela expandida e do preview | `src/components/Stories.tsx:486` |
 | Impactos e vozes da comunidade | Subtítulo do cabeçalho interno | Enquadrar o conteúdo | `src/components/Stories.tsx:487` |
 
@@ -425,6 +425,9 @@ Fonte: `src/components/Stories.tsx:55`.
 | Endereço | Rua, número, bairro, cidade e estado | Segunda coluna | Obrigatório, mínimo contextual | `src/pages/NGOAccountProfile.tsx:176` |
 | Sobre a organização | Conte o que a organização faz e quem ela atende. | Largura total | Obrigatório | `src/pages/NGOAccountProfile.tsx:195` |
 | Objetivo atual | Descreva a meta ou necessidade mais importante neste momento. | Largura total | Obrigatório | `src/pages/NGOAccountProfile.tsx:213` |
+| Outros objetivos | Adicionar objetivo / Descreva outro resultado que a organização quer alcançar. | Largura total, lista editável | Opcional; cada item pode ser removido | `src/pages/NGOAccountProfile.tsx` |
+| Vídeo da causa no YouTube | https://www.youtube.com/watch?v=... | Largura total | Opcional, mas exige link válido do YouTube | `src/pages/NGOAccountProfile.tsx` |
+| Imagem de capa | https://... | Largura total | Opcional, mas exige URL válida | `src/pages/NGOAccountProfile.tsx` |
 | Instagram | @suaorganizacao | Primeira coluna | Opcional, mas validado se preenchido | `src/pages/NGOAccountProfile.tsx:232` |
 | Telefone | (00) 00000-0000 | Segunda coluna | Opcional, mas validado se preenchido | `src/pages/NGOAccountProfile.tsx:253` |
 
@@ -473,6 +476,7 @@ Fonte: `src/components/Stories.tsx:55`.
 | Fechar vídeo | Nome acessível do fundo e do botão de fechar | Player aberto | Encerrar o player | `src/components/ui/expandable-video-player.tsx` |
 | Objetivo atual | Rótulo da única linha de objetivo | Sempre | Identificar a prioridade atual | `src/components/ngo-profile/NGOProfileTabs.tsx` |
 | Conhecer o objetivo da causa | Nome acessível da linha de objetivo | Sempre | Abrir o objetivo completo | `src/components/ngo-profile/NGOProfileTabs.tsx` |
+| Próximos objetivos | Etiqueta sobre a lista de objetivos adicionais | Há objetivos cadastrados | Mostrar o que a organização pretende alcançar depois | `src/components/ngo-profile/NGOProfileTabs.tsx` |
 
 ### Aba Histórias e estado vazio
 
@@ -519,13 +523,19 @@ Fonte: `src/components/Stories.tsx:55`.
 | Copy atual | Onde aparece | Quando aparece | Função | Fonte |
 |---|---|---|---|---|
 | Sua conta está pronta, {primeiro nome}. | Aviso superior | Primeiro acesso | Confirmar criação | `src/pages/DonorProfile.tsx:230` |
-| Adicione uma foto e confirme seu nome para completar o perfil. | Aviso superior | Primeiro acesso | Próxima ação | `src/pages/DonorProfile.tsx:230` |
+| Personalize sua foto, apresentação e as causas que quer acompanhar. | Aviso superior | Primeiro acesso | Apresentar as possibilidades de personalização | `src/pages/DonorProfile.tsx` |
 | Perfil do doador | Etiqueta acima do nome | Sempre | Identificar tela | `src/pages/DonorProfile.tsx:250` |
 | Bem-vindo(a) | Nome de fallback | Nome vazio | Acolhimento | `src/pages/DonorProfile.tsx:251` |
 | {n} apoios realizados | Resumo abaixo do e-mail | Sempre | Volume de apoio | `src/pages/DonorProfile.tsx:254` |
 | {n} causas apoiadas | Resumo abaixo do e-mail | Sempre | Diversidade de apoio | `src/pages/DonorProfile.tsx:255` |
 | Editar perfil / Editar | Botão superior | Desktop / celular | Abrir edição | `src/pages/DonorProfile.tsx:216` |
-| Nome / E-mail | Campos de edição | Edição aberta | Dados pessoais | `src/pages/DonorProfile.tsx:265`, `src/pages/DonorProfile.tsx:266` |
+| Nome / E-mail | Campos de edição | Edição aberta | Dados pessoais | `src/pages/DonorProfile.tsx` |
+| Sobre você | Conte um pouco sobre você e sua relação com as causas que acompanha. | Edição aberta | Personalizar a apresentação | `src/pages/DonorProfile.tsx` |
+| Localização | Cidade e estado | Edição aberta | Situar o perfil | `src/pages/DonorProfile.tsx` |
+| Instagram | @seuperfil | Edição aberta | Adicionar contato opcional | `src/pages/DonorProfile.tsx` |
+| Telefone | (00) 00000-0000 | Edição aberta | Adicionar contato opcional | `src/pages/DonorProfile.tsx` |
+| Imagem de capa | https://... | Edição aberta | Personalizar a abertura do perfil | `src/pages/DonorProfile.tsx` |
+| Causas de interesse | Botões com as categorias de causas | Edição aberta | Selecionar e remover interesses | `src/pages/DonorProfile.tsx` |
 | Salvar / Salvo | Botão do formulário | Conforme alteração | Persistência | `src/pages/DonorProfile.tsx:269` |
 | Perfil atualizado! | Toast | Salvamento concluído | Confirmação | `src/pages/DonorProfile.tsx:178` |
 
@@ -571,15 +581,15 @@ Fonte: `src/components/Stories.tsx:55`.
 
 | Copy atual | Onde aparece | Quando aparece | Função | Fonte |
 |---|---|---|---|---|
-| Valor destinado à ONG | Acima e dentro do seletor | Modal de doação | Nomear o valor | `src/components/NGOProfile.tsx:152` |
-| Doação | Linha do resumo | Valor selecionado ou vazio | Subtotal | `src/components/NGOProfile.tsx:163` |
-| A definir | Valor da linha Doação | Antes da escolha | Estado vazio | `src/components/NGOProfile.tsx:163` |
-| Taxa TranquiliCare (5%) | Segunda linha | Sempre | Informar taxa | `src/components/NGOProfile.tsx:164` |
-| Total | Terceira linha | Sempre | Valor final | `src/components/NGOProfile.tsx:165` |
-| A doação é destinada integralmente à ONG. A taxa de 5% é adicionada ao valor final e o pagamento é processado pela Stripe. | Nota abaixo do resumo | Sempre | Transparência financeira | `src/components/NGOProfile.tsx:167` |
-| Escolha um valor para continuar | CTA | Nenhum valor | Orientação | `src/components/NGOProfile.tsx:168` |
-| Continuar para pagamento | CTA | Valor válido | Avançar à Stripe | `src/components/NGOProfile.tsx:168` |
-| Abrindo pagamento... | CTA | Checkout em criação | Feedback | `src/components/NGOProfile.tsx:168` |
+| Quanto você quer fazer chegar à {nome da ONG}? | Acima e dentro do seletor | Modal de doação | Conectar o valor à causa escolhida | `src/components/NGOProfile.tsx` |
+| Sua doação para {nome da ONG} | Primeira linha do resumo | Sempre | Nomear o valor da doação | `src/components/NGOProfile.tsx` |
+| A definir | Valor da primeira linha | Antes da escolha | Estado vazio | `src/components/NGOProfile.tsx` |
+| Apoio ao TranquiliCare (5%) | Segunda linha | Sempre | Informar o apoio à plataforma | `src/components/NGOProfile.tsx` |
+| Total | Terceira linha | Sempre | Valor final | `src/components/NGOProfile.tsx` |
+| A sua intenção chega inteira. | Nota abaixo do resumo | Sempre | Reforçar a integridade da doação | `src/components/NGOProfile.tsx` |
+| Escolha um valor | CTA | Nenhum valor | Orientação | `src/components/NGOProfile.tsx` |
+| Continuar | CTA | Valor válido | Avançar à Stripe | `src/components/NGOProfile.tsx` |
+| Preparando seu pagamento... | CTA | Checkout em criação | Feedback | `src/components/NGOProfile.tsx` |
 
 ### Confirmação
 

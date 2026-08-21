@@ -20,7 +20,7 @@ const WalletCard: React.FC<WalletCardProps> = ({ credits, onAddCredits }) => {
           <span className='grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-brand-blue/10 text-brand-blue'><WalletCards size={22} /></span>
           <div className='min-w-0'><p className='text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground'>Saldo disponível</p><p className='truncate text-xl font-bold'>{credits.toLocaleString('pt-BR')} créditos</p></div>
         </div>
-        <button onClick={() => setExpanded((current) => !current)} className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-border text-muted-foreground transition-all hover:border-brand-blue hover:text-brand-blue ${expanded ? '' : 'bg-brand-blue text-white hover:text-white'}`} aria-label={expanded ? 'Fechar carteira' : 'Abrir carteira'}>
+        <button onClick={() => setExpanded((current) => !current)} className={`tc-motion-control grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-border text-muted-foreground transition-[color,background-color,border-color,transform] active:scale-[0.97] hover:border-brand-blue hover:text-brand-blue ${expanded ? '' : 'bg-brand-blue text-white hover:text-white'}`} aria-label={expanded ? 'Fechar carteira' : 'Abrir carteira'}>
           {expanded ? <X size={18} /> : <Plus size={18} />}
         </button>
       </div>
@@ -41,7 +41,7 @@ const WalletCard: React.FC<WalletCardProps> = ({ credits, onAddCredits }) => {
               <div>
                 <p className='text-sm font-bold text-muted-foreground'>Adicionar créditos</p>
                 <div className='mt-2 grid grid-cols-3 gap-2'>
-                  {TOP_UP_OPTIONS.map((amount) => <button key={amount} onClick={() => setSelectedAmount(amount)} className={`rounded-lg border-2 px-2 py-2 text-sm font-bold transition-all ${selectedAmount === amount ? 'border-brand-blue bg-brand-blue/10 text-brand-blue' : 'border-border hover:border-brand-blue/45'}`}>+{amount}</button>)}
+                  {TOP_UP_OPTIONS.map((amount) => <button key={amount} onClick={() => setSelectedAmount(amount)} className={`tc-motion-control rounded-lg border-2 px-2 py-2 text-sm font-bold transition-[color,background-color,border-color,transform] active:scale-[0.985] ${selectedAmount === amount ? 'border-brand-blue bg-brand-blue/10 text-brand-blue' : 'border-border hover:border-brand-blue/45'}`}>+{amount}</button>)}
                 </div>
               </div>
             </div>

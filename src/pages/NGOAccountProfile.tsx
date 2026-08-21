@@ -4,9 +4,12 @@ import {
   ArrowLeft,
   Building2,
   Camera,
+  ImagePlus,
   Loader2,
   LogOut,
+  Plus,
   Save,
+  Trash2,
   X,
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -36,18 +39,28 @@ import {
   isValidCnpj,
   isValidInstagram,
   isValidPhone,
+  isValidYouTubeUrl,
   normalizeCnpj,
   normalizePhone,
 } from '@/lib/organizationProfile';
+import { geocodeAddress } from '@/lib/geocoding';
+import { uploadNgoCover, validateProfileImage } from '@/lib/profileMedia';
 
 const EMPTY_DETAILS: NgoProfileDetails = {
   description: '',
   category: '',
   goal: '',
+  objectives: [],
+  youtubeUrl: '',
+  coverImage: '',
   instagram: '',
   phone: '',
   cnpj: '',
   address: '',
+  latitude: null,
+  longitude: null,
+  geocodedAddress: '',
+  status: 'pending',
 };
 
 const hasRequiredDetails = (details: NgoProfileDetails) => Boolean(
@@ -102,6 +115,10 @@ type ProfileFieldsProps = {
   idPrefix: string;
   errors: ProfileFieldErrors;
   onClearError: (field: ProfileField) => void;
+  coverPreview: string;
+  onChooseCover: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onRemoveCover: () => void;
+  coverInputRef: React.RefObject<HTMLInputElement>;
 };
 
 const inputClass = 'mt-2 w-full rounded-lg border-2 border-border bg-background px-4 py-3 outline-none transition-colors focus:border-brand-blue';
@@ -115,6 +132,10 @@ const ProfileFields: React.FC<ProfileFieldsProps> = ({
   idPrefix,
   errors,
   onClearError,
+  coverPreview,
+  onChooseCover,
+  onRemoveCover,
+  coverInputRef,
 }) => (
   <div className='grid gap-5 md:grid-cols-2'>
     <label className={labelClass} htmlFor={`${idPrefix}-name`}>
@@ -227,6 +248,87 @@ const ProfileFields: React.FC<ProfileFieldsProps> = ({
       {errors.goal && <span className='mt-1 block text-xs font-medium text-red-600'>{errors.goal}</span>}
     </label>
 
+    <div className='md:col-span-2'>
+      <div className='flex items-center justify-between gap-3'>
+        <span className={labelClass}>Outros objetivos</span>
+        <button
+          type='button'
+          onClick={() => onDetailsChange({ objectives: [...details.objectives, ''] })}
+          className='inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold text-brand-blue transition-colors hover:bg-brand-blue/10'
+        >
+          <Plus size={16} /> Adicionar objetivo
+        </button>
+      </div>
+      <div className='mt-2 space-y-2'>
+        {details.objectives.map((objective, index) => (
+          <div key={`${idPrefix}-objective-${index}`} className='flex items-center gap-2'>
+            <SmoothInput
+              aria-label={`Objetivo ${index + 1}`}
+              value={objective}
+              onChange={(event) => onDetailsChange({
+                objectives: details.objectives.map((item, itemIndex) => itemIndex === index ? event.target.value : item),
+              })}
+              maxLength={240}
+              className={`${inputClass} mt-0`}
+              placeholder='Descreva outro resultado que a organização quer alcançar.'
+            />
+            <button
+              type='button'
+              onClick={() => onDetailsChange({ objectives: details.objectives.filter((_, itemIndex) => itemIndex !== index) })}
+              className='grid h-11 w-11 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600'
+              aria-label={`Remover objetivo ${index + 1}`}
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+
+    <label className={`${labelClass} md:col-span-2`} htmlFor={`${idPrefix}-youtube`}>
+      Vídeo da causa no YouTube
+      <SmoothInput
+        id={`${idPrefix}-youtube`}
+        type='url'
+        inputMode='url'
+        value={details.youtubeUrl}
+        onChange={(event) => {
+          onDetailsChange({ youtubeUrl: event.target.value });
+          onClearError('youtubeUrl');
+        }}
+        aria-invalid={Boolean(errors.youtubeUrl)}
+        className={`${inputClass} ${errors.youtubeUrl ? 'border-red-400' : ''}`}
+        placeholder='https://www.youtube.com/watch?v=...'
+      />
+      {errors.youtubeUrl && <span className='mt-1 block text-xs font-medium text-red-600'>{errors.youtubeUrl}</span>}
+    </label>
+
+    <div className='md:col-span-2'>
+      <span className={labelClass}>Imagem de capa</span>
+      <div className='mt-2 overflow-hidden rounded-lg border-2 border-border bg-secondary/50'>
+        <div className='aspect-[16/5] w-full'>
+          {coverPreview ? (
+            <img src={coverPreview} alt='Prévia da imagem de capa' className='h-full w-full object-cover' />
+          ) : (
+            <div className='grid h-full place-items-center text-muted-foreground'><ImagePlus size={30} /></div>
+          )}
+        </div>
+        <div className='flex flex-wrap items-center gap-2 border-t border-border bg-background p-3'>
+          <button type='button' onClick={() => coverInputRef.current?.click()} className='inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-bold transition-colors hover:border-brand-blue hover:text-brand-blue'>
+            <Camera size={16} /> {coverPreview ? 'Trocar capa' : 'Adicionar capa'}
+          </button>
+          {coverPreview && (
+            <button type='button' onClick={onRemoveCover} className='inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600'>
+              <Trash2 size={16} /> Remover
+            </button>
+          )}
+          <input ref={coverInputRef} id={`${idPrefix}-cover`} aria-label='Selecionar imagem de capa' type='file' accept='image/jpeg,image/png,image/webp' className='hidden' onChange={onChooseCover} />
+          <p className='basis-full text-xs text-muted-foreground'>JPG, PNG ou WebP. A imagem será otimizada antes do envio.</p>
+        </div>
+      </div>
+      {errors.coverImage && <span className='mt-1 block text-xs font-medium text-red-600'>{errors.coverImage}</span>}
+    </div>
+
     <label className={labelClass} htmlFor={`${idPrefix}-instagram`}>
       Instagram
       <SmoothInput
@@ -273,6 +375,7 @@ const NGOAccountProfile: React.FC = () => {
   const [searchParams] = useSearchParams();
   const isSetup = searchParams.get('setup') === '1';
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -280,6 +383,8 @@ const NGOAccountProfile: React.FC = () => {
   const [profileSaved, setProfileSaved] = useState(false);
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState<string | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState('');
   const [details, setDetails] = useState<NgoProfileDetails>(EMPTY_DETAILS);
   const [fieldErrors, setFieldErrors] = useState<ProfileFieldErrors>({});
 
@@ -306,6 +411,7 @@ const NGOAccountProfile: React.FC = () => {
       setName(current.name || '');
       setAvatar(current.avatar);
       setDetails(profileDetails);
+      setCoverPreview(profileDetails.coverImage);
       setProfileSaved(hasRequiredDetails(profileDetails));
       setLoading(false);
     });
@@ -322,14 +428,20 @@ const NGOAccountProfile: React.FC = () => {
     description: details.description.trim(),
     category: details.category.trim(),
     goal: details.goal.trim(),
+    objectives: details.objectives.map((objective) => objective.trim()).filter(Boolean),
     image: avatar || logo,
+    coverImage: details.coverImage.trim() || undefined,
+    causeVideo: details.youtubeUrl.trim() || undefined,
     email: user?.email ?? '',
     instagram: details.instagram.trim(),
     phone: details.phone.trim() || undefined,
     cnpj: formatCnpj(details.cnpj),
     address: details.address.trim(),
-    verified: false,
-    status: 'pending' as const,
+    latitude: details.latitude ?? null,
+    longitude: details.longitude ?? null,
+    geocodedAddress: details.geocodedAddress?.trim() || undefined,
+    verified: details.status === 'approved',
+    status: details.status ?? 'pending',
     posts: [],
   }), [avatar, details, name, user]);
 
@@ -362,6 +474,32 @@ const NGOAccountProfile: React.FC = () => {
     }
   };
 
+  const chooseCover = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      validateProfileImage(file);
+      setCoverFile(file);
+      const reader = new FileReader();
+      reader.onload = () => setCoverPreview(String(reader.result || ''));
+      reader.readAsDataURL(file);
+      clearFieldError('coverImage');
+    } catch (error) {
+      toast.error(error instanceof Error && error.message === 'image-too-large'
+        ? 'A imagem deve ter no máximo 8 MB.'
+        : 'Escolha uma imagem JPG, PNG ou WebP.');
+    } finally {
+      if (coverInputRef.current) coverInputRef.current.value = '';
+    }
+  };
+
+  const removeCover = () => {
+    setCoverFile(null);
+    setCoverPreview('');
+    updateDetails({ coverImage: '' });
+    clearFieldError('coverImage');
+  };
+
   const saveProfile = async (event?: React.FormEvent) => {
     event?.preventDefault();
     const errors: ProfileFieldErrors = {};
@@ -371,6 +509,7 @@ const NGOAccountProfile: React.FC = () => {
     if (!isValidAddress(details.address)) errors.address = 'Informe um endere\u00e7o completo.';
     if (!details.description.trim()) errors.description = 'Conte um pouco sobre a organiza\u00e7\u00e3o.';
     if (!details.goal.trim()) errors.goal = 'Informe o objetivo atual da organiza\u00e7\u00e3o.';
+    if (!isValidYouTubeUrl(details.youtubeUrl)) errors.youtubeUrl = 'Informe um link válido do YouTube.';
     if (!isValidInstagram(details.instagram)) errors.instagram = 'Informe um perfil do Instagram v\u00e1lido.';
     if (!isValidPhone(details.phone)) errors.phone = 'Informe um telefone v\u00e1lido.';
     setFieldErrors(errors);
@@ -382,14 +521,45 @@ const NGOAccountProfile: React.FC = () => {
 
     setSaving(true);
     try {
+      const normalizedAddress = details.address.trim().replace(/\s+/g, ' ');
+      let latitude = details.latitude ?? null;
+      let longitude = details.longitude ?? null;
+      let geocodedAddress = details.geocodedAddress?.trim() || '';
+      const addressChanged = normalizedAddress !== user?.ngoProfile?.address.trim();
+
+      if (addressChanged || latitude === null || longitude === null) {
+        const location = await geocodeAddress(normalizedAddress);
+        if (!location) {
+          setFieldErrors((current) => ({
+            ...current,
+            address: 'Não encontramos esse endereço. Confira rua, número, cidade e estado.',
+          }));
+          toast.error('Não encontramos esse endereço no mapa.');
+          return;
+        }
+        latitude = location.latitude;
+        longitude = location.longitude;
+        geocodedAddress = location.displayName;
+      }
+
+      const uploadedCover = coverFile && user
+        ? await uploadNgoCover(coverFile, user.id)
+        : details.coverImage.trim();
       const normalizedDetails = {
         description: details.description.trim(),
         category: details.category.trim(),
         goal: details.goal.trim(),
+        objectives: details.objectives.map((objective) => objective.trim()).filter(Boolean),
+        youtubeUrl: details.youtubeUrl.trim(),
+        coverImage: uploadedCover,
         instagram: details.instagram.trim(),
         phone: normalizePhone(details.phone),
         cnpj: normalizeCnpj(details.cnpj),
-        address: details.address.trim().replace(/\s+/g, ' '),
+        address: normalizedAddress,
+        latitude,
+        longitude,
+        geocodedAddress,
+        status: details.status ?? 'pending',
       };
       const updated = await updateUser({
         name: name.trim(),
@@ -402,6 +572,8 @@ const NGOAccountProfile: React.FC = () => {
         cnpj: formatCnpj(normalizedDetails.cnpj),
         phone: formatPhone(normalizedDetails.phone),
       });
+      setCoverFile(null);
+      setCoverPreview(uploadedCover);
       setFieldErrors({});
       setProfileSaved(true);
       setEditing(false);
@@ -465,7 +637,7 @@ const NGOAccountProfile: React.FC = () => {
               </div>
             </div>
 
-            <ProfileFields name={name} onNameChange={setName} details={details} onDetailsChange={updateDetails} idPrefix='setup-ngo' errors={fieldErrors} onClearError={clearFieldError} />
+            <ProfileFields name={name} onNameChange={setName} details={details} onDetailsChange={updateDetails} idPrefix='setup-ngo' errors={fieldErrors} onClearError={clearFieldError} coverPreview={coverPreview} onChooseCover={chooseCover} onRemoveCover={removeCover} coverInputRef={coverInputRef} />
 
             <div className='mt-8 flex justify-end border-t border-brand-ink/10 pt-6'>
               <button type='submit' disabled={saving} className='tc-button-3d tc-button-3d-yellow inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-6 font-bold text-brand-ink disabled:opacity-60'>{saving ? <Loader2 size={18} className='animate-spin' /> : <Save size={18} />}{saving ? 'Salvando...' : 'Salvar e visualizar perfil'}</button>
@@ -483,7 +655,7 @@ const NGOAccountProfile: React.FC = () => {
               <div className='sticky top-0 z-10 flex items-center justify-between bg-brand-ink px-5 py-4 text-white'><h2 className='font-display text-xl font-semibold'>Editar perfil</h2><button type='button' onClick={() => setEditing(false)} className='grid h-9 w-9 place-items-center rounded-full bg-background text-brand-blue' aria-label='Fechar'><X size={19} /></button></div>
               <div className='p-5 md:p-6'>
                 <div className='mb-7 flex items-center gap-4'><div className='grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-brand-blue bg-brand-blue/5'>{avatar ? <img src={avatar} className='h-full w-full object-cover' alt='' /> : <Building2 className='text-brand-blue' size={28} />}</div><div><button type='button' onClick={() => fileInputRef.current?.click()} className='inline-flex items-center gap-2 rounded-lg border-2 border-border px-3 py-2 text-sm font-bold hover:border-brand-blue hover:text-brand-blue'><Camera size={17} />Trocar imagem</button><input ref={fileInputRef} type='file' accept='image/*' className='hidden' onChange={chooseImage} /></div></div>
-                <ProfileFields name={name} onNameChange={setName} details={details} onDetailsChange={updateDetails} idPrefix='edit-ngo' errors={fieldErrors} onClearError={clearFieldError} />
+                <ProfileFields name={name} onNameChange={setName} details={details} onDetailsChange={updateDetails} idPrefix='edit-ngo' errors={fieldErrors} onClearError={clearFieldError} coverPreview={coverPreview} onChooseCover={chooseCover} onRemoveCover={removeCover} coverInputRef={coverInputRef} />
                 <button type='submit' disabled={saving} className='tc-button-3d mt-7 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold text-white disabled:opacity-60'>{saving ? <Loader2 size={18} className='animate-spin' /> : <Save size={18} />}{saving ? 'Salvando...' : 'Salvar alterações'}</button>
               </div>
             </motion.form>

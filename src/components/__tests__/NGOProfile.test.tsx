@@ -41,6 +41,41 @@ describe('NGOProfile cause-led architecture', () => {
     expect(dialog.firstElementChild?.className).toContain('bg-[#FFF7D6]');
   });
 
+  it('shows the category seal without claiming approval for a pending organization', () => {
+    renderProfile({ ...demoNgos[0], verified: false, status: 'pending' });
+
+    expect(screen.getByRole('img', { name: 'Selo da categoria Saúde Mental' })).not.toBeNull();
+    expect(screen.queryByRole('button', { name: /Conhecer a verificação/i })).toBeNull();
+  });
+
+  it('uses geocoded coordinates when opening the organization map', () => {
+    renderProfile({
+      ...demoNgos[0],
+      address: 'Rua de teste, 10, São Paulo - SP',
+      latitude: -23.55052,
+      longitude: -46.633308,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ver no mapa' }));
+    const frame = screen.getByTitle('Localização de Abraço Sereno');
+    expect(frame.getAttribute('src')).toContain(encodeURIComponent('-23.55052,-46.633308'));
+  });
+
+  it('uses the cause-led donation checkout copy without the dark header', () => {
+    renderProfile();
+    fireEvent.click(screen.getByRole('button', { name: 'Apoiar esta causa' }));
+
+    const dialog = screen.getByRole('dialog', { name: 'Apoiar Abraço Sereno' });
+    expect(screen.getByRole('heading', { name: 'Quanto você quer fazer chegar à Abraço Sereno?' })).not.toBeNull();
+    expect(dialog.textContent).toContain('Sua doação para Abraço Sereno');
+    expect(dialog.textContent).toContain('Apoio ao TranquiliCare (5%)');
+    expect(dialog.textContent).toContain('A sua intenção chega inteira.');
+    expect(dialog.querySelector('.donation-checkout-glow')).toBeNull();
+    expect(dialog.parentElement?.classList.contains('donation-intelligence-frame')).toBe(true);
+    expect(dialog.parentElement?.querySelector('.apple-edge-glow')).not.toBeNull();
+    expect(dialog.querySelector('.bg-brand-ink')).toBeNull();
+  });
+
   it('expands the Abraço Sereno cause video and closes it with Escape', async () => {
     renderProfile();
 
@@ -61,7 +96,28 @@ describe('NGOProfile cause-led architecture', () => {
     await waitFor(() => {
       expect(document.body.style.overflow).toBe('');
       expect(document.activeElement).toBe(trigger);
+      expect(screen.queryByRole('dialog', { name: 'A causa de Abraço Sereno em movimento' })).toBeNull();
     });
+
+    expect(trigger.querySelector('video')).not.toBeNull();
+
+    fireEvent.click(trigger);
+    expect(screen.getByRole('dialog', { name: 'A causa de Abraço Sereno em movimento' })).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fechar vídeo' }));
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog', { name: 'A causa de Abraço Sereno em movimento' })).toBeNull();
+      expect(trigger.querySelector('video')).not.toBeNull();
+    });
+  });
+
+  it('embeds a configured YouTube cause video', async () => {
+    const youtubeNgo = { ...demoNgos[0], causeVideo: 'https://youtu.be/G9V69J7cQtY' };
+    renderProfile(youtubeNgo);
+
+    fireEvent.click(await screen.findByRole('button', { name: /Assistir ao vídeo da causa/i }));
+    const frame = screen.getByTitle('A causa de Abraço Sereno em movimento');
+    expect(frame.getAttribute('src')).toContain('youtube-nocookie.com/embed/G9V69J7cQtY');
   });
 
   it('centers the cause video with breathing room below the profile tabs', () => {

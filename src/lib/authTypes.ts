@@ -4,10 +4,26 @@ export interface NgoProfileDetails {
   description: string;
   category: string;
   goal: string;
+  objectives: string[];
+  youtubeUrl: string;
+  coverImage: string;
   instagram: string;
   phone: string;
   cnpj: string;
   address: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  geocodedAddress?: string;
+  status?: 'pending' | 'approved' | 'rejected';
+}
+
+export interface DonorProfileDetails {
+  bio: string;
+  location: string;
+  instagram: string;
+  phone: string;
+  coverImage: string;
+  interests: string[];
 }
 
 /** The shape the UI works with, regardless of which backend produced it. */
@@ -19,10 +35,11 @@ export interface AppUser {
   credits: number;
   accountType: AccountType;
   ngoProfile?: NgoProfileDetails | null;
+  donorProfile?: DonorProfileDetails | null;
 }
 
 /** Fields the user is allowed to edit directly from the browser. */
-export type EditableUserProfile = Partial<Pick<AppUser, 'name' | 'avatar' | 'ngoProfile'>>;
+export type EditableUserProfile = Partial<Pick<AppUser, 'name' | 'avatar' | 'ngoProfile' | 'donorProfile'>>;
 
 export type Listener = (user: AppUser | null) => void;
 

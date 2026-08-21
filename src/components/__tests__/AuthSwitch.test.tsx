@@ -270,9 +270,9 @@ describe('AuthSwitch signup', () => {
     expect(await screen.findByText('O começo do bem.')).toBeTruthy();
     expect(authMocks.verifyEmailCode).toHaveBeenCalledWith(path.email, '12345678', 'donor');
 
-    await user.click(screen.getByRole('button', { name: /Ir para o in\u00edcio/i }));
+    await user.click(screen.getByRole('button', { name: /Personalizar meu perfil/i }));
     await waitFor(() => {
-      expect(screen.getByTestId('location').textContent).toBe('/');
+      expect(screen.getByTestId('location').textContent).toBe('/donor/profile?setup=1');
     });
   });
 

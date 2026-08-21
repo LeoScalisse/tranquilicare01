@@ -38,6 +38,10 @@ interface ScrollExpandProps extends Omit<HTMLAttributes<HTMLDivElement>, 'title'
   enabled?: boolean;
   preview?: ReactNode;
   contentPreview?: boolean;
+  startShape?: 'rounded' | 'circle';
+  surround?: ReactNode;
+  restingOverlay?: ReactNode;
+  onProgressChange?: (progress: number) => void;
   children?: ReactNode;
   className?: string;
   style?: CSSProperties;
@@ -63,6 +67,10 @@ const ScrollExpand = ({
   enabled = true,
   preview,
   contentPreview = false,
+  startShape = 'rounded',
+  surround,
+  restingOverlay,
+  onProgressChange,
   children,
   className = '',
   style,
@@ -72,6 +80,8 @@ const ScrollExpand = ({
   const trackRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const ambientRef = useRef<HTMLDivElement>(null);
+  const surroundRef = useRef<HTMLDivElement>(null);
+  const restingOverlayRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const mediaRef = useRef<HTMLDivElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -91,6 +101,8 @@ const ScrollExpand = ({
     overlayScrim,
     enabled,
     contentPreview,
+    startShape,
+    onProgressChange,
   });
 
   propsRef.current = {
@@ -105,6 +117,8 @@ const ScrollExpand = ({
     overlayScrim,
     enabled,
     contentPreview,
+    startShape,
+    onProgressChange,
   };
 
   const applyProgress = useCallback((progress: number) => {
@@ -115,8 +129,11 @@ const ScrollExpand = ({
 
     const config = propsRef.current;
     const eased = smoothstep(0, 1, progress);
+    config.onProgressChange?.(progress);
     const compact = root.clientWidth < 640;
-    const restingWidth = compact ? Math.max(config.startWidth, 82) : config.startWidth;
+    const restingWidth = compact
+      ? Math.max(config.startWidth, config.startShape === 'circle' ? 58 : 82)
+      : config.startWidth;
     const restingHeight = config.contentPreview
       ? restingWidth
       : compact ? Math.max(config.startHeight, 62) : config.startHeight;
@@ -126,10 +143,25 @@ const ScrollExpand = ({
     const insetY = Math.max(0, (100 - height) / 2);
     const radius = config.startRadius + (config.endRadius - config.startRadius) * eased;
 
-    frame.style.clipPath = `inset(${insetY}% ${insetX}% ${insetY}% ${insetX}% round ${radius}px)`;
+    if (config.startShape === 'circle') {
+      const stageWidth = frame.clientWidth || root.clientWidth;
+      const stageHeight = frame.clientHeight || window.innerHeight;
+      const restingCircleRadius = Math.min(stageWidth, stageHeight) * (restingWidth / 200);
+      const coveringCircleRadius = Math.hypot(stageWidth, stageHeight) / 2 + 2;
+      const circleRadius = restingCircleRadius + (coveringCircleRadius - restingCircleRadius) * eased;
+      frame.style.clipPath = `circle(${circleRadius}px at 50% 50%)`;
+    } else {
+      frame.style.clipPath = `inset(${insetY}% ${insetX}% ${insetY}% ${insetX}% round ${radius}px)`;
+    }
     frame.style.filter = `drop-shadow(0 ${Math.round(18 * (1 - eased))}px ${Math.round(34 * (1 - eased))}px rgb(11 54 80 / ${0.2 * (1 - eased)}))`;
     if (ambientRef.current) {
       ambientRef.current.style.opacity = `${0.72 * smoothstep(0.02, 0.78, progress)}`;
+    }
+    if (surroundRef.current) {
+      const surroundExit = smoothstep(0.04, 0.54, progress);
+      surroundRef.current.style.opacity = `${1 - surroundExit}`;
+      surroundRef.current.style.transform = `scale(${1 + 0.1 * surroundExit})`;
+      surroundRef.current.style.visibility = surroundExit >= 1 ? 'hidden' : 'visible';
     }
     media.style.transform = config.contentPreview
       ? 'none'
@@ -139,6 +171,10 @@ const ScrollExpand = ({
       scrimRef.current.style.opacity = config.contentPreview
         ? '0'
         : `${config.overlayScrim * eased}`;
+    }
+
+    if (restingOverlayRef.current) {
+      restingOverlayRef.current.style.opacity = `${1 - smoothstep(0.03, 0.18, progress)}`;
     }
 
     if (titleRef.current) {
@@ -325,13 +361,18 @@ const ScrollExpand = ({
   return (
     <div
       ref={rootRef}
-      className={`scroll-expand ${useWindowScroll ? 'scroll-expand--window' : 'scroll-expand--scroller'} ${preview || contentPreview ? 'scroll-expand--has-preview' : ''} ${contentPreview ? 'scroll-expand--content-preview' : ''} ${className}`.trim()}
+      className={`scroll-expand ${useWindowScroll ? 'scroll-expand--window' : 'scroll-expand--scroller'} ${preview || contentPreview ? 'scroll-expand--has-preview' : ''} ${contentPreview ? 'scroll-expand--content-preview' : ''} ${startShape === 'circle' ? 'scroll-expand--circle' : ''} ${className}`.trim()}
       style={style}
       {...rest}
     >
       <div ref={trackRef} className='scroll-expand__track'>
         <div ref={stageRef} className='scroll-expand__stage'>
           <div ref={ambientRef} className='scroll-expand__ambient' aria-hidden='true' />
+          {surround ? (
+            <div ref={surroundRef} className='scroll-expand__surround' aria-hidden='true'>
+              {surround}
+            </div>
+          ) : null}
           <div ref={frameRef} className='scroll-expand__frame'>
             <div ref={mediaRef} className='scroll-expand__media'>
               {contentPreview ? null : preview ? (
@@ -350,6 +391,11 @@ const ScrollExpand = ({
             {children ? (
               <div ref={overlayRef} className='scroll-expand__overlay' aria-hidden='true'>
                 {children}
+              </div>
+            ) : null}
+            {restingOverlay ? (
+              <div ref={restingOverlayRef} className='scroll-expand__resting-overlay'>
+                {restingOverlay}
               </div>
             ) : null}
           </div>

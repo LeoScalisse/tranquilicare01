@@ -17,6 +17,7 @@ const ngoUser = {
 
 const authMocks = vi.hoisted(() => ({
   updateUser: vi.fn(),
+  geocodeAddress: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({
@@ -31,11 +32,21 @@ vi.mock('@/components/AppBottomNav', () => ({
   default: () => null,
 }));
 
+vi.mock('@/lib/geocoding', () => ({
+  geocodeAddress: authMocks.geocodeAddress,
+}));
+
 describe('NGOAccountProfile', () => {
   afterEach(cleanup);
 
   beforeEach(() => {
     authMocks.updateUser.mockReset();
+    authMocks.geocodeAddress.mockReset();
+    authMocks.geocodeAddress.mockResolvedValue({
+      latitude: -23.55052,
+      longitude: -46.633308,
+      displayName: 'Rua das Flores, 120, São Paulo, SP, Brasil',
+    });
   });
 
   it('starts a new organization with only its registered name and an empty setup form', async () => {
@@ -53,6 +64,9 @@ describe('NGOAccountProfile', () => {
     expect(screen.getByLabelText(/^Endereço/i)).toBeTruthy();
     expect(screen.getByLabelText(/Sobre a organização/i)).toBeTruthy();
     expect(screen.getByLabelText(/Objetivo atual/i)).toBeTruthy();
+    expect(screen.getByLabelText(/Vídeo da causa no YouTube/i)).toBeTruthy();
+    expect(screen.getByLabelText(/Imagem de capa/i)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Adicionar objetivo/i })).toBeTruthy();
   });
 
   it('does not save while CNPJ and address are invalid', async () => {
@@ -92,9 +106,12 @@ describe('NGOAccountProfile', () => {
     await user.click(screen.getByRole('option', { name: 'Educação' }));
     fireEvent.change(screen.getByLabelText(/^CNPJ/i), { target: { value: '11222333000181' } });
     fireEvent.change(screen.getByLabelText(/^Endereço/i), { target: { value: 'Rua das Flores, 120 - Centro, São Paulo - SP' } });
-    await user.type(screen.getByLabelText(/Sobre a organização/i), 'Apoio educacional para jovens.');
-    await user.type(screen.getByLabelText(/Objetivo atual/i), 'Abrir uma nova turma comunitária.');
-    await user.type(screen.getByLabelText(/^Instagram/i), '@institutohorizonte');
+    fireEvent.change(screen.getByLabelText(/Sobre a organização/i), { target: { value: 'Apoio educacional para jovens.' } });
+    fireEvent.change(screen.getByLabelText(/Objetivo atual/i), { target: { value: 'Abrir uma nova turma comunitária.' } });
+    await user.click(screen.getByRole('button', { name: /Adicionar objetivo/i }));
+    fireEvent.change(screen.getByLabelText('Objetivo 1'), { target: { value: 'Formar novos voluntários.' } });
+    fireEvent.change(screen.getByLabelText(/Vídeo da causa no YouTube/i), { target: { value: 'https://youtu.be/G9V69J7cQtY' } });
+    fireEvent.change(screen.getByLabelText(/^Instagram/i), { target: { value: '@institutohorizonte' } });
     await user.click(screen.getByRole('button', { name: /Salvar e visualizar perfil/i }));
 
     await waitFor(() => {
@@ -105,8 +122,15 @@ describe('NGOAccountProfile', () => {
           category: 'Educação',
           cnpj: '11222333000181',
           address: 'Rua das Flores, 120 - Centro, São Paulo - SP',
+          latitude: -23.55052,
+          longitude: -46.633308,
+          geocodedAddress: 'Rua das Flores, 120, São Paulo, SP, Brasil',
+          status: 'pending',
           description: 'Apoio educacional para jovens.',
           goal: 'Abrir uma nova turma comunitária.',
+          objectives: ['Formar novos voluntários.'],
+          youtubeUrl: 'https://youtu.be/G9V69J7cQtY',
+          coverImage: '',
           instagram: '@institutohorizonte',
           phone: '',
         },

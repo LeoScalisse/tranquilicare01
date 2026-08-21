@@ -13,13 +13,14 @@ import type {
   AppUser,
   EditableUserProfile,
   Listener,
+  DonorProfileDetails,
   NgoProfileDetails,
   ResendSignupCode,
   SignUpResult,
   VerifyEmailCode,
 } from './authTypes';
 
-export type { AccountType, AppUser, EditableUserProfile, NgoProfileDetails, ResendSignupCode, SignUpResult, VerifyEmailCode };
+export type { AccountType, AppUser, DonorProfileDetails, EditableUserProfile, NgoProfileDetails, ResendSignupCode, SignUpResult, VerifyEmailCode };
 export { isSupabaseEnabled };
 
 /** True when Google sign-in is actually available (needs Supabase). */

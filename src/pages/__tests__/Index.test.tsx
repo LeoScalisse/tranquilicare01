@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -21,7 +21,11 @@ vi.mock('@/components/Header', () => ({
 }));
 
 vi.mock('@/components/ImpactDashboard', () => ({
-  default: () => <section data-testid='impact' />,
+  default: ({ onExplore }: { onExplore: () => void }) => (
+    <section data-testid='impact'>
+      <button type='button' onClick={() => onExplore()}>Explorar causas</button>
+    </section>
+  ),
 }));
 
 vi.mock('@/components/Marketplace', () => ({
@@ -58,5 +62,25 @@ describe('Index causes section', () => {
       expect(screen.getByTestId('location').textContent).toBe('/#causas');
     });
     expect(screen.getByTestId('causes').dataset.embedded).toBe('true');
+  });
+
+  it('smoothly scrolls from the headline to the causes on the same page', async () => {
+    const scrollIntoView = vi.fn();
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+
+    render(
+      <MemoryRouter>
+        <Index />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Explorar causas' }));
+
+    await waitFor(() => {
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    });
   });
 });

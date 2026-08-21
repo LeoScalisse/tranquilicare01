@@ -27,7 +27,7 @@ const Header: React.FC<HeaderProps> = ({
 }) => {
   const isLoggedIn = Boolean(currentUserEmail);
   const navItemClass = (view: View) => `
-    flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm transition-all duration-300
+    tc-motion-control flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm transition-[color,background-color,box-shadow,transform]
     ${currentView === view
       ? 'bg-brand-yellow text-brand-ink shadow-lg shadow-brand-yellow/25'
       : 'text-muted-foreground hover:bg-brand-blue/10 hover:text-brand-ink'}
@@ -52,7 +52,7 @@ const Header: React.FC<HeaderProps> = ({
           <img
             src={logo}
             alt="TranquiliCare"
-            className="w-10 h-10 rounded-xl shadow-md transition-all duration-300 group-hover:shadow-brand-blue/40 group-hover:-rotate-6"
+            className="tc-motion-control w-10 h-10 rounded-xl shadow-md transition-[transform,box-shadow] group-hover:shadow-brand-blue/40 group-hover:-rotate-3"
           />
           <h1 className="font-display text-xl font-semibold tracking-tight text-brand-ink">
             Tranquili<span className="text-brand-blue">Care</span>
@@ -72,14 +72,14 @@ const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center gap-1.5 pl-3 ml-1 border-l border-border">
               <button
                 onClick={onProfileClick}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-secondary text-brand-ink hover:bg-brand-blue/10 font-bold text-sm transition-all duration-300"
+                className="tc-motion-control flex items-center gap-2 px-4 py-2.5 rounded-full bg-secondary text-brand-ink hover:bg-brand-blue/10 font-bold text-sm transition-[color,background-color,box-shadow,transform]"
               >
                 <UserCircle size={18} className="text-brand-blue" />
                 <span>{accountType === 'ngo' ? 'Perfil da ONG' : 'Meu perfil'}</span>
               </button>
               <button
                 onClick={onLogout}
-                className="p-2.5 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all"
+                className="tc-motion-control p-2.5 rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-[color,background-color,transform] active:scale-[0.97]"
                 aria-label="Sair"
               >
                 <LogOut size={18} />
