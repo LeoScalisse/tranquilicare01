@@ -10,18 +10,21 @@ import {
   Flame,
   Gift,
   Heart,
+  Instagram,
   Loader2,
   LogOut,
+  MapPin,
   Mail,
   Pencil,
   Save,
   ShieldCheck,
   Sparkles,
   Target,
+  Phone,
   User as UserIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { authReady, getUser, onAuthChange, signOut, updateUser, AppUser } from '@/lib/auth';
+import { authReady, getUser, onAuthChange, signOut, updateUser, AppUser, DonorProfileDetails } from '@/lib/auth';
 import { computeStreak, formatBRL, useCountUp, useDonationImpact, weekStrip } from '@/lib/impact';
 import { demoNgos } from '@/data/demoNgos';
 import logo from '@/assets/logo.png';
@@ -29,10 +32,20 @@ import WalletCard from '@/components/WalletCard';
 import AppBottomNav from '@/components/AppBottomNav';
 import { SmoothInput } from '@/components/ui/smooth-input';
 import ImpactStatCarousel from '@/components/ui/impact-stat-carousel';
+import { NGO_CATEGORY_ORDER } from '@/data/ngoCategories';
+import { formatPhone, isValidInstagram, isValidOptionalUrl, isValidPhone, normalizePhone } from '@/lib/organizationProfile';
 
 const DAY_MS = 86_400_000;
 const AVATAR_MAX_CHARS = 4000;
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
+const EMPTY_DONOR_DETAILS: DonorProfileDetails = {
+  bio: '',
+  location: '',
+  instagram: '',
+  phone: '',
+  coverImage: '',
+  interests: [],
+};
 
 const resizeToDataUrl = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -71,12 +84,13 @@ const resizeToDataUrl = (file: File): Promise<string> =>
 
 const DonorProfile: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isSetup = searchParams.get('setup') === '1';
   const [user, setUser] = useState<AppUser | null>(null);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [details, setDetails] = useState<DonorProfileDetails>(EMPTY_DONOR_DETAILS);
   const [credits, setCredits] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -112,9 +126,9 @@ const DonorProfile: React.FC = () => {
 
   const recentDonations = useMemo(() => [...mine].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5), [mine]);
   const completeness = useMemo(() => {
-    const checks = [Boolean(name.trim()), Boolean(avatarUrl), stats.count > 0];
+    const checks = [Boolean(name.trim()), Boolean(avatarUrl), Boolean(details.bio.trim()), Boolean(details.interests.length)];
     return Math.round((checks.filter(Boolean).length / checks.length) * 100);
-  }, [name, avatarUrl, stats.count]);
+  }, [name, avatarUrl, details.bio, details.interests.length]);
 
   useEffect(() => {
     let alive = true;
@@ -133,6 +147,11 @@ const DonorProfile: React.FC = () => {
       setEmail(current.email);
       setName(current.name || '');
       setAvatarUrl(current.avatar);
+      setDetails({
+        ...EMPTY_DONOR_DETAILS,
+        ...current.donorProfile,
+        phone: formatPhone(current.donorProfile?.phone ?? ''),
+      });
       setCredits(current.credits);
       setLoading(false);
     });
@@ -169,12 +188,42 @@ const DonorProfile: React.FC = () => {
 
   const handleSave = async () => {
     if (!user) return;
+    if (!name.trim()) {
+      toast.error('Informe seu nome.');
+      return;
+    }
+    if (!isValidInstagram(details.instagram)) {
+      toast.error('Informe um perfil do Instagram válido.');
+      return;
+    }
+    if (!isValidPhone(details.phone)) {
+      toast.error('Informe um telefone válido.');
+      return;
+    }
+    if (!isValidOptionalUrl(details.coverImage)) {
+      toast.error('Informe um link válido para a imagem de capa.');
+      return;
+    }
     setSaving(true);
     try {
-      await updateUser({ name: name.trim(), avatar: avatarUrl });
+      const normalizedDetails: DonorProfileDetails = {
+        bio: details.bio.trim(),
+        location: details.location.trim(),
+        instagram: details.instagram.trim(),
+        phone: normalizePhone(details.phone),
+        coverImage: details.coverImage.trim(),
+        interests: details.interests,
+      };
+      const updated = await updateUser({ name: name.trim(), avatar: avatarUrl, donorProfile: normalizedDetails });
+      if (updated) setUser(updated);
+      setDetails({ ...normalizedDetails, phone: formatPhone(normalizedDetails.phone) });
       setDirty(false);
       setEditingProfile(false);
-      if (isSetup) navigate('/donor/profile', { replace: true });
+      if (isSetup) {
+        const nextSearchParams = new URLSearchParams(searchParams);
+        nextSearchParams.delete('setup');
+        setSearchParams(nextSearchParams, { replace: true });
+      }
       toast.success('Perfil atualizado!');
     } catch (error) {
       console.error('Error updating donor profile:', error);
@@ -227,8 +276,14 @@ const DonorProfile: React.FC = () => {
         {isSetup && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className='mb-7 flex items-start gap-3 rounded-lg border border-brand-blue/25 bg-brand-blue/5 p-4'>
             <Sparkles className='mt-0.5 shrink-0 text-brand-blue' size={20} />
-            <div><p className='font-bold'>Sua conta está pronta, {firstName}.</p><p className='text-sm text-muted-foreground'>Adicione uma foto e confirme seu nome para completar o perfil.</p></div>
+            <div><p className='font-bold'>Sua conta está pronta, {firstName}.</p><p className='text-sm text-muted-foreground'>Personalize sua foto, apresentação e as causas que quer acompanhar.</p></div>
           </motion.div>
+        )}
+
+        {details.coverImage && (
+          <div className='mb-7 aspect-[16/5] overflow-hidden rounded-lg bg-secondary'>
+            <img src={details.coverImage} alt='' className='h-full w-full object-cover' />
+          </div>
         )}
 
         <section className='border-b border-border pb-8'>
@@ -250,6 +305,15 @@ const DonorProfile: React.FC = () => {
               <p className='text-xs font-bold uppercase tracking-[0.16em] text-brand-blue'>Perfil do doador</p>
               <h1 className='mt-1 font-display text-4xl font-semibold leading-tight md:text-5xl'>{name || 'Bem-vindo(a)'}</h1>
               <p className='mt-1 text-sm text-muted-foreground'>{email}</p>
+              {details.bio && <p className='font-narrative mt-3 max-w-2xl text-sm leading-6 text-muted-foreground'>{details.bio}</p>}
+              {(details.location || details.instagram || details.phone) && (
+                <div className='mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm font-semibold text-brand-ink/75 sm:justify-start'>
+                  {details.location && <span className='inline-flex items-center gap-1.5'><MapPin size={16} className='text-brand-blue' />{details.location}</span>}
+                  {details.instagram && <span className='inline-flex items-center gap-1.5'><Instagram size={16} className='text-brand-blue' />{details.instagram}</span>}
+                  {details.phone && <span className='inline-flex items-center gap-1.5'><Phone size={16} className='text-brand-blue' />{formatPhone(details.phone)}</span>}
+                </div>
+              )}
+              {details.interests.length > 0 && <div className='mt-3 flex flex-wrap justify-center gap-2 sm:justify-start'>{details.interests.map((interest) => <span key={interest} className='rounded-full bg-brand-blue/10 px-3 py-1 text-xs font-bold text-brand-blue'>{interest}</span>)}</div>}
               <div className='mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground sm:justify-start'>
                 <span className='flex items-center gap-1.5'><Heart size={16} className='text-brand-blue' /> {stats.count} apoios realizados</span>
                 <span className='flex items-center gap-1.5'><Target size={16} className='text-brand-blue' /> {stats.causeCount} causas apoiadas</span>
@@ -261,13 +325,29 @@ const DonorProfile: React.FC = () => {
         <AnimatePresence initial={false}>
           {editingProfile && (
             <motion.section initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className='overflow-hidden border-b border-border'>
-              <div className='grid gap-4 py-6 md:grid-cols-[1fr_1fr_auto] md:items-end'>
+              <div className='grid gap-4 py-6 md:grid-cols-2'>
                 <label className='text-sm font-bold'>Nome<SmoothInput value={name} onChange={(event) => { setName(event.target.value); setDirty(true); }} className='mt-2 w-full rounded-lg border-2 border-border px-4 py-3 outline-none focus:border-brand-blue' /></label>
                 <label className='text-sm font-bold'>E-mail<SmoothInput type='email' value={email} disabled className='mt-2 w-full rounded-lg border-2 border-border bg-muted px-4 py-3 text-muted-foreground' /></label>
+                <label className='text-sm font-bold md:col-span-2'>Sobre você<textarea value={details.bio} maxLength={500} rows={4} onChange={(event) => { setDetails((current) => ({ ...current, bio: event.target.value })); setDirty(true); }} className='mt-2 w-full resize-y rounded-lg border-2 border-border bg-background px-4 py-3 leading-6 outline-none focus:border-brand-blue' placeholder='Conte um pouco sobre você e sua relação com as causas que acompanha.' /></label>
+                <label className='text-sm font-bold'>Localização<SmoothInput value={details.location} onChange={(event) => { setDetails((current) => ({ ...current, location: event.target.value })); setDirty(true); }} className='mt-2 w-full rounded-lg border-2 border-border px-4 py-3 outline-none focus:border-brand-blue' placeholder='Cidade e estado' /></label>
+                <label className='text-sm font-bold'>Instagram<SmoothInput value={details.instagram} onChange={(event) => { setDetails((current) => ({ ...current, instagram: event.target.value })); setDirty(true); }} className='mt-2 w-full rounded-lg border-2 border-border px-4 py-3 outline-none focus:border-brand-blue' placeholder='@seuperfil' /></label>
+                <label className='text-sm font-bold'>Telefone<SmoothInput type='tel' inputMode='tel' value={details.phone} onChange={(event) => { setDetails((current) => ({ ...current, phone: formatPhone(event.target.value) })); setDirty(true); }} className='mt-2 w-full rounded-lg border-2 border-border px-4 py-3 outline-none focus:border-brand-blue' placeholder='(00) 00000-0000' /></label>
+                <label className='text-sm font-bold'>Imagem de capa<SmoothInput type='url' inputMode='url' value={details.coverImage} onChange={(event) => { setDetails((current) => ({ ...current, coverImage: event.target.value })); setDirty(true); }} className='mt-2 w-full rounded-lg border-2 border-border px-4 py-3 outline-none focus:border-brand-blue' placeholder='https://...' /></label>
+                <fieldset className='md:col-span-2'>
+                  <legend className='text-sm font-bold'>Causas de interesse</legend>
+                  <div className='mt-2 flex flex-wrap gap-2'>
+                    {NGO_CATEGORY_ORDER.map((category) => {
+                      const selected = details.interests.includes(category);
+                      return <button key={category} type='button' aria-pressed={selected} onClick={() => { setDetails((current) => ({ ...current, interests: selected ? current.interests.filter((item) => item !== category) : [...current.interests, category] })); setDirty(true); }} className={`rounded-full border px-3 py-2 text-sm font-bold transition-colors ${selected ? 'border-brand-blue bg-brand-blue text-white' : 'border-border bg-background text-brand-ink hover:border-brand-blue'}`}>{category}</button>;
+                    })}
+                  </div>
+                </fieldset>
+                <div className='flex justify-end md:col-span-2'>
                 <button onClick={handleSave} disabled={saving || !dirty} className='tc-button-3d inline-flex h-12 items-center justify-center gap-2 rounded-xl px-5 font-bold text-white disabled:opacity-45'>
                   {saving ? <Loader2 size={18} className='animate-spin' /> : <Save size={18} />}
                   {dirty ? 'Salvar' : 'Salvo'}
                 </button>
+                </div>
               </div>
             </motion.section>
           )}

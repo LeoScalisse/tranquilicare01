@@ -102,41 +102,32 @@ O Supabase hospedado usa 6 digitos por padrao. Se quiser manter o formato visual
 3. Com SMTP proprio, confirme host, porta, usuario, senha e remetente; depois veja o log de entrega do provedor.
 4. Verifique Spam/Promocoes e a lista de supressao/bounces do provedor. Se houver rastreamento de links, desative-o para emails do Auth.
 
-## 7. Rodar o schema seguro de perfis
+## 7. Aplicar o banco pelas migrations
 
-Depois que Auth estiver funcionando, abra o **SQL Editor** do Supabase e rode o
-arquivo versionado neste projeto:
+`supabase/migrations` e a fonte de verdade. `supabase/schema.sql` e apenas um
+snapshot legado e nao deve mais ser aplicado manualmente.
 
-```text
-supabase/schema.sql
+```bash
+npx --yes supabase link --project-ref SEU_PROJECT_REF
+npx --yes supabase migration list --linked
+npx --yes supabase db push --linked --dry-run
+npx --yes supabase db push --linked
 ```
 
-Ele cria tres camadas de perfil:
+A baseline `20260701000000_core_schema_baseline.sql` registra objetos que, no
+primeiro projeto, foram criados manualmente antes das migrations. Nesse projeto
+existente ela deve ser marcada como aplicada, sem executar novamente:
 
-- `public.profiles`: identidade comum, com nome, e-mail, avatar e tipo de conta.
-- `public.donor_profiles`: dados exclusivos de doadores, com os creditos ainda
-  mantidos como compatibilidade ate existir um ledger.
-- `public.ngo_profiles`: CNPJ, endereco, descricao, categoria, objetivo,
-  Instagram, telefone e status de verificacao da organizacao.
-
-As tres tabelas usam RLS. Cada conta le seus proprios dados; uma ONG so se torna
-publicamente legivel quando o status for `approved`. CNPJ e telefone possuem
-restricoes de formato no banco, e o navegador nao pode alterar creditos, tipo de
-conta ou status.
-
-Se `supabase/schema.sql` ja foi executado anteriormente, rode apenas a migracao
-nova no SQL Editor:
-
-```text
-supabase/migrations/20260815_organized_user_profiles.sql
+```bash
+npx --yes supabase migration repair 20260701000000 --status applied --linked
 ```
 
-Ela faz o backfill das contas existentes sem apagar o campo JSON legado. Isso
-mantem a aplicacao compativel durante a transicao para as tabelas estruturadas.
+Em um projeto novo, nao use `repair`: a baseline deve ser executada normalmente
+antes das demais migrations.
 
-O app ja tenta usar essa tabela quando ela existe. Se ela ainda nao foi criada,
-ele continua funcionando com fallback em `user_metadata`, para nao quebrar o
-fluxo durante a configuracao.
+A arquitetura atual separa identidade, organizacoes, membros, verificacao,
+historias, midia, impacto, campanhas, doacoes e pagamentos. O desenho completo,
+ERD, RLS e estrategia de exportacao estao em `docs/database-architecture.md`.
 
 
 ## 8. Pagamentos e repasses com Stripe Connect
@@ -154,31 +145,56 @@ Antes de aceitar dinheiro real, cada ONG precisa concluir o onboarding do Stripe
 ```text
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
-APP_URL=http://localhost:8080
-APP_ORIGIN=http://localhost:8080
+DEFAULT_PAYMENT_PROVIDER=stripe
+APP_URL=https://tranquilicare01.vercel.app
+APP_ORIGIN=https://tranquilicare01.vercel.app
 ```
 
-3. Publique as funções `supabase/functions/create-checkout-session` e `supabase/functions/stripe-webhook`.
+Para testar uma funÃ§Ã£o servida localmente, use um arquivo de secrets local
+separado com `http://localhost:8080`. Os secrets do projeto hospedado devem
+sempre apontar para o domÃ­nio publicado.
+
+3. Vincule a CLI ao projeto e publique as três funções. O arquivo
+   `supabase/config.toml` deixa os endpoints públicos no gateway; cada função
+   continua validando o que recebe no próprio handler.
+
+```bash
+npm exec --yes --package=supabase@2.115.0 -- supabase login
+npm exec --yes --package=supabase@2.115.0 -- supabase link --project-ref SEU_PROJECT_REF
+npm exec --yes --package=supabase@2.115.0 -- supabase functions deploy create-payment
+npm exec --yes --package=supabase@2.115.0 -- supabase functions deploy confirm-payment
+npm exec --yes --package=supabase@2.115.0 -- supabase functions deploy payment-webhook
+npm exec --yes --package=supabase@2.115.0 -- supabase functions deploy create-checkout-session
+npm exec --yes --package=supabase@2.115.0 -- supabase functions deploy confirm-checkout-session
+npm exec --yes --package=supabase@2.115.0 -- supabase functions deploy stripe-webhook
+```
+
+`confirm-checkout-session` é necessária para confirmar com segurança uma
+doação anônima depois que a Stripe redireciona a pessoa ao app.
 4. No Stripe Workbench, crie um webhook para:
 
 ```text
-https://SEU_PROJETO.supabase.co/functions/v1/stripe-webhook
+https://SEU_PROJETO.supabase.co/functions/v1/payment-webhook?provider=stripe
 ```
 
 Selecione `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `payment_intent.succeeded` e `payment_intent.payment_failed`. Copie o `whsec_...` desse endpoint para o secret da função.
 
+O endpoint e o `whsec_...` de produção são diferentes dos usados no sandbox.
+Ao ativar pagamentos reais, crie o endpoint em modo live e substitua os secrets
+do Supabase juntos, para não misturar eventos de teste e produção.
+
 5. Após uma ONG concluir o Connect, registre a conta vinculada usando o ID real retornado pela Stripe:
 
 ```sql
-insert into public.ngo_payment_accounts
-  (ngo_id, stripe_account_id, onboarding_complete, charges_enabled, payouts_enabled)
+insert into public.payment_recipients
+  (organization_id, provider, provider_recipient_id, status, livemode, capabilities)
 values
-  ('ID-REAL-DA-ONG', 'acct_XXXXXXXXXXXXXXXX', true, true, true)
-on conflict (ngo_id) do update set
-  stripe_account_id = excluded.stripe_account_id,
-  onboarding_complete = excluded.onboarding_complete,
-  charges_enabled = excluded.charges_enabled,
-  payouts_enabled = excluded.payouts_enabled,
+  ('ID-REAL-DA-ONG', 'stripe', 'acct_XXXXXXXXXXXXXXXX', 'active', false,
+   '{"charges": true, "payouts": true, "split": true}'::jsonb)
+on conflict (organization_id, provider, livemode) do update set
+  provider_recipient_id = excluded.provider_recipient_id,
+  status = excluded.status,
+  capabilities = excluded.capabilities,
   updated_at = now();
 ```
 
@@ -196,11 +212,12 @@ As colunas `profiles.credits` e `donor_profiles.credits` não devem representar 
 | `src/lib/authSupabase.ts` | Implementacao real: sessao, Google, profiles e fallback em metadata. |
 | `src/lib/authLocal.ts` | Mock usado enquanto o Supabase nao esta configurado. |
 | `src/pages/AuthCallback.tsx` | Rota `/auth/callback`: recebe o retorno do Google. |
-| `supabase/schema.sql` | Schema seguro para perfis comuns, doadores e ONGs, com RLS e RPC de tipo de conta inicial. |
+| `supabase/migrations/` | Fonte de verdade versionada para schema, constraints, RLS, views e backfills. |
+| `docs/database-architecture.md` | ERD, dicionario de dados, portabilidade e exportacao. |
 
 ## Ainda pendente
 
-- ONGs, campanhas, doacoes e marketplace ainda vem de `src/data/*.ts` como dados de demonstracao.
+- Historias e campanhas exibidas no frontend ainda usam dados de demonstracao ate os fluxos de publicacao serem ligados aos repositories.
 - `credits` ja tem coluna protegida no schema, mas ainda falta o fluxo real de pagamentos/doacoes gravando nela por webhook ou funcao segura.
 - Para privilegios de ONG, use verificacao/membership em tabela com RLS; nao confie apenas no role visual `account_type`.
 - Stripe Checkout/Connect está preparado na migration e nas Edge Functions; falta publicar as funções, concluir o onboarding das ONGs e vincular cada cct_....

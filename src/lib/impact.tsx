@@ -18,7 +18,7 @@ export interface DonationRow {
   donor_email: string | null;
   created_at: string;
   ngo_id?: string | null;
-  stripe_checkout_session_id?: string | null;
+  payment_action_id?: string | null;
 }
 
 export interface DonationImpact {
@@ -132,7 +132,7 @@ type DonationDatabaseRow = {
   ngo_id: string | null;
   amount_cents: number;
   created_at: string;
-  stripe_checkout_session_id: string | null;
+  provider_action_id: string | null;
   status: 'pending' | 'succeeded' | 'failed' | 'refunded';
 };
 
@@ -151,7 +151,7 @@ const donationFromDatabase = (
   donor_email: userEmail,
   created_at: row.created_at,
   ngo_id: row.ngo_id,
-  stripe_checkout_session_id: row.stripe_checkout_session_id,
+  payment_action_id: row.provider_action_id,
 });
 
 const upsertDonation = (rows: DonationRow[], donation: DonationRow): DonationRow[] => {
@@ -257,7 +257,7 @@ export const useDonationImpact = (
     if (userId) {
       void supabase
         .from('donations')
-        .select('id, donor_id, ngo_id, amount_cents, created_at, stripe_checkout_session_id, status')
+        .select('id, donor_id, ngo_id, amount_cents, created_at, provider_action_id, status')
         .eq('status', 'succeeded')
         .order('created_at', { ascending: false })
         .then(({ data, error }) => {

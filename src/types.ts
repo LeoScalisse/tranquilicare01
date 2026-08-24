@@ -57,11 +57,15 @@ export interface NGO {
   image: string;
   coverImage?: string;
   causeVideo?: string;
+  objectives?: string[];
   email: string;
   instagram: string;
   phone?: string;
   cnpj?: string;
   address?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  geocodedAddress?: string;
   verified: boolean;
   status?: 'pending' | 'approved' | 'rejected';
   posts: NGOPost[];

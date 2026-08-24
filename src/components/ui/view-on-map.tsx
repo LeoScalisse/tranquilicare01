@@ -7,6 +7,8 @@ import { cn } from '@/lib/utils';
 interface ViewOnMapProps {
   locationName: string;
   address: string;
+  latitude?: number | null;
+  longitude?: number | null;
   className?: string;
 }
 
@@ -17,13 +19,15 @@ const spring = {
   mass: 0.84,
 };
 
-const ViewOnMap: React.FC<ViewOnMapProps> = ({ locationName, address, className }) => {
+const ViewOnMap: React.FC<ViewOnMapProps> = ({ locationName, address, latitude, longitude, className }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const reducedMotion = useReducedMotion();
   const id = useId();
   const transition = reducedMotion ? { duration: 0.01 } : spring;
-  const query = encodeURIComponent(address);
+  const hasCoordinates = Number.isFinite(latitude) && Number.isFinite(longitude);
+  const mapQuery = hasCoordinates ? `${latitude},${longitude}` : address;
+  const query = encodeURIComponent(mapQuery);
   const embedUrl = `https://maps.google.com/maps?q=${query}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
   const publicUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
 

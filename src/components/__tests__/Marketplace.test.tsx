@@ -42,6 +42,18 @@ describe('Marketplace editorial sections', () => {
     expect(screen.queryByText('Relâmpago')).toBeNull();
     expect(screen.getAllByRole('button', { name: /Conhecer a causa/i }).length).toBeGreaterThan(0);
     expect(container.querySelectorAll('article').length).toBeGreaterThan(0);
+
+    const cowFilter = screen.getByRole('button', { name: 'Vaquinhas' });
+    expect(cowFilter.querySelector('[data-cow-head]')).not.toBeNull();
+    fireEvent.click(cowFilter);
+    expect(cowFilter.getAttribute('aria-pressed')).toBe('true');
+    const cowSection = container.querySelector('[data-cow-campaign-section]');
+    expect(cowSection?.className).toContain('bg-white');
+    expect(cowSection?.className).not.toContain('bg-[#FFD5C2]');
+    expect(cowSection?.querySelectorAll('[data-cow-spot]').length).toBeGreaterThanOrEqual(8);
+    fireEvent.click(cowFilter);
+    expect(cowFilter.getAttribute('aria-pressed')).toBe('false');
+    expect(screen.getByText('Causas para conhecer')).toBeTruthy();
   });
 
   it('uses the new empty-state copy when no cause matches', () => {

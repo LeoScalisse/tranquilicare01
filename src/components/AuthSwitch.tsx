@@ -59,7 +59,7 @@ const SPRING = { duration: 0.34, ease: [0.22, 1, 0.36, 1] as const };
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const inputClass =
-  'w-full px-4 py-3.5 bg-secondary border-2 border-transparent focus:border-brand-blue focus:bg-background rounded-2xl outline-none transition-all';
+  'tc-motion-control w-full px-4 py-3.5 bg-secondary border-2 border-transparent focus:border-brand-blue focus:bg-background rounded-2xl outline-none transition-[border-color,background-color,box-shadow]';
 const labelClass = 'flex items-center gap-2 text-sm font-bold text-brand-ink';
 
 interface RoleConfig {
@@ -214,7 +214,7 @@ const VerificationCodeInput: React.FC<VerificationCodeInputProps> = ({ value, on
     if (!pasted) return;
     event.preventDefault();
     onChange(pasted);
-    focusInput(Math.min(pasted.length, CODE_LENGTH) - 1);
+    focusInput(Math.min(pasted.length, EMAIL_CODE_MAX_LENGTH) - 1);
   };
 
   return (
@@ -468,7 +468,7 @@ const AuthForm: React.FC<AuthFormProps> = ({
           return;
         }
         toast.success(role === 'ngo' ? 'Organização cadastrada com sucesso!' : 'Conta criada com sucesso!');
-        const dest = role === 'ngo' ? '/ngo/profile?setup=1' : '/';
+        const dest = role === 'ngo' ? '/ngo/profile?setup=1' : '/donor/profile?setup=1';
         onProgressChange({
           confirmationEmail: null,
           pendingDestination: dest,
@@ -515,7 +515,7 @@ const AuthForm: React.FC<AuthFormProps> = ({
     try {
       const user = await verifyEmailCode(confirmationEmail ?? email.trim(), confirmationCode, role);
       toast.success('E-mail confirmado com sucesso!');
-      const dest = role === 'ngo' ? '/ngo/profile?setup=1' : '/';
+      const dest = role === 'ngo' ? '/ngo/profile?setup=1' : '/donor/profile?setup=1';
       onProgressChange({
         confirmationEmail: null,
         pendingDestination: dest,
@@ -586,7 +586,7 @@ const AuthForm: React.FC<AuthFormProps> = ({
           <button
             type="submit"
             disabled={verifyingCode || !confirmationCodeReady}
-            className={`tc-button-3d btn-shine w-full py-3.5 ${cfg.submitBg} ${cfg.submitText} rounded-2xl font-bold shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2`}
+            className={`tc-button-3d btn-shine w-full py-3.5 ${cfg.submitBg} ${cfg.submitText} rounded-2xl font-bold shadow-lg disabled:opacity-50 flex items-center justify-center gap-2`}
           >
             {verifyingCode ? <Loader2 size={19} className="animate-spin" /> : null}
             Confirmar código
@@ -710,7 +710,7 @@ const AuthForm: React.FC<AuthFormProps> = ({
               className={`tc-button-3d btn-shine mt-8 inline-flex min-h-12 items-center gap-2 rounded-2xl px-7 font-bold disabled:opacity-60 ${role === 'ngo' ? 'tc-button-3d-yellow text-brand-ink' : 'text-white'}`}
             >
               {handoffLoading ? <Loader2 size={18} className='animate-spin' /> : null}
-              {role === 'ngo' ? 'Configurar minha organização' : 'Ir para o início'}
+              {role === 'ngo' ? 'Configurar minha organização' : 'Personalizar meu perfil'}
               {!handoffLoading ? <ArrowRight size={18} /> : null}
             </button>
           ) : (
@@ -739,7 +739,7 @@ const AuthForm: React.FC<AuthFormProps> = ({
         type="button"
         onClick={handleGoogle}
         disabled={googleLoading}
-        className="w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl border-2 border-border bg-background font-bold text-brand-ink shadow-sm hover:border-brand-blue/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0"
+        className="tc-motion-control w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl border-2 border-border bg-background font-bold text-brand-ink shadow-sm hover:border-brand-blue/40 hover:-translate-y-0.5 transition-[border-color,box-shadow,transform,opacity] disabled:opacity-50 disabled:hover:translate-y-0"
       >
         {googleLoading ? <Loader2 size={19} className="animate-spin text-brand-blue" /> : <GoogleG />}
         Continuar com Google
@@ -760,14 +760,14 @@ const AuthForm: React.FC<AuthFormProps> = ({
         <button
           type="button"
           onClick={() => setMode('login')}
-          className={`py-2 rounded-xl text-sm font-bold transition-all ${mode === 'login' ? 'bg-background text-brand-blue shadow-sm' : 'text-muted-foreground'}`}
+          className={`tc-motion-control py-2 rounded-xl text-sm font-bold transition-[color,background-color,box-shadow] ${mode === 'login' ? 'bg-background text-brand-blue shadow-sm' : 'text-muted-foreground'}`}
         >
           Entrar
         </button>
         <button
           type="button"
           onClick={() => setMode('signup')}
-          className={`py-2 rounded-xl text-sm font-bold transition-all ${mode === 'signup' ? 'bg-background text-brand-blue shadow-sm' : 'text-muted-foreground'}`}
+          className={`tc-motion-control py-2 rounded-xl text-sm font-bold transition-[color,background-color,box-shadow] ${mode === 'signup' ? 'bg-background text-brand-blue shadow-sm' : 'text-muted-foreground'}`}
         >
           Criar conta
         </button>
@@ -892,7 +892,7 @@ const AuthForm: React.FC<AuthFormProps> = ({
         <button
           type="submit"
           disabled={loading}
-          className={`tc-button-3d btn-shine w-full py-3.5 ${cfg.submitBg} ${cfg.submitText} rounded-2xl font-bold shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-2`}
+          className={`tc-button-3d btn-shine w-full py-3.5 ${cfg.submitBg} ${cfg.submitText} rounded-2xl font-bold shadow-lg disabled:opacity-50 flex items-center justify-center gap-2`}
         >
           {loading ? <Loader2 size={19} className="animate-spin" /> : null}
           {mode === 'login' ? 'Entrar' : role === 'ngo' ? 'Cadastrar organização' : 'Criar conta'}

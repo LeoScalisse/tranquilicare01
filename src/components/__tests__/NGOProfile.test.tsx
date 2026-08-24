@@ -1,123 +1,276 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { afterEach, describe, expect, it } from 'vitest';
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { afterEach, describe, expect, it } from "vitest";
 
-import NGOProfile from '@/components/NGOProfile';
-import { demoNgos } from '@/data/demoNgos';
+import NGOProfile from "@/components/NGOProfile";
+import { demoNgos } from "@/data/demoNgos";
 
-const renderProfile = (ngo = demoNgos[0], ownerMode = false) => render(
-  <MemoryRouter>
-    <NGOProfile ngo={ngo} ownerMode={ownerMode} />
-  </MemoryRouter>,
-);
+const renderProfile = (ngo = demoNgos[0], ownerMode = false) =>
+  render(
+    <MemoryRouter>
+      <NGOProfile ngo={ngo} ownerMode={ownerMode} />
+    </MemoryRouter>,
+  );
 
-describe('NGOProfile cause-led architecture', () => {
+describe("NGOProfile cause-led architecture", () => {
   afterEach(cleanup);
 
-  it('opens on A Causa without the old dashboard summary', () => {
+  it("opens on A Causa without the old dashboard summary", () => {
     renderProfile();
 
-    expect(screen.getByRole('tab', { name: 'A Causa' }).getAttribute('aria-selected')).toBe('true');
+    expect(
+      screen
+        .getByRole("tab", { name: "A Causa" })
+        .getAttribute("aria-selected"),
+    ).toBe("true");
     expect(screen.getAllByText(demoNgos[0].description)).toHaveLength(1);
     expect(screen.getByText(demoNgos[0].goal)).not.toBeNull();
-    expect(screen.getByText('Objetivo atual')).not.toBeNull();
-    expect(screen.getByRole('button', { name: /Apoiar esta causa/i })).not.toBeNull();
-    expect(screen.getByRole('button', { name: /Falar com a organização/i })).not.toBeNull();
-    expect(screen.queryByText('Organização verificada')).toBeNull();
-    expect(screen.queryByText('Continue perto desta causa')).toBeNull();
-    expect(screen.queryByText('Informações')).toBeNull();
-    expect(screen.queryByText('Meta atual')).toBeNull();
-    expect(screen.queryByText('Transparência')).toBeNull();
-    expect(screen.queryByText('impactos publicados')).toBeNull();
+    expect(screen.getByText("Objetivo atual")).not.toBeNull();
+    expect(
+      screen.getByRole("button", { name: /Apoiar esta causa/i }),
+    ).not.toBeNull();
+    expect(
+      screen.getByRole("button", { name: /Falar com a organização/i }),
+    ).not.toBeNull();
+    expect(screen.queryByText("Organização verificada")).toBeNull();
+    expect(screen.queryByText("Continue perto desta causa")).toBeNull();
+    expect(screen.queryByText("Informações")).toBeNull();
+    expect(screen.queryByText("Meta atual")).toBeNull();
+    expect(screen.queryByText("Transparência")).toBeNull();
+    expect(screen.queryByText("impactos publicados")).toBeNull();
   });
 
-  it('opens the objective modal with the category color', () => {
+  it("opens the objective modal with the category color", () => {
     renderProfile();
 
-    fireEvent.click(screen.getByRole('button', { name: /Conhecer o objetivo da causa/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Conhecer o objetivo da causa/i }),
+    );
 
-    const dialog = screen.getByRole('dialog', { name: 'O que queremos tornar possível' });
+    const dialog = screen.getByRole("dialog", {
+      name: "O que queremos tornar possível",
+    });
     expect(dialog.textContent).toContain(demoNgos[0].goal);
-    expect(dialog.firstElementChild?.className).toContain('bg-[#FFF7D6]');
+    expect(dialog.firstElementChild?.className).toContain("bg-[#FFF7D6]");
   });
 
-  it('expands the Abraço Sereno cause video and closes it with Escape', async () => {
+  it("shows the category seal without claiming approval for a pending organization", () => {
+    renderProfile({ ...demoNgos[0], verified: false, status: "pending" });
+
+    expect(
+      screen.getByRole("img", { name: "Selo da categoria Saúde Mental" }),
+    ).not.toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /Conhecer a verificação/i }),
+    ).toBeNull();
+  });
+
+  it("uses geocoded coordinates when opening the organization map", () => {
+    renderProfile({
+      ...demoNgos[0],
+      address: "Rua de teste, 10, São Paulo - SP",
+      latitude: -23.55052,
+      longitude: -46.633308,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver no mapa" }));
+    const frame = screen.getByTitle("Localização de Abraço Sereno");
+    expect(frame.getAttribute("src")).toContain(
+      encodeURIComponent("-23.55052,-46.633308"),
+    );
+  });
+
+  it("uses the cause-led donation checkout copy without the dark header", () => {
+    renderProfile();
+    fireEvent.click(screen.getByRole("button", { name: "Apoiar esta causa" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Apoiar Abraço Sereno" });
+    expect(
+      screen.getByRole("heading", {
+        name: "Quanto você quer fazer chegar à Abraço Sereno?",
+      }),
+    ).not.toBeNull();
+    expect(dialog.textContent).toContain("Sua doação para Abraço Sereno");
+    expect(dialog.textContent).toContain("Serviço TranquiliCare (5%)");
+    expect(dialog.textContent).toContain("A sua intenção chega inteira.");
+    expect(dialog.querySelector(".donation-checkout-glow")).toBeNull();
+    expect(
+      dialog.parentElement?.classList.contains("donation-intelligence-frame"),
+    ).toBe(true);
+    expect(document.querySelector(".apple-edge-glow")).not.toBeNull();
+    expect(dialog.querySelector(".bg-brand-ink")).toBeNull();
+  });
+
+  it("expands the Abraço Sereno cause video and closes it with Escape", async () => {
     renderProfile();
 
-    const trigger = screen.getByRole('button', { name: 'Assistir ao vídeo da causa Abraço Sereno' });
-    expect(trigger.querySelector('video')?.getAttribute('src')).toContain('video-player.mp4');
+    const trigger = screen.getByRole("button", {
+      name: "Assistir ao vídeo da causa Abraço Sereno",
+    });
+    expect(trigger.querySelector("video")?.getAttribute("src")).toContain(
+      "video-player.mp4",
+    );
 
     fireEvent.click(trigger);
 
-    const dialog = screen.getByRole('dialog', { name: 'A causa de Abraço Sereno em movimento' });
-    expect(dialog.closest('[data-video-overlay]')?.parentElement).toBe(document.body);
-    expect(dialog.querySelector('video')?.hasAttribute('controls')).toBe(true);
-    const closeButton = dialog.querySelector('button');
+    const dialog = screen.getByRole("dialog", {
+      name: "A causa de Abraço Sereno em movimento",
+    });
+    expect(dialog.closest("[data-video-overlay]")?.parentElement).toBe(
+      document.body,
+    );
+    expect(dialog.querySelector("video")?.hasAttribute("controls")).toBe(true);
+    const closeButton = dialog.querySelector("button");
     await waitFor(() => {
       expect(document.activeElement).toBe(closeButton);
     });
 
-    fireEvent.keyDown(closeButton!, { key: 'Escape' });
+    fireEvent.keyDown(closeButton!, { key: "Escape" });
     await waitFor(() => {
-      expect(document.body.style.overflow).toBe('');
+      expect(document.body.style.overflow).toBe("");
       expect(document.activeElement).toBe(trigger);
+      expect(
+        screen.queryByRole("dialog", {
+          name: "A causa de Abraço Sereno em movimento",
+        }),
+      ).toBeNull();
+    });
+
+    expect(trigger.querySelector("video")).not.toBeNull();
+
+    fireEvent.click(trigger);
+    expect(
+      screen.getByRole("dialog", {
+        name: "A causa de Abraço Sereno em movimento",
+      }),
+    ).not.toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Fechar vídeo" }));
+    await waitFor(() => {
+      expect(
+        screen.queryByRole("dialog", {
+          name: "A causa de Abraço Sereno em movimento",
+        }),
+      ).toBeNull();
+      expect(trigger.querySelector("video")).not.toBeNull();
     });
   });
 
-  it('centers the cause video with breathing room below the profile tabs', () => {
-    renderProfile();
+  it("embeds a configured YouTube cause video", async () => {
+    const youtubeNgo = {
+      ...demoNgos[0],
+      causeVideo: "https://youtu.be/G9V69J7cQtY",
+    };
+    renderProfile(youtubeNgo);
 
-    const region = screen.getByTestId('cause-video-region');
-    expect(region.className).toContain('justify-center');
-    expect(region.className).toContain('pt-6');
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: /Assistir ao vídeo da causa/i,
+      }),
+    );
+    const frame = screen.getByTitle("A causa de Abraço Sereno em movimento");
+    expect(frame.getAttribute("src")).toContain(
+      "youtube-nocookie.com/embed/G9V69J7cQtY",
+    );
   });
 
-  it('does not render a cause video when the organization has none', () => {
+  it("centers the cause video with breathing room below the profile tabs", () => {
+    renderProfile();
+
+    const region = screen.getByTestId("cause-video-region");
+    expect(region.className).toContain("justify-center");
+    expect(region.className).toContain("pt-6");
+  });
+
+  it("does not render a cause video when the organization has none", () => {
     renderProfile(demoNgos[1]);
 
-    expect(screen.queryByRole('button', { name: /Assistir ao vídeo da causa/i })).toBeNull();
+    expect(
+      screen.queryByRole("button", { name: /Assistir ao vídeo da causa/i }),
+    ).toBeNull();
   });
 
-  it('keeps stories and impact as different experiences', async () => {
+  it("keeps stories and impact as different experiences", async () => {
     renderProfile();
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Histórias' }));
-    expect(await screen.findByRole('heading', { name: 'Veja nossa causa em movimento' })).not.toBeNull();
-    expect(screen.queryByText('Acompanhe o trabalho da organização pelas histórias que ela escolheu compartilhar.')).toBeNull();
-    expect(await screen.findByText('1 história publicada')).not.toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Histórias" }));
+    expect(
+      await screen.findByRole("heading", {
+        name: "Veja nossa causa em movimento",
+      }),
+    ).not.toBeNull();
+    expect(
+      screen.queryByText(
+        "Acompanhe o trabalho da organização pelas histórias que ela escolheu compartilhar.",
+      ),
+    ).toBeNull();
+    expect(await screen.findByText("1 história publicada")).not.toBeNull();
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Impacto' }));
-    expect(await screen.findByRole('heading', { name: 'O que já tornamos possível juntos' })).not.toBeNull();
-    expect(await screen.findByText('Esta organização ainda não compartilhou seus resultados por aqui.')).not.toBeNull();
-    expect(await screen.findByText('Quando novos números forem publicados, você poderá acompanhá-los aqui.')).not.toBeNull();
-    expect(screen.queryByText('História recente')).toBeNull();
-    expect(screen.queryByText('Impacto que ganhou forma')).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Impacto" }));
+    expect(
+      await screen.findByRole("heading", {
+        name: "Onde essa história já chegou",
+      }),
+    ).not.toBeNull();
+    expect(
+      screen.queryByText(
+        "Números, Impacto e apoios realizado aqui no Tranquilicare.",
+      ),
+    ).toBeNull();
+    expect(
+      await screen.findByText(
+        "Esta organização ainda não compartilhou seus resultados por aqui.",
+      ),
+    ).not.toBeNull();
+    expect(
+      await screen.findByText(
+        "Quando novos números forem publicados, você poderá acompanhá-los aqui.",
+      ),
+    ).not.toBeNull();
+    expect(screen.queryByText("História recente")).toBeNull();
+    expect(screen.queryByText("Impacto que ganhou forma")).toBeNull();
     expect(screen.queryByText(demoNgos[0].posts[0].caption!)).toBeNull();
   });
 
-  it('supports real impact metrics without deriving them from the goal', async () => {
+  it("supports real impact metrics without deriving them from the goal", async () => {
     renderProfile({
       ...demoNgos[0],
-      impactMetrics: [{
-        id: 'test-direct-result',
-        value: 1240,
-        label: 'pessoas acolhidas',
-        measurementType: 'direct',
-        source: 'Relatório mensal da organização',
-        updatedAt: '2026-07-01',
-      }],
+      impactMetrics: [
+        {
+          id: "test-direct-result",
+          value: 1240,
+          label: "pessoas acolhidas",
+          measurementType: "direct",
+          source: "Relatório mensal da organização",
+          updatedAt: "2026-07-01",
+        },
+      ],
     });
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Impacto' }));
-    expect(await screen.findByText('1.240')).not.toBeNull();
-    expect(await screen.findByText('pessoas acolhidas')).not.toBeNull();
-    expect(await screen.findByText('Resultado informado')).not.toBeNull();
-    expect(await screen.findByText('Relatório mensal da organização')).not.toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Impacto" }));
+    expect(await screen.findByText("1.240")).not.toBeNull();
+    expect(await screen.findByText("pessoas acolhidas")).not.toBeNull();
+    expect(await screen.findByText("Resultado informado")).not.toBeNull();
+    expect(
+      await screen.findByText("Relatório mensal da organização"),
+    ).not.toBeNull();
   });
 
-  it('supports arrow-key navigation between tabs', () => {
+  it("supports arrow-key navigation between tabs", () => {
     renderProfile();
-    fireEvent.keyDown(screen.getByRole('tab', { name: 'A Causa' }), { key: 'ArrowRight' });
-    expect(screen.getByRole('tab', { name: 'Histórias' }).getAttribute('aria-selected')).toBe('true');
+    fireEvent.keyDown(screen.getByRole("tab", { name: "A Causa" }), {
+      key: "ArrowRight",
+    });
+    expect(
+      screen
+        .getByRole("tab", { name: "Histórias" })
+        .getAttribute("aria-selected"),
+    ).toBe("true");
   });
 });

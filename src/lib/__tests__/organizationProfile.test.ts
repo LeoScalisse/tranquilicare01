@@ -6,6 +6,7 @@ import {
   isValidAddress,
   isValidCnpj,
   isValidPhone,
+  isValidYouTubeUrl,
 } from '@/lib/organizationProfile';
 
 describe('organization profile validation', () => {
@@ -29,5 +30,13 @@ describe('organization profile validation', () => {
     expect(isValidAddress('')).toBe(false);
     expect(isValidAddress('Rua A')).toBe(false);
     expect(isValidAddress('Rua das Flores, 120 - Centro, Sao Paulo - SP')).toBe(true);
+  });
+
+  it('accepts only YouTube links that point to a video', () => {
+    expect(isValidYouTubeUrl('')).toBe(true);
+    expect(isValidYouTubeUrl('https://youtu.be/G9V69J7cQtY')).toBe(true);
+    expect(isValidYouTubeUrl('https://www.youtube.com/watch?v=G9V69J7cQtY')).toBe(true);
+    expect(isValidYouTubeUrl('https://www.youtube.com/')).toBe(false);
+    expect(isValidYouTubeUrl('https://example.com/G9V69J7cQtY')).toBe(false);
   });
 });

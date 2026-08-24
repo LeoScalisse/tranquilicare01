@@ -1,6 +1,12 @@
-import React from 'react';
-import { createPortal } from 'react-dom';
-import { motion, LayoutGroup } from 'framer-motion';
+import React from "react";
+import { createPortal } from "react-dom";
+import {
+  AnimatePresence,
+  LayoutGroup,
+  motion,
+  useReducedMotion,
+  type Transition,
+} from "framer-motion";
 
 export interface CosmosNavItem {
   key: string;
@@ -14,105 +20,87 @@ interface CosmosNavProps {
   items: CosmosNavItem[];
 }
 
-const SPRING = { duration: 0.34, ease: [0.22, 1, 0.36, 1] as const };
-
-// Frosted-glass look (from the reference): backdrop blur + saturation, a glass
-// rim built from inset white highlights, and a soft drop shadow — all in one
-// box-shadow so no extra pseudo-element is needed.
-const GLASS = 'backdrop-blur-md backdrop-saturate-150';
-const RIM =
-  'shadow-[inset_2px_2px_5px_-2px_rgba(255,255,255,0.6),inset_-2px_-2px_5px_2px_rgba(255,255,255,0.35),inset_0_-2px_0_rgba(255,255,255,0.2),0_12px_34px_rgba(16,42,67,0.22)]';
-
-/** Icon-only circle used inside a grouped (non-active) pill. */
-const CompactItem: React.FC<{ item: CosmosNavItem }> = ({ item }) => (
-  <motion.button
-    initial={{ opacity: 0, scale: 0.7 }}
-    animate={{ opacity: 1, scale: 1 }}
-    transition={SPRING}
-    onClick={item.onClick}
-    aria-label={item.label}
-    whileTap={{ scale: 0.88 }}
-    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-white/90 transition-colors hover:bg-background/25"
-  >
-    {item.icon}
-  </motion.button>
-);
-
-/** A rounded glass pill grouping one or more non-active items together. */
-const GroupPill: React.FC<{ items: CosmosNavItem[] }> = ({ items }) => (
-  <motion.div
-    layout
-    transition={SPRING}
-    className={`flex items-center gap-1 rounded-full border border-white/30 bg-brand-blue/40 p-1.5 ${GLASS} ${RIM}`}
-  >
-    {items.map((item) => (
-      <CompactItem key={item.key} item={item} />
-    ))}
-  </motion.div>
-);
-
-/** The active section — in evidence: a light glass chip with brand-blue content. */
-const ProminentPill: React.FC<{ item: CosmosNavItem }> = ({ item }) => (
-  <motion.button
-    layout
-    transition={SPRING}
-    onClick={item.onClick}
-    aria-label={item.label}
-    className={`flex items-center gap-2 rounded-full border border-white/60 bg-background/85 p-1.5 pr-4 text-brand-blue ${GLASS} ${RIM} active:scale-95`}
-  >
-    <motion.span
-      initial={{ scale: 0.7, opacity: 0 }}
-      animate={{ scale: 1, opacity: 1 }}
-      transition={SPRING}
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-blue/15 text-brand-blue"
-    >
-      {item.icon}
-    </motion.span>
-    <motion.span
-      layout="position"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="whitespace-nowrap text-sm font-bold"
-    >
-      {item.label}
-    </motion.span>
-  </motion.button>
-);
+const navMorph: Transition = {
+  duration: 0.24,
+  ease: [0.77, 0, 0.175, 1],
+};
+const instant: Transition = { duration: 0.01 };
 
 /**
- * Cosmos-app-style floating nav. The current section sits "in evidence" as a
- * light glass chip; the remaining items are grouped into translucent brand-blue
- * glass pill(s) beside it. Tapping a section navigates and the pills morph to
- * the new arrangement (`layout`), with icons scaling into place.
- *
- * Note: icons deliberately do NOT share a `layoutId` across the group/active
- * components. Doing so made framer's projection leave a residual transform on
- * the promoted icon (it landed outside the chip and read as "disappeared"),
- * because the icon changes parent while those parents also animate layout.
+ * Compact mobile navigation with one expanded active destination. The label
+ * travels with the active item, so the interaction communicates location
+ * without permanently taking up the entire bottom bar.
  */
 const CosmosNav: React.FC<CosmosNavProps> = ({ items }) => {
-  if (typeof document === 'undefined') return null;
+  const reduceMotion = useReducedMotion() ?? false;
+  if (typeof document === "undefined") return null;
 
-  const activeIndex = items.findIndex((i) => i.active);
-  const before = activeIndex > 0 ? items.slice(0, activeIndex) : [];
-  const active = activeIndex >= 0 ? items[activeIndex] : null;
-  const after = activeIndex >= 0 ? items.slice(activeIndex + 1) : items; // no active → all grouped
+  const activeKey = items.find((item) => item.active)?.key ?? items[0]?.key;
 
-  // Portal to <body>: keeps the fixed nav anchored to the viewport regardless
-  // of ancestor backdrop-filter/transform (e.g. the header's backdrop-blur).
   return createPortal(
-    <div
-      className="fixed left-1/2 z-50 -translate-x-1/2 md:hidden"
-      style={{ bottom: 'calc(1rem + env(safe-area-inset-bottom))' }}
+    <nav
+      aria-label="Navegação principal"
+      className="fixed bottom-[calc(0.85rem+env(safe-area-inset-bottom))] left-1/2 z-50 -translate-x-1/2 md:hidden"
     >
-      <LayoutGroup id="cosmos-nav">
-        <div className="flex items-center gap-2">
-          {before.length > 0 && <GroupPill items={before} />}
-          {active && <ProminentPill item={active} />}
-          {after.length > 0 && <GroupPill items={after} />}
+      <LayoutGroup id="mobile-nav-tabs">
+        <div className="flex max-w-[calc(100vw-1.5rem)] items-center gap-2">
+          {items.map((item) => {
+            const active = item.key === activeKey;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={item.onClick}
+                aria-current={active ? "page" : undefined}
+                aria-label={item.label}
+                className="relative shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue"
+              >
+                <motion.span
+                  whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+                  className={`relative flex h-12 min-w-12 items-center justify-center overflow-hidden rounded-full border border-brand-ink/10 bg-white px-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.95),0_10px_24px_rgba(16,42,67,0.16)] backdrop-blur-xl transition-colors duration-200 ${
+                    active
+                      ? "text-brand-blue"
+                      : "text-brand-ink hover:text-brand-blue"
+                  }`}
+                >
+                  <AnimatePresence initial={!reduceMotion}>
+                    {active && (
+                      <motion.span
+                        layoutId="mobile-nav-active-surface"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={reduceMotion ? instant : navMorph}
+                        className="absolute inset-0 rounded-full bg-brand-blue/[0.08] ring-1 ring-inset ring-brand-blue/15"
+                      />
+                    )}
+                  </AnimatePresence>
+                  <span className="relative z-10 grid h-6 w-6 place-items-center">
+                    {item.icon}
+                  </span>
+                  <motion.span
+                    initial={
+                      reduceMotion
+                        ? false
+                        : { width: 0, opacity: 0, marginLeft: 0 }
+                    }
+                    animate={{
+                      width: active ? "auto" : 0,
+                      opacity: active ? 1 : 0,
+                      marginLeft: active ? 7 : 0,
+                    }}
+                    transition={reduceMotion ? instant : navMorph}
+                    className="relative z-10 overflow-hidden whitespace-nowrap text-sm font-bold"
+                  >
+                    {item.label}
+                  </motion.span>
+                </motion.span>
+              </button>
+            );
+          })}
         </div>
       </LayoutGroup>
-    </div>,
+    </nav>,
     document.body,
   );
 };

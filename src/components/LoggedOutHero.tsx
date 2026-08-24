@@ -149,7 +149,7 @@ const LoggedOutHero: React.FC<LoggedOutHeroProps> = ({
             <div className='mt-7 flex flex-col gap-3 sm:flex-row'>
               <button
                 type='button'
-                onClick={onExplore}
+                onClick={() => onExplore()}
                 className='tc-button-3d inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white'
               >
                 Explorar causas

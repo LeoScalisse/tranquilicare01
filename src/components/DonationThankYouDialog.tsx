@@ -92,7 +92,7 @@ const DonationThankYouDialog: React.FC<Props> = ({
             data-share-root
             className='fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[470px] overflow-x-hidden overflow-y-auto rounded-3xl border border-white/60 bg-card shadow-[0_28px_90px_rgba(2,45,72,0.48)] outline-none'
             style={{ translate: '-50% -50%', transformOrigin: 'center' }}
-            initial={{ opacity: 0, scale: 0.92, y: 24 }}
+            initial={{ opacity: 0, scale: 0.92, y: 24, borderRadius: 24 }}
             animate={departing
               ? {
                   opacity: 1,

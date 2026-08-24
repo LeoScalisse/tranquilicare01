@@ -16,6 +16,23 @@ const SPRING = {
   bounce: 0.12,
 } as const;
 
+const getYouTubeVideoId = (value: string): string | null => {
+  try {
+    const url = new URL(value);
+    if (url.hostname === 'youtu.be' || url.hostname === 'www.youtu.be') {
+      return url.pathname.split('/').filter(Boolean)[0] ?? null;
+    }
+    if (['youtube.com', 'www.youtube.com', 'm.youtube.com'].includes(url.hostname)) {
+      if (url.pathname.startsWith('/embed/')) return url.pathname.split('/')[2] ?? null;
+      if (url.pathname.startsWith('/shorts/')) return url.pathname.split('/')[2] ?? null;
+      return url.searchParams.get('v');
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
+
 const ExpandableVideoPlayer: React.FC<ExpandableVideoPlayerProps> = ({
   src,
   title,
@@ -23,22 +40,27 @@ const ExpandableVideoPlayer: React.FC<ExpandableVideoPlayerProps> = ({
   poster,
 }) => {
   const [open, setOpen] = useState(false);
+  const [previewReady, setPreviewReady] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
   const reducedMotion = useReducedMotion();
-  const close = useCallback(() => {
-    setOpen(false);
-    window.requestAnimationFrame(() => triggerRef.current?.focus());
-  }, []);
+  const youtubeId = getYouTubeVideoId(src);
+  const previewPoster = poster || (youtubeId ? `https://i.ytimg.com/vi/${youtubeId}/hqdefault.jpg` : undefined);
+  const close = useCallback(() => setOpen(false), []);
+
+  useEffect(() => {
+    setPreviewReady(false);
+  }, [src]);
 
   useEffect(() => {
     if (!open) return undefined;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    window.requestAnimationFrame(() => closeRef.current?.focus());
+    const focusFrame = window.requestAnimationFrame(() => closeRef.current?.focus());
 
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.body.style.overflow = previousOverflow;
     };
   }, [open]);
@@ -54,17 +76,30 @@ const ExpandableVideoPlayer: React.FC<ExpandableVideoPlayerProps> = ({
         className='group relative aspect-video w-full max-w-[18rem] overflow-hidden rounded-lg bg-brand-ink text-left shadow-[0_18px_42px_-24px_rgba(12,48,72,0.68)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue'
         aria-label={triggerLabel}
       >
-        <video
-          src={src}
-          poster={poster}
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload='metadata'
-          className='absolute inset-0 h-full w-full object-cover'
-          aria-hidden='true'
-        />
+        {previewPoster && (
+          <img
+            src={previewPoster}
+            alt=''
+            className='absolute inset-0 h-full w-full object-cover'
+            aria-hidden='true'
+          />
+        )}
+        {!youtubeId && (
+          <video
+            src={src}
+            poster={poster}
+            autoPlay
+            muted
+            loop
+            playsInline
+            preload='metadata'
+            onCanPlay={() => setPreviewReady(true)}
+            onLoadedData={() => setPreviewReady(true)}
+            onError={() => setPreviewReady(false)}
+            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-200 ${previewReady ? 'opacity-100' : 'opacity-0'}`}
+            aria-hidden='true'
+          />
+        )}
         <span className='absolute inset-0 bg-black/15 transition-colors duration-200 group-hover:bg-black/25' aria-hidden='true' />
         <span className='absolute inset-0 grid place-items-center' aria-hidden='true'>
           <span className='inline-flex items-center gap-2 rounded-full bg-white/95 px-4 py-2.5 text-sm font-bold text-brand-ink shadow-lg backdrop-blur-sm'>
@@ -75,7 +110,10 @@ const ExpandableVideoPlayer: React.FC<ExpandableVideoPlayerProps> = ({
       </motion.button>
 
       {typeof document !== 'undefined' && createPortal(
-        <AnimatePresence>
+        <AnimatePresence
+          initial={false}
+          onExitComplete={() => triggerRef.current?.focus()}
+        >
           {open && (
           <motion.div
             data-video-overlay
@@ -92,7 +130,7 @@ const ExpandableVideoPlayer: React.FC<ExpandableVideoPlayerProps> = ({
               type='button'
               className='absolute inset-0 cursor-default bg-brand-ink/90 backdrop-blur-xl'
               onClick={close}
-              aria-label='Fechar vídeo'
+              aria-label='Fechar vídeo ao tocar fora'
             />
             <motion.div
               role='dialog'
@@ -102,34 +140,41 @@ const ExpandableVideoPlayer: React.FC<ExpandableVideoPlayerProps> = ({
                 ? { opacity: 0 }
                 : {
                     opacity: 0,
-                    clipPath: 'inset(38% 38% 38% 38% round 18px)',
-                    transform: 'scale(0.96)',
+                    transform: 'scale(0.9)',
                   }}
               animate={{
                 opacity: 1,
-                clipPath: 'inset(0% 0% 0% 0% round 8px)',
                 transform: 'scale(1)',
               }}
               exit={reducedMotion
                 ? { opacity: 0 }
                 : {
                     opacity: 0,
-                    clipPath: 'inset(38% 38% 38% 38% round 18px)',
-                    transform: 'scale(0.96)',
+                    transform: 'scale(0.94)',
                   }}
               transition={reducedMotion ? { duration: 0.01 } : SPRING}
-              className='relative z-10 aspect-video w-full max-w-6xl overflow-hidden rounded-lg bg-black shadow-2xl'
+              className='relative z-10 aspect-video w-full max-w-6xl overflow-hidden rounded-lg bg-black shadow-2xl will-change-transform'
               onClick={(event) => event.stopPropagation()}
             >
-              <video
-                src={src}
-                poster={poster}
-                controls
-                autoPlay
-                playsInline
-                preload='metadata'
-                className='h-full w-full object-contain'
-              />
+              {youtubeId ? (
+                <iframe
+                  src={`https://www.youtube-nocookie.com/embed/${youtubeId}?autoplay=1&rel=0`}
+                  title={title}
+                  allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
+                  allowFullScreen
+                  className='h-full w-full border-0'
+                />
+              ) : (
+                <video
+                  src={src}
+                  poster={poster}
+                  controls
+                  autoPlay
+                  playsInline
+                  preload='metadata'
+                  className='h-full w-full object-contain'
+                />
+              )}
               <button
                 ref={closeRef}
                 type='button'

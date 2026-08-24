@@ -39,8 +39,9 @@
     --brand-blue-deep: 210 55% 18%;
     --brand-yellow: 48 100% 67%;
     --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --motion-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
     --motion-fast: 180ms;
-    --motion-medium: 320ms;
+    --motion-medium: 260ms;
 
     --sidebar-background: 188.18 100% 95.69%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -162,12 +163,16 @@
     bottom: 0;
     left: -75%;
     width: 50%;
-    transform: skewX(-20deg);
+    transform: translate3d(0, 0, 0) skewX(-20deg);
     background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.45), transparent);
-    transition: left 0.78s var(--motion-ease-out);
+    transition: transform 520ms var(--motion-ease-out);
+    will-change: transform;
   }
-  .btn-shine:hover::after {
-    left: 125%;
+
+  @media (hover: hover) and (pointer: fine) {
+    .btn-shine:hover::after {
+      transform: translate3d(400%, 0, 0) skewX(-20deg);
+    }
   }
 
   /* Tactile primary action inspired by the supplied raised-button prototype. */
@@ -232,6 +237,11 @@
 
   .tc-pressable:active:not(:disabled) {
     transform: scale(0.975);
+  }
+
+  .tc-motion-control {
+    transition-duration: var(--motion-fast);
+    transition-timing-function: var(--motion-ease-out);
   }
 
   .tc-button-primary {
@@ -439,6 +449,10 @@ html[data-tc-auth-theme-vt='active']::view-transition-new(root) {
 
 html[data-tc-auth-theme-vt='active']::view-transition-old(root) {
   z-index: 1;
+}
+
+.donation-intelligence-frame {
+  isolation: isolate;
 }
 
 html[data-tc-auth-handoff-vt='active']::view-transition-old(root),

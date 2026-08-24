@@ -20,7 +20,7 @@ const WalletCard: React.FC<WalletCardProps> = ({ credits, onAddCredits }) => {
           <span className='grid h-11 w-11 shrink-0 place-items-center rounded-lg bg-brand-blue/10 text-brand-blue'><WalletCards size={22} /></span>
           <div className='min-w-0'><p className='text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground'>Saldo disponível</p><p className='truncate text-xl font-bold'>{credits.toLocaleString('pt-BR')} créditos</p></div>
         </div>
-        <button onClick={() => setExpanded((current) => !current)} className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-border text-muted-foreground transition-all hover:border-brand-blue hover:text-brand-blue ${expanded ? '' : 'bg-brand-blue text-white hover:text-white'}`} aria-label={expanded ? 'Fechar carteira' : 'Abrir carteira'}>
+        <button onClick={() => setExpanded((current) => !current)} className={`tc-motion-control grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 border-border text-muted-foreground transition-[color,background-color,border-color,transform] active:scale-[0.97] hover:border-brand-blue hover:text-brand-blue ${expanded ? '' : 'bg-brand-blue text-white hover:text-white'}`} aria-label={expanded ? 'Fechar carteira' : 'Abrir carteira'}>
           {expanded ? <X size={18} /> : <Plus size={18} />}
         </button>
       </div>
@@ -30,7 +30,7 @@ const WalletCard: React.FC<WalletCardProps> = ({ credits, onAddCredits }) => {
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} className='overflow-hidden'>
             <div className='space-y-5 px-4 pb-16 pt-4'>
               <div>
-                <div className='flex items-center justify-between gap-2'><h3 className='font-bold'>Forma de pagamento</h3><span className='inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600'><ShieldCheck size={14} />Stripe</span></div>
+                <div className='flex items-center justify-between gap-2'><h3 className='font-bold'>Forma de pagamento</h3><span className='inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600'><ShieldCheck size={14} />Pagamento protegido</span></div>
                 <div className='mt-3 flex items-center gap-3 rounded-lg bg-secondary/65 p-3'>
                   <span className='grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-background text-brand-blue'><CreditCard size={18} /></span>
                   <div className='min-w-0 flex-1'><p className='text-sm font-bold'>Checkout seguro</p><p className='text-xs text-muted-foreground'>Nenhum dado de cartão fica salvo no app.</p></div>
@@ -41,7 +41,7 @@ const WalletCard: React.FC<WalletCardProps> = ({ credits, onAddCredits }) => {
               <div>
                 <p className='text-sm font-bold text-muted-foreground'>Adicionar créditos</p>
                 <div className='mt-2 grid grid-cols-3 gap-2'>
-                  {TOP_UP_OPTIONS.map((amount) => <button key={amount} onClick={() => setSelectedAmount(amount)} className={`rounded-lg border-2 px-2 py-2 text-sm font-bold transition-all ${selectedAmount === amount ? 'border-brand-blue bg-brand-blue/10 text-brand-blue' : 'border-border hover:border-brand-blue/45'}`}>+{amount}</button>)}
+                  {TOP_UP_OPTIONS.map((amount) => <button key={amount} onClick={() => setSelectedAmount(amount)} className={`tc-motion-control rounded-lg border-2 px-2 py-2 text-sm font-bold transition-[color,background-color,border-color,transform] active:scale-[0.985] ${selectedAmount === amount ? 'border-brand-blue bg-brand-blue/10 text-brand-blue' : 'border-border hover:border-brand-blue/45'}`}>+{amount}</button>)}
                 </div>
               </div>
             </div>

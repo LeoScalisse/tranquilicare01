@@ -56,3 +56,31 @@ export const isValidInstagram = (value: string): boolean => {
   return /^@?[A-Za-z0-9._]{1,30}$/.test(instagram)
     || /^https?:\/\/(?:www\.)?instagram\.com\/[A-Za-z0-9._]+\/?$/i.test(instagram);
 };
+
+export const isValidOptionalUrl = (value: string): boolean => {
+  const candidate = value.trim();
+  if (!candidate) return true;
+  try {
+    const url = new URL(candidate);
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
+};
+
+export const isValidYouTubeUrl = (value: string): boolean => {
+  const candidate = value.trim();
+  if (!candidate) return true;
+  try {
+    const url = new URL(candidate);
+    const hostname = url.hostname.toLowerCase();
+    const videoId = hostname === 'youtu.be' || hostname === 'www.youtu.be'
+      ? url.pathname.split('/').filter(Boolean)[0]
+      : ['youtube.com', 'www.youtube.com', 'm.youtube.com'].includes(hostname)
+        ? url.searchParams.get('v') || url.pathname.match(/^\/(?:embed|shorts)\/([^/?]+)/)?.[1]
+        : null;
+    return Boolean(videoId && /^[A-Za-z0-9_-]{6,}$/.test(videoId));
+  } catch {
+    return false;
+  }
+};

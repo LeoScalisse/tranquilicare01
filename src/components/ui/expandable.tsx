@@ -302,7 +302,7 @@ const ExpandableTrigger = React.forwardRef<HTMLButtonElement, React.ButtonHTMLAt
 
 ExpandableTrigger.displayName = 'ExpandableTrigger';
 
-const ExpandableCardHeader = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className, ...props }, ref) => (
+const ExpandableCardHeader = React.forwardRef<HTMLDivElement, HTMLMotionProps<'div'>>(({ className, ...props }, ref) => (
   <motion.div ref={ref} layout className={cn('p-6', className)} {...props} />
 ));
 ExpandableCardHeader.displayName = 'ExpandableCardHeader';

@@ -69,6 +69,20 @@ export const NGOCauseTab: React.FC<CauseTabProps> = ({ ngo, onOpenGoal }) => {
         </span>
         <ChevronRight size={20} className={`shrink-0 transition-transform group-hover:translate-x-0.5 ${categoryTheme.text}`} aria-hidden='true' />
       </button>
+      {Boolean(ngo.objectives?.length) && (
+        <section className='border-b border-border py-7' aria-labelledby={`ngo-objectives-${ngo.id}`}>
+          <p className='text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground'>Próximos objetivos</p>
+          <h2 id={`ngo-objectives-${ngo.id}`} className='sr-only'>Objetivos da organização</h2>
+          <ul className='mt-4 grid gap-3 sm:grid-cols-2'>
+            {ngo.objectives?.map((objective, index) => (
+              <li key={`${ngo.id}-objective-${index}`} className='flex gap-3 rounded-lg border border-border bg-background p-4'>
+                <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold ${categoryTheme.bg} ${categoryTheme.text}`}>{index + 1}</span>
+                <span className='text-sm font-semibold leading-6 text-brand-ink'>{objective}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 };
@@ -124,8 +138,7 @@ export const NGOImpactTab: React.FC<{ ngo: NGO }> = ({ ngo }) => {
     <section aria-labelledby='impact-title'>
       <div className='max-w-3xl'>
         <p className='text-xs font-bold uppercase tracking-[0.16em] text-brand-blue'>Impacto</p>
-        <h2 id='impact-title' className='mt-2 font-display text-3xl font-semibold leading-tight md:text-4xl'>O que já tornamos possível juntos</h2>
-        <p className='font-narrative mt-3 text-sm leading-6 text-muted-foreground'>Números, Impacto e apoios realizado aqui no Tranquilicare.</p>
+        <h2 id='impact-title' className='mt-2 font-display text-3xl font-semibold leading-tight md:text-4xl'>Onde essa história já chegou</h2>
       </div>
 
       {metrics.length > 0 ? (
