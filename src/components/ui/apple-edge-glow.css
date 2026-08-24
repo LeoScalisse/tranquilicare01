@@ -1,164 +1,214 @@
 .apple-edge-glow {
-  --apple-edge-size: 35px;
-  --apple-corner-size: 55px;
-  --apple-edge-blur: 10px;
+  --apple-glow-depth: 30px;
+  --apple-glow-blur: 5.5px;
+  --apple-glow-ambient-blur: 11px;
   position: fixed;
-  z-index: 1;
+  z-index: 115;
   inset: 0;
   overflow: hidden;
   pointer-events: none;
-  transform-origin: center;
+  isolation: isolate;
 }
 
-.apple-edge-glow[data-intensity='sm'] {
-  --apple-edge-size: 20px;
-  --apple-corner-size: 34px;
-  --apple-edge-blur: 7px;
+.apple-edge-glow[data-intensity="sm"] {
+  --apple-glow-depth: 20px;
+  --apple-glow-blur: 4px;
+  --apple-glow-ambient-blur: 8px;
 }
 
-.apple-edge-glow[data-intensity='md'] {
-  --apple-edge-size: 26px;
-  --apple-corner-size: 42px;
-  --apple-edge-blur: 8px;
+.apple-edge-glow[data-intensity="md"] {
+  --apple-glow-depth: 24px;
+  --apple-glow-blur: 4.5px;
+  --apple-glow-ambient-blur: 9px;
 }
 
-.apple-edge-glow[data-intensity='lg'] {
-  --apple-edge-size: 31px;
-  --apple-corner-size: 48px;
-  --apple-edge-blur: 9px;
+.apple-edge-glow[data-intensity="lg"] {
+  --apple-glow-depth: 27px;
+  --apple-glow-blur: 5px;
+  --apple-glow-ambient-blur: 10px;
 }
 
-.apple-edge-glow__rim,
 .apple-edge-glow__surface {
   position: absolute;
-  inset: 7px;
-  border-radius: 24px;
-}
-
-.apple-edge-glow__rim {
-  box-shadow:
-    inset 0 0 0 1px rgb(255 255 255 / 0.9),
-    0 0 9px 1px rgb(255 255 255 / 0.34);
-}
-
-.apple-edge-glow__surface {
+  inset: 0;
   overflow: hidden;
 }
 
-.apple-edge-glow__edge,
-.apple-edge-glow__corner {
+.apple-edge-glow__edge {
   position: absolute;
   display: block;
-  will-change: transform, opacity;
+  filter: blur(var(--apple-glow-blur)) saturate(1.24) brightness(1.05);
+  mix-blend-mode: screen;
+  will-change: transform, opacity, background-position, filter;
+  animation: apple-edge-light-flow 18s ease-in-out infinite alternate;
 }
 
-.apple-edge-glow__edge {
-  filter: blur(var(--apple-edge-blur));
+.apple-edge-glow__edge::before {
+  position: absolute;
+  inset: -7px;
+  background: inherit;
+  content: "";
+  filter: blur(var(--apple-glow-ambient-blur));
+  opacity: 0.48;
 }
 
-.apple-edge-glow__edge--top {
-  top: 0;
-  right: 0;
-  left: 0;
-  height: var(--apple-edge-size);
-  background: linear-gradient(to bottom, rgb(255 244 91 / 0.94), rgb(255 255 255 / 0.62), transparent);
-  transform-origin: center top;
-  animation: apple-edge-shimmer-horizontal 3s ease-in-out infinite;
+.apple-edge-glow__edge--right,
+.apple-edge-glow__edge--left {
+  top: -8%;
+  bottom: -8%;
+  width: var(--apple-glow-depth);
+  background-size: 100% 210%;
 }
 
 .apple-edge-glow__edge--right {
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: var(--apple-edge-size);
-  background: linear-gradient(to left, rgb(84 224 255 / 0.94), rgb(255 255 255 / 0.56), transparent);
-  transform-origin: right center;
-  animation: apple-edge-shimmer-vertical 3s ease-in-out 2.25s infinite;
-}
-
-.apple-edge-glow__edge--bottom {
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: var(--apple-edge-size);
-  background: linear-gradient(to top, rgb(56 182 255 / 0.94), rgb(207 248 255 / 0.58), transparent);
-  transform-origin: center bottom;
-  animation: apple-edge-shimmer-horizontal 3s ease-in-out 1.5s infinite;
+  right: calc(var(--apple-glow-depth) * -0.58);
+  background-image:
+    radial-gradient(
+      ellipse 170% 32% at 100% 10%,
+      rgb(255 241 112 / 0.92),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 180% 38% at 100% 42%,
+      rgb(73 226 255 / 0.96),
+      transparent 74%
+    ),
+    radial-gradient(
+      ellipse 175% 38% at 100% 75%,
+      rgb(40 153 248 / 0.94),
+      transparent 74%
+    ),
+    linear-gradient(
+      to left,
+      rgb(222 253 255 / 0.92) 0%,
+      rgb(62 211 255 / 0.48) 48%,
+      transparent 100%
+    );
 }
 
 .apple-edge-glow__edge--left {
-  top: 0;
-  bottom: 0;
-  left: 0;
-  width: var(--apple-edge-size);
-  background: linear-gradient(to right, rgb(255 252 210 / 0.9), rgb(255 229 77 / 0.48), transparent);
-  transform-origin: left center;
-  animation: apple-edge-shimmer-vertical 3s ease-in-out 0.75s infinite;
+  left: calc(var(--apple-glow-depth) * -0.58);
+  background-image:
+    radial-gradient(
+      ellipse 170% 32% at 0% 12%,
+      rgb(255 245 153 / 0.9),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 180% 38% at 0% 46%,
+      rgb(255 222 78 / 0.88),
+      transparent 74%
+    ),
+    radial-gradient(
+      ellipse 175% 38% at 0% 78%,
+      rgb(73 226 255 / 0.94),
+      transparent 74%
+    ),
+    linear-gradient(
+      to right,
+      rgb(234 254 255 / 0.9) 0%,
+      rgb(68 207 255 / 0.45) 48%,
+      transparent 100%
+    );
+  animation-direction: alternate-reverse;
 }
 
-.apple-edge-glow__corner {
-  width: var(--apple-corner-size);
-  height: var(--apple-corner-size);
-  filter: blur(calc(var(--apple-edge-blur) + 2px));
-  opacity: 0.72;
+.apple-edge-glow__edge--top,
+.apple-edge-glow__edge--bottom {
+  right: -8%;
+  left: -8%;
+  height: var(--apple-glow-depth);
+  background-size: 210% 100%;
 }
 
-.apple-edge-glow__corner--top-left {
-  top: 0;
-  left: 0;
-  background: radial-gradient(circle at top left, rgb(255 244 91 / 0.8), transparent 70%);
+.apple-edge-glow__edge--bottom {
+  bottom: calc(var(--apple-glow-depth) * -0.58);
+  background-image:
+    radial-gradient(
+      ellipse 32% 170% at 10% 100%,
+      rgb(255 242 112 / 0.9),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 40% 180% at 42% 100%,
+      rgb(70 226 255 / 0.96),
+      transparent 74%
+    ),
+    radial-gradient(
+      ellipse 40% 175% at 76% 100%,
+      rgb(37 151 247 / 0.94),
+      transparent 74%
+    ),
+    linear-gradient(
+      to top,
+      rgb(220 253 255 / 0.92) 0%,
+      rgb(54 207 255 / 0.48) 48%,
+      transparent 100%
+    );
+  animation-direction: alternate-reverse;
 }
 
-.apple-edge-glow__corner--top-right {
-  top: 0;
-  right: 0;
-  background: radial-gradient(circle at top right, rgb(255 255 255 / 0.78), transparent 70%);
+.apple-edge-glow__edge--top {
+  top: calc(var(--apple-glow-depth) * -0.58);
+  background-image:
+    radial-gradient(
+      ellipse 32% 170% at 9% 0%,
+      rgb(255 242 112 / 0.9),
+      transparent 72%
+    ),
+    radial-gradient(
+      ellipse 40% 180% at 42% 0%,
+      rgb(255 253 220 / 0.9),
+      transparent 74%
+    ),
+    radial-gradient(
+      ellipse 40% 175% at 76% 0%,
+      rgb(66 220 255 / 0.96),
+      transparent 74%
+    ),
+    linear-gradient(
+      to bottom,
+      rgb(227 254 255 / 0.92) 0%,
+      rgb(53 201 255 / 0.46) 48%,
+      transparent 100%
+    );
 }
 
-.apple-edge-glow__corner--bottom-right {
-  right: 0;
-  bottom: 0;
-  background: radial-gradient(circle at bottom right, rgb(84 224 255 / 0.82), transparent 70%);
+.apple-edge-glow[data-complete="true"] .apple-edge-glow__edge {
+  filter: blur(var(--apple-glow-blur)) saturate(1.32) brightness(1.12);
 }
 
-.apple-edge-glow__corner--bottom-left {
-  bottom: 0;
-  left: 0;
-  background: radial-gradient(circle at bottom left, rgb(56 182 255 / 0.76), transparent 70%);
-}
-
-@keyframes apple-edge-shimmer-horizontal {
-  0%, 100% {
-    opacity: 0.54;
-    transform: scaleX(1);
+@keyframes apple-edge-light-flow {
+  0% {
+    background-position: 0% 10%;
   }
+
   50% {
-    opacity: 1;
-    transform: scaleX(1.1);
+    background-position: 50% 58%;
+  }
+
+  100% {
+    background-position: 100% 90%;
   }
 }
 
-@keyframes apple-edge-shimmer-vertical {
-  0%, 100% {
-    opacity: 0.54;
-    transform: scaleY(1);
-  }
-  50% {
-    opacity: 1;
-    transform: scaleY(1.1);
+@media (max-width: 640px) {
+  .apple-edge-glow {
+    --apple-glow-depth: 24px;
+    --apple-glow-blur: 4.5px;
+    --apple-glow-ambient-blur: 9px;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .apple-edge-glow__edge {
     animation: none;
-    opacity: 0.78;
-    transform: none;
   }
 }
 
-@media (prefers-contrast: more) {
-  .apple-edge-glow__rim {
-    box-shadow: inset 0 0 0 2px rgb(255 255 255 / 0.95);
+@media (prefers-reduced-transparency: reduce) {
+  .apple-edge-glow__edge::before {
+    opacity: 0.28;
+    filter: blur(7px);
   }
 }

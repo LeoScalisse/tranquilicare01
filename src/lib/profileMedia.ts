@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { SupabaseMediaStorage } from '@/data/supabase/supabase-media-storage';
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 
@@ -51,15 +52,12 @@ export const uploadNgoCover = async (file: File, userId: string): Promise<string
 
   const uniqueId = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   const path = `${userId}/covers/${uniqueId}.webp`;
-  const { error } = await supabase.storage.from('profile-media').upload(path, optimized, {
-    cacheControl: '31536000',
+  const storage = new SupabaseMediaStorage(supabase, 'profile-media');
+  const stored = await storage.uploadImage({
+    storageKey: path,
+    body: optimized,
     contentType: 'image/webp',
-    upsert: false,
+    cacheControl: '31536000',
   });
-  if (error) throw error;
-
-  const { data } = supabase.storage.from('profile-media').getPublicUrl(path);
-  if (!data.publicUrl) throw new Error('missing-public-url');
-  return data.publicUrl;
+  return stored.publicUrl;
 };
-

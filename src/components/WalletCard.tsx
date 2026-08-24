@@ -30,7 +30,7 @@ const WalletCard: React.FC<WalletCardProps> = ({ credits, onAddCredits }) => {
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} className='overflow-hidden'>
             <div className='space-y-5 px-4 pb-16 pt-4'>
               <div>
-                <div className='flex items-center justify-between gap-2'><h3 className='font-bold'>Forma de pagamento</h3><span className='inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600'><ShieldCheck size={14} />Stripe</span></div>
+                <div className='flex items-center justify-between gap-2'><h3 className='font-bold'>Forma de pagamento</h3><span className='inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600'><ShieldCheck size={14} />Pagamento protegido</span></div>
                 <div className='mt-3 flex items-center gap-3 rounded-lg bg-secondary/65 p-3'>
                   <span className='grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-background text-brand-blue'><CreditCard size={18} /></span>
                   <div className='min-w-0 flex-1'><p className='text-sm font-bold'>Checkout seguro</p><p className='text-xs text-muted-foreground'>Nenhum dado de cartão fica salvo no app.</p></div>

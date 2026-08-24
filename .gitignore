@@ -31,3 +31,16 @@ dist-ssr
 .stories-chrome-*/
 .chrome-codex-*/
 .tmp-*.pid
+
+# Supabase CLI project link metadata.
+supabase/.temp/
+
+# Temporary Strix scan artifacts. Keep only curated reports in docs/.
+.tmp-strix-repo/
+strix_runs/
+
+# Supabase local branch metadata.
+supabase/.branches/
+
+# TypeScript incremental build metadata.
+*.tsbuildinfo

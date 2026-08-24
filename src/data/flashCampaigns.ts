@@ -1,6 +1,7 @@
-import { FlashCampaign } from '../types';
+import { FlashCampaign } from "../types";
 
-const svgDataUri = (svg: string) => `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+const svgDataUri = (svg: string) =>
+  `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
 
 /** Landscape gradient banner with a short title — demo art for flash campaigns. */
 const campaignImage = (title: string, from: string, to: string) =>
@@ -27,15 +28,41 @@ const reais = (v: number) => v * 100;
 
 export const flashCampaigns: FlashCampaign[] = [
   {
-    id: 'flash-inverno-acolhedor',
-    title: 'Inverno Acolhedor',
-    ngoId: 'demo-abraco-sereno',
-    ngoName: 'Abraço Sereno',
-    category: 'Saúde Mental',
-    description: 'Ajude a preparar 40 kits de inverno até 30 de julho.',
-    image: campaignImage('Inverno Acolhedor', '#38b6ff', '#0369a1'),
+    id: "flash-inverno-acolhedor",
+    title: "Inverno Acolhedor",
+    ngoId: "demo-abraco-sereno",
+    ngoName: "Abraço Sereno",
+    category: "Saúde Mental",
+    description: "Ajude a preparar 40 kits de inverno até 30 de julho.",
+    image: campaignImage("Inverno Acolhedor", "#38b6ff", "#0369a1"),
     raised: reais(3200),
     goal: reais(5000),
     endsAt: now + 3 * DAY + 60 * 60 * 1000,
+  },
+  {
+    id: "flash-recomeco-em-casa",
+    title: "Recomeço em Casa",
+    ngoId: "demo-casa-recomeco",
+    ngoName: "Casa Recomeço",
+    category: "Social",
+    description:
+      "Vamos montar 25 cestas essenciais para famílias que estão recomeçando.",
+    image: campaignImage("Recomeço em Casa", "#f59e0b", "#ea580c"),
+    raised: reais(2150),
+    goal: reais(3500),
+    endsAt: now + 6 * DAY + 4 * 60 * 60 * 1000,
+  },
+  {
+    id: "flash-patas-protegidas",
+    title: "Patas Protegidas",
+    ngoId: "demo-patas-do-bem",
+    ngoName: "Patas do Bem",
+    category: "Pets",
+    description:
+      "Ajude a garantir vacinas, alimentação e cuidados para animais resgatados.",
+    image: campaignImage("Patas Protegidas", "#14b8a6", "#047857"),
+    raised: reais(4870),
+    goal: reais(7000),
+    endsAt: now + 10 * DAY + 2 * 60 * 60 * 1000,
   },
 ];

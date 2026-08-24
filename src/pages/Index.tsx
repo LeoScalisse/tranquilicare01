@@ -40,7 +40,8 @@ const TranquiliCareApp: React.FC = () => {
   const pendingCheckout = useRef<string | null>(null);
   const requestedView = searchParams.get('view');
   const paymentStatus = searchParams.get('payment');
-  const checkoutSessionId = searchParams.get('session_id');
+  const paymentActionId = searchParams.get('payment_action_id') ?? searchParams.get('session_id');
+  const paymentConfirmationToken = searchParams.get('payment_confirmation_token');
   const userEmail = user?.email ?? null;
 
   // `getUser()` is only populated synchronously by the local mock. With
@@ -159,44 +160,44 @@ const TranquiliCareApp: React.FC = () => {
   useEffect(() => {
     if (
       paymentStatus !== 'success'
-      || !checkoutSessionId
+      || !paymentActionId
       || !authHydrated
-      || handledCheckout.current === checkoutSessionId
-      || pendingCheckout.current === checkoutSessionId
+      || handledCheckout.current === paymentActionId
+      || pendingCheckout.current === paymentActionId
     ) {
       return;
     }
 
-    const storageKey = `tc-celebrated-checkout:${checkoutSessionId}`;
+    const storageKey = `tc-celebrated-payment:${paymentActionId}`;
     if (localStorage.getItem(storageKey)) {
-      handledCheckout.current = checkoutSessionId;
+      handledCheckout.current = paymentActionId;
       window.history.replaceState(null, '', window.location.pathname);
       return;
     }
 
-    pendingCheckout.current = checkoutSessionId;
+    pendingCheckout.current = paymentActionId;
     setCurrentView(View.HOME);
-    void waitForDonationConfirmation(checkoutSessionId, userEmail)
+    void waitForDonationConfirmation(paymentActionId, userEmail, paymentConfirmationToken)
       .then((donation) => {
-        if (pendingCheckout.current !== checkoutSessionId) return;
+        if (pendingCheckout.current !== paymentActionId) return;
         pendingCheckout.current = null;
-        handledCheckout.current = checkoutSessionId;
+        handledCheckout.current = paymentActionId;
         setConfirmedDonation(donation);
         setCelebrationPhase('dialog');
         window.history.replaceState(null, '', window.location.pathname);
       })
       .catch((error) => {
-        if (pendingCheckout.current !== checkoutSessionId) return;
+        if (pendingCheckout.current !== paymentActionId) return;
         pendingCheckout.current = null;
         console.error('Could not finish donation confirmation experience:', error);
         toast('Seu pagamento está sendo confirmado. O impacto será atualizado automaticamente.');
       });
-  }, [authHydrated, checkoutSessionId, paymentStatus, userEmail]);
+  }, [authHydrated, paymentActionId, paymentConfirmationToken, paymentStatus, userEmail]);
 
   const handleDonationAnimationComplete = useCallback(() => {
     if (!confirmedDonation) return;
-    if (confirmedDonation.stripe_checkout_session_id) {
-      localStorage.setItem(`tc-celebrated-checkout:${confirmedDonation.stripe_checkout_session_id}`, '1');
+    if (confirmedDonation.payment_action_id) {
+      localStorage.setItem(`tc-celebrated-payment:${confirmedDonation.payment_action_id}`, '1');
     }
     setCelebrationPhase('idle');
     setConfirmedDonation(null);

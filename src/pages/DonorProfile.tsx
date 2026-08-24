@@ -84,7 +84,7 @@ const resizeToDataUrl = (file: File): Promise<string> =>
 
 const DonorProfile: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isSetup = searchParams.get('setup') === '1';
   const [user, setUser] = useState<AppUser | null>(null);
   const [name, setName] = useState('');
@@ -219,7 +219,11 @@ const DonorProfile: React.FC = () => {
       setDetails({ ...normalizedDetails, phone: formatPhone(normalizedDetails.phone) });
       setDirty(false);
       setEditingProfile(false);
-      if (isSetup) navigate('/donor/profile', { replace: true });
+      if (isSetup) {
+        const nextSearchParams = new URLSearchParams(searchParams);
+        nextSearchParams.delete('setup');
+        setSearchParams(nextSearchParams, { replace: true });
+      }
       toast.success('Perfil atualizado!');
     } catch (error) {
       console.error('Error updating donor profile:', error);

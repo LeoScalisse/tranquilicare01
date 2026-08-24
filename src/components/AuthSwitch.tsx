@@ -214,7 +214,7 @@ const VerificationCodeInput: React.FC<VerificationCodeInputProps> = ({ value, on
     if (!pasted) return;
     event.preventDefault();
     onChange(pasted);
-    focusInput(Math.min(pasted.length, CODE_LENGTH) - 1);
+    focusInput(Math.min(pasted.length, EMAIL_CODE_MAX_LENGTH) - 1);
   };
 
   return (

@@ -138,8 +138,7 @@ export const NGOImpactTab: React.FC<{ ngo: NGO }> = ({ ngo }) => {
     <section aria-labelledby='impact-title'>
       <div className='max-w-3xl'>
         <p className='text-xs font-bold uppercase tracking-[0.16em] text-brand-blue'>Impacto</p>
-        <h2 id='impact-title' className='mt-2 font-display text-3xl font-semibold leading-tight md:text-4xl'>O que já tornamos possível juntos</h2>
-        <p className='font-narrative mt-3 text-sm leading-6 text-muted-foreground'>Números, Impacto e apoios realizado aqui no Tranquilicare.</p>
+        <h2 id='impact-title' className='mt-2 font-display text-3xl font-semibold leading-tight md:text-4xl'>Onde essa história já chegou</h2>
       </div>
 
       {metrics.length > 0 ? (

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { motion, AnimatePresence, useInView, useReducedMotion, type Variants } from 'framer-motion';
+import { motion, AnimatePresence, useInView, useReducedMotion, type TargetAndTransition, type Variants } from 'framer-motion';
 import type { AnimationItem } from 'lottie-web';
 
 /**
@@ -151,11 +151,11 @@ const FillWord: React.FC<{ text: string; active: boolean; reduce: boolean }> = (
         aria-hidden="true"
         className="absolute inset-0 text-[#ffeb99]"
         style={maskStyle}
-        initial={{ WebkitMaskPosition: CREST_FILL[0], maskPosition: CREST_FILL[0] }}
+        initial={{ WebkitMaskPosition: CREST_FILL[0], maskPosition: CREST_FILL[0] } as unknown as TargetAndTransition}
         animate={
           active
-            ? { WebkitMaskPosition: CREST_FILL, maskPosition: CREST_FILL }
-            : { WebkitMaskPosition: CREST_FILL[0], maskPosition: CREST_FILL[0] }
+            ? { WebkitMaskPosition: CREST_FILL, maskPosition: CREST_FILL } as unknown as TargetAndTransition
+            : { WebkitMaskPosition: CREST_FILL[0], maskPosition: CREST_FILL[0] } as unknown as TargetAndTransition
         }
         transition={{ duration: FILL_DURATION, delay: 0.1, ease: 'linear' }}
       >
@@ -166,11 +166,11 @@ const FillWord: React.FC<{ text: string; active: boolean; reduce: boolean }> = (
         aria-hidden="true"
         className="absolute inset-0 text-brand-yellow"
         style={maskStyle}
-        initial={{ WebkitMaskPosition: MAIN_FILL[0], maskPosition: MAIN_FILL[0] }}
+        initial={{ WebkitMaskPosition: MAIN_FILL[0], maskPosition: MAIN_FILL[0] } as unknown as TargetAndTransition}
         animate={
           active
-            ? { WebkitMaskPosition: MAIN_FILL, maskPosition: MAIN_FILL }
-            : { WebkitMaskPosition: MAIN_FILL[0], maskPosition: MAIN_FILL[0] }
+            ? { WebkitMaskPosition: MAIN_FILL, maskPosition: MAIN_FILL } as unknown as TargetAndTransition
+            : { WebkitMaskPosition: MAIN_FILL[0], maskPosition: MAIN_FILL[0] } as unknown as TargetAndTransition
         }
         transition={{ duration: FILL_DURATION, delay: 0.1, ease: 'linear' }}
       >

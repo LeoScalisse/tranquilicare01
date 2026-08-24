@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion, type Variants } from 'framer-motion';
 import { HandCoins, HandHeart, Heart, ShieldCheck } from 'lucide-react';
 import {
   COMMUNITY_STEPS,
@@ -52,12 +52,12 @@ const getGreeting = () => {
   return 'boa noite!';
 };
 
-const cardVariants = {
+const cardVariants: Variants = {
   hidden: { opacity: 0, y: 24 },
   show: (i: number) => ({
     opacity: 1,
     y: 0,
-    transition: { duration: 0.55, delay: 0.15 + i * 0.1, ease: [0.22, 1, 0.36, 1] },
+    transition: { duration: 0.55, delay: 0.15 + i * 0.1, ease: [0.22, 1, 0.36, 1] as const },
   }),
 };
 

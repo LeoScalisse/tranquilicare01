@@ -1,6 +1,6 @@
 # Inventário de copys do TranquiliCare
 
-Atualizado em: 16 de agosto de 2026
+Atualizado em: 24 de agosto de 2026
 
 ## Como usar este arquivo
 
@@ -495,8 +495,7 @@ Fonte: `src/components/Stories.tsx:55`.
 | Copy atual | Onde aparece | Quando aparece | Função | Fonte |
 |---|---|---|---|---|
 | IMPACTO | Eyebrow | Sempre | Enquadrar resultados | `src/components/ngo-profile/NGOProfileTabs.tsx:149` |
-| O que já tornamos possível juntos | Título | Sempre | Introduzir resultados realizados | `src/components/ngo-profile/NGOProfileTabs.tsx` |
-| Números, Impacto e apoios realizado aqui no Tranquilicare. | Texto de apoio | Sempre | Contextualizar os resultados exibidos | `src/components/ngo-profile/NGOProfileTabs.tsx` |
+| Onde essa história já chegou | Título | Sempre | Introduzir os resultados já alcançados | `src/components/ngo-profile/NGOProfileTabs.tsx` |
 | Resultado informado | Tipo de métrica | Métrica direta | Diferenciar mensuração | `src/components/ngo-profile/NGOProfileTabs.tsx:40` |
 | Estimativa compartilhada | Tipo de métrica | Métrica estimada | Evitar afirmar causalidade | `src/components/ngo-profile/NGOProfileTabs.tsx:41` |
 | Resultado coletivo | Tipo de métrica | Métrica coletiva | Contextualizar construção conjunta | `src/components/ngo-profile/NGOProfileTabs.tsx:42` |
@@ -584,13 +583,39 @@ Fonte: `src/components/Stories.tsx:55`.
 | Quanto você quer fazer chegar à {nome da ONG}? | Acima e dentro do seletor | Modal de doação | Conectar o valor à causa escolhida | `src/components/NGOProfile.tsx` |
 | Sua doação para {nome da ONG} | Primeira linha do resumo | Sempre | Nomear o valor da doação | `src/components/NGOProfile.tsx` |
 | A definir | Valor da primeira linha | Antes da escolha | Estado vazio | `src/components/NGOProfile.tsx` |
-| Apoio ao TranquiliCare (5%) | Segunda linha | Sempre | Informar o apoio à plataforma | `src/components/NGOProfile.tsx` |
+| Serviço TranquiliCare (5%) | Segunda linha | Sempre | Informar o valor do serviço da plataforma | `src/components/NGOProfile.tsx` |
 | Total | Terceira linha | Sempre | Valor final | `src/components/NGOProfile.tsx` |
 | A sua intenção chega inteira. | Nota abaixo do resumo | Sempre | Reforçar a integridade da doação | `src/components/NGOProfile.tsx` |
 | Escolha um valor | CTA | Nenhum valor | Orientação | `src/components/NGOProfile.tsx` |
-| Continuar | CTA | Valor válido | Avançar à Stripe | `src/components/NGOProfile.tsx` |
-| Preparando seu pagamento... | CTA | Checkout em criação | Feedback | `src/components/NGOProfile.tsx` |
+| Continuar | CTA | Valor válido | Iniciar o pagamento | `src/components/NGOProfile.tsx` |
+| Preparando seu PIX... | CTA | PIX em criação | Informar processamento sem sugerir que o pagamento já foi concluído | `src/components/NGOProfile.tsx` |
 
+### PIX e abertura do QR Code
+
+| Copy atual | Onde aparece | Quando aparece | Função | Fonte |
+|---|---|---|---|---|
+| Seu PIX está pronto. | Título da etapa | PIX gerado e QR Code recolhido | Comunicar que os dados de pagamento estão disponíveis | `src/components/NGOProfile.tsx` |
+| Abra o QR Code ou copie o código para concluir o pagamento pelo seu banco. | Texto de orientação | Antes da abertura do QR Code | Explicar a próxima ação sem expor o payload | `src/components/NGOProfile.tsx` |
+| Só Abrir QR | CTA principal | QR Code recolhido | Revelar o QR Code e as ações de pagamento | `src/components/NGOProfile.tsx`, `src/components/ui/pix-qr-disclosure.tsx` |
+| Pague pelo app do seu banco | Título da etapa | QR Code aberto | Orientar a conclusão no banco escolhido | `src/components/NGOProfile.tsx` |
+| Escaneie o QR Code ou copie o código PIX. | Texto de orientação | QR Code aberto | Apresentar as duas formas de pagamento | `src/components/NGOProfile.tsx` |
+| Copiar código PIX | Botão abaixo do QR Code | QR Code aberto | Copiar o PIX Copia e Cola sem mostrá-lo na interface | `src/components/ui/pix-qr-disclosure.tsx` |
+| A doação será confirmada assim que o pagamento for identificado. | Nota abaixo do componente PIX | PIX gerado | Explicar que gerar o PIX não equivale a confirmar o pagamento | `src/components/NGOProfile.tsx` |
+| Pagamento concluído | CTA após o QR Code | QR Code aberto | Iniciar a espera pela confirmação do backend | `src/components/NGOProfile.tsx` |
+| Alterar valor | Ação abaixo do componente PIX | PIX gerado | Voltar à escolha de valor | `src/components/NGOProfile.tsx` |
+| Copiado | Mesmo botão | Cópia concluída | Dar retorno imediato da ação | `src/components/ui/pix-qr-disclosure.tsx` |
+| Código PIX copiado. | Toast | Cópia concluída | Confirmar a cópia fora do componente | `src/components/NGOProfile.tsx` |
+| Não foi possível copiar o código PIX. | Toast | Falha ao acessar a área de transferência | Orientar implicitamente uma nova tentativa | `src/components/NGOProfile.tsx` |
+
+### Identificação do pagamento
+
+| Copy atual | Onde aparece | Quando aparece | Função | Fonte |
+|---|---|---|---|---|
+| Confirmando seu pagamento... | Título do estado de espera | Após “Pagamento concluído” | Informar que o pagamento ainda não foi confirmado | `src/components/NGOProfile.tsx` |
+| Assim que o PIX for identificado, sua doação será confirmada automaticamente. | Texto do estado de espera | Confirmação pendente | Explicar a atualização automática pelo backend | `src/components/NGOProfile.tsx` |
+| Pagamento identificado | Título do estado de sucesso | Pagamento confirmado pelo provedor | Comunicar o reconhecimento antes da celebração final | `src/components/NGOProfile.tsx` |
+| Seu apoio foi confirmado com segurança. | Texto do estado de sucesso | Durante o check animado | Reforçar a confirmação segura | `src/components/NGOProfile.tsx` |
+| Ainda não identificamos o pagamento. Aguarde alguns instantes e tente novamente. | Toast | Tempo de espera esgotado ou falha de consulta | Permitir nova tentativa sem criar um falso sucesso | `src/components/NGOProfile.tsx` |
 ### Confirmação
 
 | Copy atual | Onde aparece | Quando aparece | Função | Fonte |
@@ -625,7 +650,8 @@ Fonte: `src/components/Stories.tsx:55`.
 | Saldo disponível | Cabeçalho | Identificar créditos | `src/components/WalletCard.tsx:21` |
 | {n} créditos | Cabeçalho | Mostrar saldo | `src/components/WalletCard.tsx:21` |
 | Abrir carteira / Fechar carteira | Ação acessível | Expandir ou recolher | `src/components/WalletCard.tsx:23` |
-| Forma de pagamento | Painel expandido | Contextualizar Stripe | `src/components/WalletCard.tsx:33` |
+| Forma de pagamento | Painel expandido | Identificar a seção | `src/components/WalletCard.tsx:33` |
+| Pagamento protegido | Selo da forma de pagamento | Reforçar segurança sem expor o gateway | `src/components/WalletCard.tsx:33` |
 | Checkout seguro | Linha de segurança | Reforçar proteção | `src/components/WalletCard.tsx:36` |
 | Nenhum dado de cartão fica salvo no app. | Linha de segurança | Explicar privacidade | `src/components/WalletCard.tsx:36` |
 | Adicionar créditos | Seletor e botão | Recarregar | `src/components/WalletCard.tsx:42` |
@@ -797,9 +823,8 @@ Esta é a experiência aberta pelo seletor “ONGs verificadas com cuidado” e 
 | Copy atual | Gatilho | Onde aparece | Fonte |
 |---|---|---|---|
 | Escolha um valor entre R$ 0,51 e R$ 100.000,00. | Valor fora do intervalo | Toast | `src/components/NGOProfile.tsx:72` |
-| O pagamento ainda não foi configurado no ambiente. | Função de checkout ausente | Toast | `src/components/NGOProfile.tsx:85` |
-| Não foi possível iniciar o pagamento. Tente novamente. | Falha de checkout | Toast | `src/components/NGOProfile.tsx:87` |
-| Pagamento cancelado. Nenhuma doação foi concluída. | Retorno cancelado da Stripe | Toast na página inicial | `src/pages/Index.tsx:133` |
+| Não foi possível gerar o PIX. Confira o valor e tente novamente. | Falha ao criar o PIX | Toast | `src/components/NGOProfile.tsx:147` |
+| Pagamento cancelado. Nenhuma doação foi concluída. | Retorno cancelado do provedor de pagamento | Toast na página inicial | `src/pages/Index.tsx:133` |
 | Seu pagamento está sendo confirmado. O impacto será atualizado automaticamente. | Confirmação demorou ou falhou temporariamente | Toast na página inicial | `src/pages/Index.tsx:169` |
 
 ### Rota inexistente
@@ -884,6 +909,10 @@ Estes textos podem não estar sempre visíveis, mas são lidos por tecnologias a
 | Abrir história: {legenda} | Publicação na aba Histórias | `src/components/ngo-profile/NGOProfileTabs.tsx:115` |
 | Valor da doação: {valor}. Arraste para cima ou para baixo para alterar. | Seletor de valor | `src/components/ui/donation-amount-wheel.tsx:410` |
 | Editar valor manualmente / Concluir edição manual | Lápis do seletor | `src/components/ui/donation-amount-wheel.tsx:508` |
+| Pagamento por PIX | Região do componente de pagamento | `src/components/ui/pix-qr-disclosure.tsx:80` |
+| QR Code PIX para pagamento | Imagem ou QR Code gerado no navegador | `src/components/ui/pix-qr-disclosure.tsx:146`, `src/components/ui/pix-qr-disclosure.tsx:155` |
+| Copiar código PIX / Código PIX copiado | Botão de cópia, conforme o estado | `src/components/ui/pix-qr-disclosure.tsx:166` |
+| Fechar QR Code | Botão de fechamento do componente expandido | `src/components/ui/pix-qr-disclosure.tsx:196` |
 | Esfera de histórias interativa | Esfera da página inicial | `src/components/ui/img-sphere.tsx:138` |
 | Arraste para explorar as histórias | Dica opcional da esfera | `src/components/ui/img-sphere.tsx:179` |
 | Criando imagem para compartilhar / Compartilhar como imagem | Botão de captura | `src/components/ShareCameraButton.tsx:83` |
@@ -940,7 +969,7 @@ Esta seção não altera a aplicação. Ela registra inconsistências encontrada
 | Cadastro da organização | `src/pages/NGOAccountProfile.tsx`, `src/lib/organizationProfile.ts` |
 | Perfil público da ONG | `src/components/NGOProfile.tsx`, `src/pages/NGOPublicProfile.tsx` |
 | Perfil do doador | `src/pages/DonorProfile.tsx`, `src/components/WalletCard.tsx` |
-| Doação e agradecimento | `src/components/NGOProfile.tsx`, `src/components/DonationThankYouDialog.tsx`, `src/components/ShareCameraButton.tsx` |
+| Doação, PIX e agradecimento | `src/components/NGOProfile.tsx`, `src/components/ui/donation-amount-wheel.tsx`, `src/components/ui/pix-qr-disclosure.tsx`, `src/components/DonationThankYouDialog.tsx`, `src/components/ShareCameraButton.tsx` |
 | Narrativa da doação | `src/pages/DonationIntegrityDiscovery.tsx`, `src/components/discovery/DonationFrictionCards.tsx`, `src/components/discovery/DonationLongRoadScene.tsx` |
 | Narrativa da verificação | `src/pages/VerificationDiscovery.tsx`, `src/components/discovery/VerificationVisuals.tsx`, `src/data/verificationSeals.ts` |
 | Conteúdo de demonstração | `src/data/demoNgos.ts`, `src/data/flashCampaigns.ts` |

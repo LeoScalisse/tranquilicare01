@@ -372,7 +372,7 @@ const ProfileFields: React.FC<ProfileFieldsProps> = ({
 
 const NGOAccountProfile: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isSetup = searchParams.get('setup') === '1';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -577,7 +577,11 @@ const NGOAccountProfile: React.FC = () => {
       setFieldErrors({});
       setProfileSaved(true);
       setEditing(false);
-      if (isSetup) navigate('/ngo/profile', { replace: true });
+      if (isSetup) {
+        const nextSearchParams = new URLSearchParams(searchParams);
+        nextSearchParams.delete('setup');
+        setSearchParams(nextSearchParams, { replace: true });
+      }
       toast.success('Perfil da organização atualizado.');
     } catch {
       toast.error('Não foi possível salvar o perfil.');

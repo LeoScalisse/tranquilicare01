@@ -1,5 +1,5 @@
--- TranquiliCare Supabase foundation
--- Run this in the Supabase SQL editor before moving app data out of demo files.
+-- Legacy consolidated snapshot. Versioned files in supabase/migrations are the
+-- source of truth for new environments. Do not apply this file after migrations.
 
 create extension if not exists pgcrypto;
 

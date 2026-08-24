@@ -1,0 +1,26 @@
+project_id = "tranquilicare01"
+
+# Donations can be started without an account. The function validates every
+# amount and destination server-side and only trusts a user identity after
+# verifying an optional Supabase access token inside the handler.
+[functions.create-checkout-session]
+verify_jwt = false
+
+[functions.create-payment]
+verify_jwt = false
+
+# The checkout session ID is an opaque Stripe identifier. This endpoint
+# verifies it against Stripe and returns only the associated public result.
+[functions.confirm-checkout-session]
+verify_jwt = false
+
+[functions.confirm-payment]
+verify_jwt = false
+
+# Stripe authenticates webhook deliveries with Stripe-Signature, not a
+# Supabase JWT. Signature verification remains mandatory in the handler.
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.payment-webhook]
+verify_jwt = false

@@ -1,58 +1,134 @@
-import { supabase } from './supabase';
-import type { DonationRow } from './impact';
+import { supabase } from "./supabase";
+import type { DonationRow } from "./impact";
 
-export interface DonationCheckoutInput {
-  ngoId: string;
+export interface DonationPaymentInput {
+  organizationId: string;
   campaignId?: string;
   amountCents: number;
+  method?: "card" | "pix" | "boleto";
+  provider?: "stripe" | "mercado_pago";
 }
 
-type CheckoutDonationRow = {
-  id: string;
-  donor_id: string | null;
-  ngo_id: string | null;
-  amount_cents: number;
-  created_at: string;
-  stripe_checkout_session_id: string | null;
-  status: 'pending' | 'succeeded' | 'failed' | 'refunded';
+type PublicPaymentConfirmation = {
+  status?:
+    | "pending"
+    | "paid"
+    | "failed"
+    | "canceled"
+    | "refunded"
+    | "partially_refunded"
+    | "disputed";
+  donation?: {
+    id: string;
+    organizationId: string | null;
+    amountCents: number;
+    createdAt: string;
+    paymentActionId: string | null;
+  };
 };
 
-type PublicCheckoutConfirmation = {
-  status?: CheckoutDonationRow['status'];
-  donation?: Omit<CheckoutDonationRow, 'donor_id' | 'status'>;
+type CreatePaymentResponse = {
+  action?: {
+    type?: "redirect" | "qr_code" | "client_secret" | "completed";
+    redirectUrl?: string;
+    qrCode?: string;
+    qrCodeText?: string;
+  };
+  confirmationToken?: string;
+  actionId?: string;
+  paymentId?: string;
 };
 
-export const createDonationCheckout = async (input: DonationCheckoutInput): Promise<string> => {
-  if (!supabase) throw new Error('payments-not-configured');
+export const startDonationPayment = async (
+  input: DonationPaymentInput,
+): Promise<string> => {
+  if (!supabase) throw new Error("payments-not-configured");
 
-  const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-    body: input,
-  });
+  const { data, error } =
+    await supabase.functions.invoke<CreatePaymentResponse>("create-payment", {
+      body: input,
+    });
 
   if (error) {
     const response = (error as { context?: Response }).context;
     if (response) {
       try {
         const body = await response.clone().json();
-        if (typeof body?.error === 'string') throw new Error(body.error);
+        if (typeof body?.error === "string") throw new Error(body.error);
       } catch (responseError) {
-        if (responseError instanceof Error && responseError.message !== 'Unexpected end of JSON input') {
+        if (
+          responseError instanceof Error &&
+          responseError.message !== "Unexpected end of JSON input"
+        ) {
           throw responseError;
         }
       }
     }
     throw error;
   }
-  const url = typeof data?.url === 'string' ? data.url : '';
-  if (!url) throw new Error('checkout-url-missing');
+  const url =
+    data?.action?.type === "redirect" &&
+    typeof data.action.redirectUrl === "string"
+      ? data.action.redirectUrl
+      : "";
+  if (!url) throw new Error("payment-action-missing");
   return url;
 };
+export type PixPaymentAction = {
+  actionId: string;
+  qrCode?: string;
+  qrCodeText: string;
+  confirmationToken: string;
+};
 
-const waitForAnonymousDonationConfirmation = (
-  sessionId: string,
+export const startMercadoPagoPixDonation = async (
+  input: Omit<DonationPaymentInput, "provider" | "method">,
+): Promise<PixPaymentAction> => {
+  if (!supabase) throw new Error("payments-not-configured");
+
+  const { data, error } = await supabase.functions.invoke<
+    CreatePaymentResponse & { actionId?: string }
+  >("create-payment", {
+    body: { ...input, provider: "mercado_pago", method: "pix" },
+  });
+
+  if (error) {
+    const response = (error as { context?: Response }).context;
+    if (response) {
+      const body = await response
+        .clone()
+        .json()
+        .catch(() => null);
+      if (typeof body?.code === "string") throw new Error(body.code);
+      if (typeof body?.error === "string") throw new Error(body.error);
+    }
+    throw error;
+  }
+
+  const action = data?.action;
+  if (
+    action?.type !== "qr_code" ||
+    !action.qrCodeText ||
+    !data?.confirmationToken ||
+    !data.actionId
+  ) {
+    throw new Error("pix-action-missing");
+  }
+
+  return {
+    actionId: data.actionId,
+    qrCode: action.qrCode,
+    qrCodeText: action.qrCodeText,
+    confirmationToken: data.confirmationToken,
+  };
+};
+const waitForProviderDonationConfirmation = (
+  actionId: string,
+  donorEmail: string | null,
+  confirmationToken: string | null,
   timeoutMs = 60_000,
 ): Promise<DonationRow> => {
-  if (!supabase) return Promise.reject(new Error('payments-not-configured'));
+  if (!supabase) return Promise.reject(new Error("payments-not-configured"));
 
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -66,145 +142,81 @@ const waitForAnonymousDonationConfirmation = (
     const check = async () => {
       if (checking || settled) return;
       checking = true;
-      const { data, error } = await supabase.functions.invoke<PublicCheckoutConfirmation>(
-        'confirm-checkout-session',
-        { body: { sessionId } },
-      );
+      const { data, error } =
+        await supabase.functions.invoke<PublicPaymentConfirmation>(
+          "confirm-payment",
+          {
+            body: confirmationToken
+              ? { actionId, confirmationToken }
+              : { actionId },
+          },
+        );
       checking = false;
 
       if (settled) return;
       if (error) {
-        console.error('Could not confirm anonymous checkout donation:', error);
+        console.error("Could not confirm donation payment:", error);
         return;
       }
-      if (data?.status === 'failed' || data?.status === 'refunded') {
+      if (
+        data?.status === "failed" ||
+        data?.status === "canceled" ||
+        data?.status === "refunded" ||
+        data?.status === "partially_refunded" ||
+        data?.status === "disputed"
+      ) {
         settled = true;
         cleanup();
-        reject(new Error('payment-not-succeeded'));
+        reject(new Error("payment-not-succeeded"));
         return;
       }
-      if (data?.status !== 'succeeded' || !data.donation) return;
+      if (data?.status !== "paid" || !data.donation) return;
 
-      if (settled) return;
       settled = true;
       cleanup();
       resolve({
         id: data.donation.id,
-        amount: Number(data.donation.amount_cents) || 0,
+        amount: Number(data.donation.amountCents) || 0,
         donor_id: null,
-        donor_email: null,
-        created_at: data.donation.created_at,
-        ngo_id: data.donation.ngo_id,
-        stripe_checkout_session_id: data.donation.stripe_checkout_session_id,
-      });
-    };
-
-    const pollTimer = window.setInterval(() => void check(), 1500);
-    const timeoutTimer = window.setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      reject(new Error('payment-confirmation-timeout'));
-    }, timeoutMs);
-
-    void check();
-  });
-};
-
-const waitForAuthenticatedDonationConfirmation = (
-  sessionId: string,
-  donorEmail: string,
-  timeoutMs = 60_000,
-): Promise<DonationRow> => {
-  if (!supabase) return Promise.reject(new Error('payments-not-configured'));
-
-  return new Promise((resolve, reject) => {
-    let settled = false;
-    let checking = false;
-    const channel = supabase.channel(`checkout-confirmation-${sessionId}`);
-
-    const cleanup = () => {
-      window.clearInterval(pollTimer);
-      window.clearTimeout(timeoutTimer);
-      void supabase.removeChannel(channel);
-    };
-
-    const finish = (row: CheckoutDonationRow) => {
-      if (settled) return;
-      settled = true;
-      cleanup();
-      resolve({
-        id: row.id,
-        amount: Number(row.amount_cents) || 0,
-        donor_id: row.donor_id,
         donor_email: donorEmail,
-        created_at: row.created_at,
-        ngo_id: row.ngo_id,
-        stripe_checkout_session_id: row.stripe_checkout_session_id,
+        created_at: data.donation.createdAt,
+        ngo_id: data.donation.organizationId,
+        payment_action_id: data.donation.paymentActionId,
       });
     };
 
-    const check = async () => {
-      if (checking || settled) return;
-      checking = true;
-      const { data, error } = await supabase
-        .from('donations')
-        .select('id, donor_id, ngo_id, amount_cents, created_at, stripe_checkout_session_id, status')
-        .eq('stripe_checkout_session_id', sessionId)
-        .maybeSingle<CheckoutDonationRow>();
-      checking = false;
-
-      if (settled) return;
-      if (error) {
-        console.error('Could not confirm checkout donation:', error);
-        return;
-      }
-      if (data?.status === 'succeeded') finish(data);
-      if (data?.status === 'failed' || data?.status === 'refunded') {
-        settled = true;
-        cleanup();
-        reject(new Error('payment-not-succeeded'));
-      }
-    };
-
-    channel
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'donations',
-          filter: `stripe_checkout_session_id=eq.${sessionId}`,
-        },
-        (payload) => {
-          const row = payload.new as CheckoutDonationRow;
-          if (row.status === 'succeeded') finish(row);
-        },
-      )
-      .subscribe((status) => {
-        if (status === 'SUBSCRIBED') void check();
-      });
-
-    const pollTimer = window.setInterval(() => void check(), 1500);
+    const pollTimer = window.setInterval(() => void check(), 2_000);
     const timeoutTimer = window.setTimeout(() => {
       if (settled) return;
       settled = true;
       cleanup();
-      reject(new Error('payment-confirmation-timeout'));
+      reject(new Error("payment-confirmation-timeout"));
     }, timeoutMs);
 
     void check();
   });
 };
-
-/** Resolves only after Stripe and the signed webhook confirm the checkout. */
+/** Resolves only after the backend confirms the current status with the payment provider. */
 export const waitForDonationConfirmation = (
-  sessionId: string,
+  actionId: string,
   donorEmail: string | null,
+  confirmationToken: string | null,
   timeoutMs = 60_000,
 ): Promise<DonationRow> => {
-  if (!sessionId.startsWith('cs_')) return Promise.reject(new Error('invalid-checkout-session'));
-  return donorEmail
-    ? waitForAuthenticatedDonationConfirmation(sessionId, donorEmail, timeoutMs)
-    : waitForAnonymousDonationConfirmation(sessionId, timeoutMs);
+  if (!actionId || actionId.length > 255)
+    return Promise.reject(new Error("invalid-payment-action"));
+  if (
+    !donorEmail &&
+    (!confirmationToken ||
+      confirmationToken.length < 32 ||
+      confirmationToken.length > 255)
+  ) {
+    return Promise.reject(new Error("invalid-payment-confirmation-token"));
+  }
+  return waitForProviderDonationConfirmation(
+    actionId,
+    donorEmail,
+    confirmationToken,
+    timeoutMs,
+  );
 };

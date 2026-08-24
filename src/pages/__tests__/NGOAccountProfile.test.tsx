@@ -136,6 +136,8 @@ describe('NGOAccountProfile', () => {
         },
       });
     });
-    expect(screen.getByTestId('location').textContent).toBe('/ngo/profile');
+    await waitFor(() => {
+      expect(screen.getByTestId('location').textContent).toBe('/ngo/profile');
+    });
   });
 });

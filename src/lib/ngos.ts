@@ -1,52 +1,33 @@
 import { demoNgos } from '@/data/demoNgos';
+import type { PublicOrganizationRecord } from '@/data/repositories/organization.repository';
+import { SupabaseOrganizationRepository } from '@/data/supabase/supabase-organization.repository';
 import type { AppUser } from '@/lib/authTypes';
 import { supabase } from '@/lib/supabase';
 import type { NGO } from '@/types';
-
-type PublicNgoRow = {
-  user_id: string;
-  name: string | null;
-  email: string | null;
-  avatar_url: string | null;
-  description: string | null;
-  category: string | null;
-  goal: string | null;
-  objectives: unknown;
-  youtube_url: string | null;
-  cover_image_url: string | null;
-  instagram: string | null;
-  phone: string | null;
-  cnpj: string | null;
-  address: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  geocoded_address: string | null;
-  status: 'approved';
-};
 
 const stringArray = (value: unknown): string[] => Array.isArray(value)
   ? value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean)
   : [];
 
-const rowToNgo = (row: PublicNgoRow): NGO => ({
-  id: row.user_id,
-  name: row.name?.trim() || 'Organização',
-  description: row.description?.trim() || '',
-  category: row.category?.trim() || 'Outros',
-  goal: row.goal?.trim() || '',
+const rowToNgo = (row: PublicOrganizationRecord): NGO => ({
+  id: row.id,
+  name: row.name || 'Organização',
+  description: row.description,
+  category: row.primaryCategory || 'Outros',
+  goal: row.goal,
   objectives: stringArray(row.objectives),
-  causeVideo: row.youtube_url?.trim() || undefined,
-  image: row.avatar_url?.trim() || '/favicon.png',
-  coverImage: row.cover_image_url?.trim() || undefined,
-  email: row.email?.trim() || '',
-  instagram: row.instagram?.trim() || '',
-  phone: row.phone?.trim() || undefined,
-  cnpj: row.cnpj?.trim() || undefined,
-  address: row.address?.trim() || undefined,
+  causeVideo: row.youtubeUrl || undefined,
+  image: row.avatarUrl || '/favicon.png',
+  coverImage: row.coverImageUrl || undefined,
+  email: row.publicEmail,
+  instagram: row.instagram,
+  phone: row.phone || undefined,
+  cnpj: row.cnpj || undefined,
+  address: row.address || undefined,
   latitude: row.latitude,
   longitude: row.longitude,
-  geocodedAddress: row.geocoded_address?.trim() || undefined,
-  verified: true,
+  geocodedAddress: row.geocodedAddress || undefined,
+  verified: row.verified,
   status: 'approved',
   posts: [],
 });
@@ -85,15 +66,17 @@ export const loadMarketplaceNgos = async (viewer?: AppUser | null): Promise<NGO[
     ? [ownerNgo, ...demoNgos.filter((ngo) => ngo.id !== ownerNgo.id)]
     : demoNgos;
 
-  const { data, error } = await supabase.rpc('list_public_ngos');
-  if (error) {
+  let publicNgos: NGO[];
+  try {
+    const repository = new SupabaseOrganizationRepository(supabase);
+    publicNgos = (await repository.listPublic()).map(rowToNgo);
+  } catch (error) {
     console.error('Could not load public organizations:', error);
     return ownerNgo
       ? [ownerNgo, ...demoNgos.filter((ngo) => ngo.id !== ownerNgo.id)]
       : demoNgos;
   }
 
-  const publicNgos = ((data ?? []) as PublicNgoRow[]).map(rowToNgo);
   const merged = ownerNgo
     ? [ownerNgo, ...publicNgos.filter((ngo) => ngo.id !== ownerNgo.id)]
     : publicNgos;
@@ -109,4 +92,3 @@ export const loadNgoById = async (ngoId: string, viewer?: AppUser | null): Promi
   const ngos = await loadMarketplaceNgos(viewer);
   return ngos.find((ngo) => ngo.id === ngoId) ?? null;
 };
-

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { HandHeart } from 'lucide-react';
+import { isValidElement } from 'react';
 
 import { buildMobileNavItems } from '@/components/mobileNavItems';
 import { View } from '@/types';
@@ -19,6 +20,7 @@ describe('cause navigation', () => {
     });
 
     expect(items.map((item) => item.label)).toEqual(['Home', 'Hist\u00f3rias', 'Entrar']);
-    expect(items.find((item) => item.key === 'historias')?.icon.type).toBe(HandHeart);
+    const storiesIcon = items.find((item) => item.key === 'historias')?.icon;
+    expect(isValidElement(storiesIcon) ? storiesIcon.type : null).toBe(HandHeart);
   });
 });

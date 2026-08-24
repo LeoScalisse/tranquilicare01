@@ -84,6 +84,8 @@ describe('DonorProfile personalization', () => {
         },
       });
     });
-    expect(screen.getByTestId('location').textContent).toBe('/donor/profile');
+    await waitFor(() => {
+      expect(screen.getByTestId('location').textContent).toBe('/donor/profile');
+    });
   });
 });
