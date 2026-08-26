@@ -32,12 +32,23 @@ describe("startMercadoPagoPixDonation", () => {
       startMercadoPagoPixDonation({
         organizationId: "demo-abraco-sereno",
         amountCents: 5000,
+        payerEmail: "doador@exemplo.com",
       }),
     ).resolves.toEqual({
       actionId: "ORD-1",
       confirmationToken: "token-1",
       qrCode: undefined,
       qrCodeText: "000201-test-pix",
+    });
+
+    expect(invoke).toHaveBeenCalledWith("create-payment", {
+      body: {
+        organizationId: "demo-abraco-sereno",
+        amountCents: 5000,
+        payerEmail: "doador@exemplo.com",
+        provider: "mercado_pago",
+        method: "pix",
+      },
     });
   });
 

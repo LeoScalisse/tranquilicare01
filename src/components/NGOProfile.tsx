@@ -1,5 +1,6 @@
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { flushSync } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Check,
@@ -36,15 +37,24 @@ import AppleEdgeGlow from "@/components/ui/apple-edge-glow";
 import { PixQrDisclosure } from "@/components/ui/pix-qr-disclosure";
 import { PaymentSuccessCheck } from "@/components/ui/payment-success-check";
 import ViewOnMap from "@/components/ui/view-on-map";
-import donationEnterSound from "@/assets/audio/apple-intelligence-enter.mp3";
-import donationExitSound from "@/assets/audio/apple-intelligence-exit.mp3";
+import EmbeddedVideo from "@/components/ui/embedded-video";
+import donationCelebrationSound from "@/assets/audio/0807.MP3";
+import checkoutStageSound from "@/assets/audio/apple-intelligence-enter.mp3";
+import { scheduleDonationSuccessAudio } from "@/lib/donationCelebrationAudio";
+import { playCheckoutStageAudio } from "@/lib/checkoutStageAudio";
 import {
   NGOCauseTab,
   NGOImpactTab,
   NGOStoriesTab,
 } from "@/components/ngo-profile/NGOProfileTabs";
+import AfterDonationWorkspace from "@/components/ngo-profile/AfterDonationWorkspace";
+import { canRenderAfterDonationTab } from "@/lib/afterDonation";
+import {
+  getTranquiliCarePrototypeRelationships,
+  isTranquiliCarePrototypeAccount,
+} from "@/data/tranquilicarePrototype";
 
-type ProfileTab = "causa" | "historias" | "impacto";
+type ProfileTab = "causa" | "historias" | "impacto" | "after_donation";
 
 type DonationCheckoutStage =
   | "amount"
@@ -53,20 +63,19 @@ type DonationCheckoutStage =
   | "confirming"
   | "confirmed";
 
+type DonationViewTransition = {
+  finished: Promise<void>;
+};
+
+type DonationViewTransitionDocument = Document & {
+  startViewTransition?: (update: () => void) => DonationViewTransition;
+};
+
 interface NGOProfileProps {
   ngo: NGO;
   ownerMode?: boolean;
   onEditProfile?: () => void;
 }
-
-const getLocationLabel = (address?: string) => {
-  if (!address?.trim()) return null;
-  const parts = address
-    .split(",")
-    .map((part) => part.trim())
-    .filter(Boolean);
-  return parts.slice(-2).join(", ");
-};
 
 const NGOProfile: React.FC<NGOProfileProps> = ({
   ngo,
@@ -81,6 +90,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showDonationModal, setShowDonationModal] = useState(false);
   const [donationAmount, setDonationAmount] = useState<number | null>(null);
+  const [payerEmail, setPayerEmail] = useState(() => getUser()?.email ?? "");
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [zoomedPost, setZoomedPost] = useState<NGOPost | null>(null);
   const [pixPayment, setPixPayment] = useState<Awaited<
@@ -92,12 +102,44 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   const [confirmedDonation, setConfirmedDonation] =
     useState<DonationRow | null>(null);
   const [copiedPhone, setCopiedPhone] = useState(false);
-  const donationEnterAudioRef = useRef<HTMLAudioElement>(null);
-  const donationExitAudioRef = useRef<HTMLAudioElement>(null);
+  const donationSuccessAudioRef = useRef<HTMLAudioElement>(null);
+  const checkoutStageAudioRef = useRef<HTMLAudioElement>(null);
+  const previousGlowStageRef = useRef(0);
   const categoryDefinition = getNgoCategory(ngo.category);
   const categoryTheme = getNgoCategoryTheme(ngo.category);
   const sealTriggerId = `ngo-verification-seal-${ngo.id}`;
-  const locationLabel = getLocationLabel(ngo.address);
+  const currentDonor = getUser();
+  const isTranquiliCarePrototype =
+    ownerMode && isTranquiliCarePrototypeAccount(ngo.email);
+  const canSeeAfterDonation = canRenderAfterDonationTab({
+    ownerMode,
+    accountType: currentDonor?.accountType ?? null,
+    currentUserId: currentDonor?.id ?? null,
+    organizationId: ngo.id,
+  });
+  const donorName = currentDonor?.name?.trim() || "Apoiador TranquiliCare";
+  const donorUsername =
+    currentDonor?.donorProfile?.instagram?.trim() ||
+    `@${donorName
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ".")
+      .replace(/^\.|\.$/g, "")}`;
+  const ngoPhotos = useMemo(() => {
+    const available = [
+      ...ngo.posts.filter((post) => post.type === "image").map((post) => post.url),
+    ].filter((photo): photo is string => Boolean(photo));
+    return Array.from(
+      { length: 3 },
+      (_, index) => available[index % Math.max(available.length, 1)] || ngo.image,
+    );
+  }, [ngo.image, ngo.posts]);
+  const friendCodeSource = currentDonor?.id || confirmedDonation?.id || ngo.id;
+  const friendCode = `TC-${friendCodeSource
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .slice(-6)
+    .toUpperCase()}`;
 
   const amountCents = useMemo(
     () =>
@@ -109,26 +151,55 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
     [donationAmount],
   );
   const isDonationAmountValid = amountCents >= 51 && amountCents <= 10_000_000;
+  const normalizedPayerEmail = payerEmail.trim().toLowerCase();
+  const isPayerEmailValid =
+    normalizedPayerEmail.length <= 254 &&
+    /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normalizedPayerEmail);
   const platformFeeCents = Math.round(amountCents * 0.05);
   const totalCents = amountCents + platformFeeCents;
+  const donationGlowStage: 0 | 1 | 2 | 3 | 4 = !showDonationModal
+    ? 0
+    : donationCheckoutStage === "pix" ||
+        donationCheckoutStage === "confirming" ||
+        donationCheckoutStage === "confirmed"
+      ? 4
+      : donationCheckoutStage === "creating"
+        ? 3
+        : isDonationAmountValid
+          ? 2
+          : 1;
 
-  const playDonationSound = (audio: HTMLAudioElement | null) => {
-    if (!audio || import.meta.env.MODE === "test") return;
-    audio.currentTime = 0;
-    audio.volume = 0.5;
-    try {
-      const playback = audio.play();
-      if (playback) void playback.catch(() => undefined);
-    } catch {
-      // Audio feedback is optional and must never block the donation flow.
+  useEffect(() => {
+    if (
+      donationCheckoutStage !== "confirmed" ||
+      import.meta.env.MODE === "test"
+    ) {
+      return;
     }
-  };
+
+    return scheduleDonationSuccessAudio(donationSuccessAudioRef.current);
+  }, [donationCheckoutStage]);
+  useEffect(() => {
+    if (!showDonationModal) {
+      previousGlowStageRef.current = 0;
+      return;
+    }
+    if (import.meta.env.MODE === "test") {
+      previousGlowStageRef.current = donationGlowStage;
+      return;
+    }
+    previousGlowStageRef.current = playCheckoutStageAudio(
+      checkoutStageAudioRef.current,
+      previousGlowStageRef.current,
+      donationGlowStage,
+    );
+  }, [donationGlowStage, showDonationModal]);
 
   const openDonation = () => {
-    playDonationSound(donationEnterAudioRef.current);
     setPixPayment(null);
     setIsPixExpanded(false);
     setDonationCheckoutStage("amount");
+    setPayerEmail(getUser()?.email ?? "");
     setShowDonationModal(true);
   };
 
@@ -139,7 +210,6 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
       donationCheckoutStage === "confirmed"
     )
       return;
-    playDonationSound(donationExitAudioRef.current);
     setShowDonationModal(false);
   };
 
@@ -149,12 +219,18 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
       return;
     }
 
+    if (!isPayerEmailValid) {
+      toast("Informe um e-mail válido para gerar o PIX.");
+      return;
+    }
+
     setIsStartingCheckout(true);
     setDonationCheckoutStage("creating");
     try {
       const payment = await startMercadoPagoPixDonation({
         organizationId: ngo.id,
         amountCents,
+        payerEmail: normalizedPayerEmail,
       });
       setPixPayment(payment);
       setIsPixExpanded(false);
@@ -181,7 +257,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
     try {
       const donation = await waitForDonationConfirmation(
         pixPayment.actionId,
-        getUser()?.email ?? null,
+        normalizedPayerEmail || getUser()?.email || null,
         pixPayment.confirmationToken ?? null,
       );
       setConfirmedDonation(donation);
@@ -197,7 +273,22 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
 
   const completePaymentSuccess = () => {
     if (donationCheckoutStage !== "confirmed") return;
-    setShowDonationModal(false);
+
+    const revealThankYou = () => {
+      flushSync(() => setShowDonationModal(false));
+    };
+    const transitionDocument = document as DonationViewTransitionDocument;
+
+    if (reduceMotion || !transitionDocument.startViewTransition) {
+      revealThankYou();
+      return;
+    }
+
+    document.documentElement.dataset.tcDonationSuccessVt = "active";
+    const transition = transitionDocument.startViewTransition(revealThankYou);
+    void transition.finished.finally(() => {
+      delete document.documentElement.dataset.tcDonationSuccessVt;
+    });
   };
 
   const finishDonationCelebration = () => setConfirmedDonation(null);
@@ -229,6 +320,9 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
     { id: "causa", label: "A Causa" },
     { id: "historias", label: "Histórias" },
     { id: "impacto", label: "Impacto" },
+    ...(canSeeAfterDonation
+      ? [{ id: "after_donation" as const, label: "Depois da doação" }]
+      : []),
   ];
 
   const moveTabFocus = (
@@ -254,14 +348,14 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   return (
     <div className="mx-auto w-full max-w-6xl overflow-x-hidden px-4 pb-24 pt-7 text-brand-ink md:overflow-visible md:pt-10">
       <audio
-        ref={donationEnterAudioRef}
-        src={donationEnterSound}
+        ref={donationSuccessAudioRef}
+        src={donationCelebrationSound}
         preload="auto"
         aria-hidden="true"
       />
       <audio
-        ref={donationExitAudioRef}
-        src={donationExitSound}
+        ref={checkoutStageAudioRef}
+        src={checkoutStageSound}
         preload="auto"
         aria-hidden="true"
       />
@@ -286,15 +380,13 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.96 }}
               className={`relative w-full overflow-hidden rounded-lg bg-black shadow-2xl ${zoomedPost.type === "video" ? "max-w-sm" : "max-w-lg"}`}
-              style={{
-                aspectRatio: zoomedPost.type === "video" ? "9/16" : "4/5",
-              }}
+              style={zoomedPost.type === "video" ? { aspectRatio: "9/16" } : undefined}
               onClick={(event) => event.stopPropagation()}
             >
               {zoomedPost.type === "video" ? (
                 <video
                   src={zoomedPost.url}
-                  className="h-full w-full object-contain"
+                  className="block h-auto max-h-[88vh] w-full object-contain"
                   controls
                   autoPlay
                   playsInline
@@ -402,17 +494,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
             icon={<Heart size={22} />}
             wide
             variant="donation"
-            glowStage={
-              donationCheckoutStage === "pix" ||
-              donationCheckoutStage === "confirming" ||
-              donationCheckoutStage === "confirmed"
-                ? 4
-                : donationCheckoutStage === "creating"
-                  ? 3
-                  : isDonationAmountValid
-                    ? 2
-                    : 1
-            }
+            glowStage={donationGlowStage}
           >
             <AnimatePresence mode="wait" initial={false}>
               {donationCheckoutStage === "confirmed" && confirmedDonation ? (
@@ -494,7 +576,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                     className="mt-4"
                     value={pixPayment.qrCodeText}
                     qrCodeImage={pixPayment.qrCode}
-                    buttonLabel="Só Abrir QR"
+                    buttonLabel="Abrir QR"
                     onExpandedChange={setIsPixExpanded}
                     onCopy={() => toast("Código PIX copiado.")}
                     onCopyError={() =>
@@ -583,11 +665,38 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                       </strong>
                     </div>
                   </div>
+                  <div className="mt-4">
+                    <label
+                      htmlFor={`donation-payer-email-${ngo.id}`}
+                      className="mb-2 block text-sm font-semibold text-brand-ink"
+                    >
+                      Seu e-mail para o pagamento
+                    </label>
+                    <input
+                      id={`donation-payer-email-${ngo.id}`}
+                      type="email"
+                      inputMode="email"
+                      autoComplete="email"
+                      required
+                      value={payerEmail}
+                      onChange={(event) => setPayerEmail(event.target.value)}
+                      aria-invalid={payerEmail.length > 0 && !isPayerEmailValid}
+                      className="h-12 w-full rounded-xl border border-brand-ink/10 bg-background px-4 text-base text-brand-ink outline-none transition focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10"
+                      placeholder="voce@exemplo.com"
+                    />
+                    <p className="mt-2 text-xs leading-5 text-muted-foreground">
+                      O Mercado Pago usa este e-mail para gerar o PIX. Isso não cria uma conta.
+                    </p>
+                  </div>
                   <p className="mt-4 text-sm font-medium text-muted-foreground">
                     A sua intenção chega inteira.
                   </p>
                   <button
-                    disabled={isStartingCheckout || !isDonationAmountValid}
+                    disabled={
+                      isStartingCheckout ||
+                      !isDonationAmountValid ||
+                      !isPayerEmailValid
+                    }
                     onClick={() => void startPixDonation()}
                     className="tc-button-3d mt-5 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold text-white disabled:opacity-60"
                   >
@@ -614,21 +723,21 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
           open
           amountCents={confirmedDonation.amount}
           ngoName={ngo.name}
-          isLoggedIn={Boolean(getUser())}
+          ngoCategory={ngo.category}
+          ngoImage={ngo.image}
+          ngoPhotos={ngoPhotos}
+          donorName={donorName}
+          donorUsername={donorUsername}
+          donorAvatar={currentDonor?.avatar ?? null}
+          donorId={currentDonor?.id ?? null}
+          ngoVideo={ngo.causeVideo}
+          ngoVideoPoster={ngo.image}
+          friendCode={friendCode}
+          isLoggedIn={Boolean(currentDonor)}
           onCreateAccount={createAccountAfterDonation}
           onTransferComplete={finishDonationCelebration}
         />
       )}
-      {ngo.coverImage && (
-        <div className="mb-7 aspect-[16/5] w-full overflow-hidden rounded-lg bg-secondary">
-          <img
-            src={ngo.coverImage}
-            alt=""
-            className="h-full w-full object-cover"
-          />
-        </div>
-      )}
-
       <section className="border-b border-border pb-8">
         <div className="flex flex-col gap-7 md:flex-row md:items-center">
           <div className="relative w-fit shrink-0">
@@ -670,26 +779,10 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
           </div>
 
           <div className="min-w-0 flex-1">
-            {ownerMode && (
-              <p className="mb-2 text-xs font-bold uppercase tracking-[0.16em] text-brand-blue">
-                Perfil da organização
-              </p>
-            )}
             <p
               className={`text-xs font-bold uppercase tracking-[0.14em] ${categoryTheme.text}`}
             >
               {ngo.category}
-              {locationLabel && (
-                <>
-                  <span
-                    className="px-2 text-muted-foreground"
-                    aria-hidden="true"
-                  >
-                    ·
-                  </span>
-                  {locationLabel}
-                </>
-              )}
             </p>
             <h1 className="mt-3 font-display text-4xl font-semibold leading-tight md:text-5xl">
               {ngo.name}
@@ -740,7 +833,8 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
           <div
             role="tablist"
             aria-label="Conteúdo do perfil da organização"
-            className="grid w-full grid-cols-3"
+            className="grid w-full"
+            style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
           >
             {tabs.map((tab, index) => (
               <button
@@ -792,6 +886,16 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
             />
           )}
           {activeTab === "impacto" && <NGOImpactTab ngo={ngo} />}
+          {activeTab === "after_donation" && canSeeAfterDonation && (
+            <AfterDonationWorkspace
+              organizationId={ngo.id}
+              initialRelationships={
+                isTranquiliCarePrototype
+                  ? getTranquiliCarePrototypeRelationships(ngo.id)
+                  : undefined
+              }
+            />
+          )}
         </motion.div>
       </AnimatePresence>
     </div>

@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   Building2,
   Camera,
-  ImagePlus,
   Loader2,
   LogOut,
   Plus,
@@ -16,6 +15,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import NGOProfile from '@/components/NGOProfile';
 import { getNgoCategory, NGO_CATEGORY_ORDER } from '@/data/ngoCategories';
+import {
+  isTranquiliCarePrototypeAccount,
+  TRANQUILICARE_PROTOTYPE_STORIES,
+} from '@/data/tranquilicarePrototype';
 import {
   AppUser,
   NgoProfileDetails,
@@ -39,14 +42,14 @@ import {
   isValidCnpj,
   isValidInstagram,
   isValidPhone,
-  isValidYouTubeUrl,
+  isValidProfileVideoUrl,
   normalizeCnpj,
   normalizePhone,
 } from '@/lib/organizationProfile';
 import { geocodeAddress } from '@/lib/geocoding';
-import { uploadNgoCover, validateProfileImage } from '@/lib/profileMedia';
 
 const EMPTY_DETAILS: NgoProfileDetails = {
+  publicEmail: '',
   description: '',
   category: '',
   goal: '',
@@ -64,6 +67,8 @@ const EMPTY_DETAILS: NgoProfileDetails = {
 };
 
 const hasRequiredDetails = (details: NgoProfileDetails) => Boolean(
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.publicEmail.trim())
+  &&
   details.description.trim()
   && details.category.trim()
   && details.goal.trim()
@@ -115,10 +120,6 @@ type ProfileFieldsProps = {
   idPrefix: string;
   errors: ProfileFieldErrors;
   onClearError: (field: ProfileField) => void;
-  coverPreview: string;
-  onChooseCover: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onRemoveCover: () => void;
-  coverInputRef: React.RefObject<HTMLInputElement>;
 };
 
 const inputClass = 'mt-2 w-full rounded-lg border-2 border-border bg-background px-4 py-3 outline-none transition-colors focus:border-brand-blue';
@@ -132,10 +133,6 @@ const ProfileFields: React.FC<ProfileFieldsProps> = ({
   idPrefix,
   errors,
   onClearError,
-  coverPreview,
-  onChooseCover,
-  onRemoveCover,
-  coverInputRef,
 }) => (
   <div className='grid gap-5 md:grid-cols-2'>
     <label className={labelClass} htmlFor={`${idPrefix}-name`}>
@@ -154,6 +151,27 @@ const ProfileFields: React.FC<ProfileFieldsProps> = ({
         className={`${inputClass} ${errors.name ? 'border-red-400' : ''}`}
       />
       {errors.name && <span id={`${idPrefix}-name-error`} className='mt-1 block text-xs font-medium text-red-600'>{errors.name}</span>}
+    </label>
+
+    <label className={labelClass} htmlFor={`${idPrefix}-email`}>
+      E-mail da organização
+      <SmoothInput
+        id={`${idPrefix}-email`}
+        name='email'
+        type='email'
+        inputMode='email'
+        autoComplete='email'
+        value={details.publicEmail}
+        onChange={(event) => {
+          onDetailsChange({ publicEmail: event.target.value });
+          onClearError('publicEmail');
+        }}
+        aria-invalid={Boolean(errors.publicEmail)}
+        aria-describedby={errors.publicEmail ? `${idPrefix}-email-error` : undefined}
+        className={`${inputClass} ${errors.publicEmail ? 'border-red-400' : ''}`}
+        placeholder='contato@suaong.org.br'
+      />
+      {errors.publicEmail && <span id={`${idPrefix}-email-error`} className='mt-1 block text-xs font-medium text-red-600'>{errors.publicEmail}</span>}
     </label>
 
     <label className={labelClass} htmlFor={`${idPrefix}-category`}>
@@ -286,7 +304,7 @@ const ProfileFields: React.FC<ProfileFieldsProps> = ({
     </div>
 
     <label className={`${labelClass} md:col-span-2`} htmlFor={`${idPrefix}-youtube`}>
-      Vídeo da causa no YouTube
+      Vídeo da causa
       <SmoothInput
         id={`${idPrefix}-youtube`}
         type='url'
@@ -298,36 +316,14 @@ const ProfileFields: React.FC<ProfileFieldsProps> = ({
         }}
         aria-invalid={Boolean(errors.youtubeUrl)}
         className={`${inputClass} ${errors.youtubeUrl ? 'border-red-400' : ''}`}
-        placeholder='https://www.youtube.com/watch?v=...'
+        placeholder='Cole um link do YouTube, Instagram, TikTok ou vídeo direto'
       />
-      {errors.youtubeUrl && <span className='mt-1 block text-xs font-medium text-red-600'>{errors.youtubeUrl}</span>}
+      {errors.youtubeUrl ? (
+        <span className='mt-1 block text-xs font-medium text-red-600'>{errors.youtubeUrl}</span>
+      ) : (
+        <span className='mt-1 block text-xs text-muted-foreground'>Cole o link e o player será incorporado automaticamente no perfil.</span>
+      )}
     </label>
-
-    <div className='md:col-span-2'>
-      <span className={labelClass}>Imagem de capa</span>
-      <div className='mt-2 overflow-hidden rounded-lg border-2 border-border bg-secondary/50'>
-        <div className='aspect-[16/5] w-full'>
-          {coverPreview ? (
-            <img src={coverPreview} alt='Prévia da imagem de capa' className='h-full w-full object-cover' />
-          ) : (
-            <div className='grid h-full place-items-center text-muted-foreground'><ImagePlus size={30} /></div>
-          )}
-        </div>
-        <div className='flex flex-wrap items-center gap-2 border-t border-border bg-background p-3'>
-          <button type='button' onClick={() => coverInputRef.current?.click()} className='inline-flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-bold transition-colors hover:border-brand-blue hover:text-brand-blue'>
-            <Camera size={16} /> {coverPreview ? 'Trocar capa' : 'Adicionar capa'}
-          </button>
-          {coverPreview && (
-            <button type='button' onClick={onRemoveCover} className='inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600'>
-              <Trash2 size={16} /> Remover
-            </button>
-          )}
-          <input ref={coverInputRef} id={`${idPrefix}-cover`} aria-label='Selecionar imagem de capa' type='file' accept='image/jpeg,image/png,image/webp' className='hidden' onChange={onChooseCover} />
-          <p className='basis-full text-xs text-muted-foreground'>JPG, PNG ou WebP. A imagem será otimizada antes do envio.</p>
-        </div>
-      </div>
-      {errors.coverImage && <span className='mt-1 block text-xs font-medium text-red-600'>{errors.coverImage}</span>}
-    </div>
 
     <label className={labelClass} htmlFor={`${idPrefix}-instagram`}>
       Instagram
@@ -375,7 +371,6 @@ const NGOAccountProfile: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const isSetup = searchParams.get('setup') === '1';
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const coverInputRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -383,8 +378,6 @@ const NGOAccountProfile: React.FC = () => {
   const [profileSaved, setProfileSaved] = useState(false);
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState<string | null>(null);
-  const [coverFile, setCoverFile] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState('');
   const [details, setDetails] = useState<NgoProfileDetails>(EMPTY_DETAILS);
   const [fieldErrors, setFieldErrors] = useState<ProfileFieldErrors>({});
 
@@ -404,6 +397,7 @@ const NGOAccountProfile: React.FC = () => {
       const storedDetails = { ...EMPTY_DETAILS, ...current.ngoProfile };
       const profileDetails = {
         ...storedDetails,
+        publicEmail: storedDetails.publicEmail || current.email,
         cnpj: formatCnpj(storedDetails.cnpj),
         phone: formatPhone(storedDetails.phone),
       };
@@ -411,7 +405,6 @@ const NGOAccountProfile: React.FC = () => {
       setName(current.name || '');
       setAvatar(current.avatar);
       setDetails(profileDetails);
-      setCoverPreview(profileDetails.coverImage);
       setProfileSaved(hasRequiredDetails(profileDetails));
       setLoading(false);
     });
@@ -430,9 +423,8 @@ const NGOAccountProfile: React.FC = () => {
     goal: details.goal.trim(),
     objectives: details.objectives.map((objective) => objective.trim()).filter(Boolean),
     image: avatar || logo,
-    coverImage: details.coverImage.trim() || undefined,
     causeVideo: details.youtubeUrl.trim() || undefined,
-    email: user?.email ?? '',
+    email: details.publicEmail.trim() || user?.email || '',
     instagram: details.instagram.trim(),
     phone: details.phone.trim() || undefined,
     cnpj: formatCnpj(details.cnpj),
@@ -442,7 +434,9 @@ const NGOAccountProfile: React.FC = () => {
     geocodedAddress: details.geocodedAddress?.trim() || undefined,
     verified: details.status === 'approved',
     status: details.status ?? 'pending',
-    posts: [],
+    posts: isTranquiliCarePrototypeAccount(user?.email)
+      ? TRANQUILICARE_PROTOTYPE_STORIES
+      : [],
   }), [avatar, details, name, user]);
 
   const updateDetails = (patch: Partial<NgoProfileDetails>) => {
@@ -474,42 +468,17 @@ const NGOAccountProfile: React.FC = () => {
     }
   };
 
-  const chooseCover = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    try {
-      validateProfileImage(file);
-      setCoverFile(file);
-      const reader = new FileReader();
-      reader.onload = () => setCoverPreview(String(reader.result || ''));
-      reader.readAsDataURL(file);
-      clearFieldError('coverImage');
-    } catch (error) {
-      toast.error(error instanceof Error && error.message === 'image-too-large'
-        ? 'A imagem deve ter no máximo 8 MB.'
-        : 'Escolha uma imagem JPG, PNG ou WebP.');
-    } finally {
-      if (coverInputRef.current) coverInputRef.current.value = '';
-    }
-  };
-
-  const removeCover = () => {
-    setCoverFile(null);
-    setCoverPreview('');
-    updateDetails({ coverImage: '' });
-    clearFieldError('coverImage');
-  };
-
   const saveProfile = async (event?: React.FormEvent) => {
     event?.preventDefault();
     const errors: ProfileFieldErrors = {};
     if (name.trim().length < 2) errors.name = 'Informe o nome da organiza\u00e7\u00e3o.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.publicEmail.trim())) errors.publicEmail = 'Informe um e-mail válido da organização.';
     if (!NGO_CATEGORY_ORDER.includes(details.category)) errors.category = 'Selecione uma categoria.';
     if (!isValidCnpj(details.cnpj)) errors.cnpj = 'Informe um CNPJ v\u00e1lido.';
     if (!isValidAddress(details.address)) errors.address = 'Informe um endere\u00e7o completo.';
     if (!details.description.trim()) errors.description = 'Conte um pouco sobre a organiza\u00e7\u00e3o.';
     if (!details.goal.trim()) errors.goal = 'Informe o objetivo atual da organiza\u00e7\u00e3o.';
-    if (!isValidYouTubeUrl(details.youtubeUrl)) errors.youtubeUrl = 'Informe um link válido do YouTube.';
+    if (!isValidProfileVideoUrl(details.youtubeUrl)) errors.youtubeUrl = 'Informe um link válido do YouTube, Instagram, TikTok ou de um vídeo direto.';
     if (!isValidInstagram(details.instagram)) errors.instagram = 'Informe um perfil do Instagram v\u00e1lido.';
     if (!isValidPhone(details.phone)) errors.phone = 'Informe um telefone v\u00e1lido.';
     setFieldErrors(errors);
@@ -542,16 +511,14 @@ const NGOAccountProfile: React.FC = () => {
         geocodedAddress = location.displayName;
       }
 
-      const uploadedCover = coverFile && user
-        ? await uploadNgoCover(coverFile, user.id)
-        : details.coverImage.trim();
       const normalizedDetails = {
+        publicEmail: details.publicEmail.trim().toLowerCase(),
         description: details.description.trim(),
         category: details.category.trim(),
         goal: details.goal.trim(),
         objectives: details.objectives.map((objective) => objective.trim()).filter(Boolean),
         youtubeUrl: details.youtubeUrl.trim(),
-        coverImage: uploadedCover,
+        coverImage: '',
         instagram: details.instagram.trim(),
         phone: normalizePhone(details.phone),
         cnpj: normalizeCnpj(details.cnpj),
@@ -572,8 +539,6 @@ const NGOAccountProfile: React.FC = () => {
         cnpj: formatCnpj(normalizedDetails.cnpj),
         phone: formatPhone(normalizedDetails.phone),
       });
-      setCoverFile(null);
-      setCoverPreview(uploadedCover);
       setFieldErrors({});
       setProfileSaved(true);
       setEditing(false);
@@ -582,7 +547,7 @@ const NGOAccountProfile: React.FC = () => {
         nextSearchParams.delete('setup');
         setSearchParams(nextSearchParams, { replace: true });
       }
-      toast.success('Perfil da organização atualizado.');
+      toast.success('Perfil atualizado.');
     } catch {
       toast.error('Não foi possível salvar o perfil.');
     } finally {
@@ -641,7 +606,7 @@ const NGOAccountProfile: React.FC = () => {
               </div>
             </div>
 
-            <ProfileFields name={name} onNameChange={setName} details={details} onDetailsChange={updateDetails} idPrefix='setup-ngo' errors={fieldErrors} onClearError={clearFieldError} coverPreview={coverPreview} onChooseCover={chooseCover} onRemoveCover={removeCover} coverInputRef={coverInputRef} />
+            <ProfileFields name={name} onNameChange={setName} details={details} onDetailsChange={updateDetails} idPrefix='setup-ngo' errors={fieldErrors} onClearError={clearFieldError} />
 
             <div className='mt-8 flex justify-end border-t border-brand-ink/10 pt-6'>
               <button type='submit' disabled={saving} className='tc-button-3d tc-button-3d-yellow inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-6 font-bold text-brand-ink disabled:opacity-60'>{saving ? <Loader2 size={18} className='animate-spin' /> : <Save size={18} />}{saving ? 'Salvando...' : 'Salvar e visualizar perfil'}</button>
@@ -659,7 +624,7 @@ const NGOAccountProfile: React.FC = () => {
               <div className='sticky top-0 z-10 flex items-center justify-between bg-brand-ink px-5 py-4 text-white'><h2 className='font-display text-xl font-semibold'>Editar perfil</h2><button type='button' onClick={() => setEditing(false)} className='grid h-9 w-9 place-items-center rounded-full bg-background text-brand-blue' aria-label='Fechar'><X size={19} /></button></div>
               <div className='p-5 md:p-6'>
                 <div className='mb-7 flex items-center gap-4'><div className='grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-brand-blue bg-brand-blue/5'>{avatar ? <img src={avatar} className='h-full w-full object-cover' alt='' /> : <Building2 className='text-brand-blue' size={28} />}</div><div><button type='button' onClick={() => fileInputRef.current?.click()} className='inline-flex items-center gap-2 rounded-lg border-2 border-border px-3 py-2 text-sm font-bold hover:border-brand-blue hover:text-brand-blue'><Camera size={17} />Trocar imagem</button><input ref={fileInputRef} type='file' accept='image/*' className='hidden' onChange={chooseImage} /></div></div>
-                <ProfileFields name={name} onNameChange={setName} details={details} onDetailsChange={updateDetails} idPrefix='edit-ngo' errors={fieldErrors} onClearError={clearFieldError} coverPreview={coverPreview} onChooseCover={chooseCover} onRemoveCover={removeCover} coverInputRef={coverInputRef} />
+                <ProfileFields name={name} onNameChange={setName} details={details} onDetailsChange={updateDetails} idPrefix='edit-ngo' errors={fieldErrors} onClearError={clearFieldError} />
                 <button type='submit' disabled={saving} className='tc-button-3d mt-7 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold text-white disabled:opacity-60'>{saving ? <Loader2 size={18} className='animate-spin' /> : <Save size={18} />}{saving ? 'Salvando...' : 'Salvar alterações'}</button>
               </div>
             </motion.form>

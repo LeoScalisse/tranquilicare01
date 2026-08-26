@@ -32,11 +32,13 @@ describe('organization profile validation', () => {
     expect(isValidAddress('Rua das Flores, 120 - Centro, Sao Paulo - SP')).toBe(true);
   });
 
-  it('accepts only YouTube links that point to a video', () => {
+  it('accepts supported video links and rejects non-video pages', () => {
     expect(isValidYouTubeUrl('')).toBe(true);
     expect(isValidYouTubeUrl('https://youtu.be/G9V69J7cQtY')).toBe(true);
     expect(isValidYouTubeUrl('https://www.youtube.com/watch?v=G9V69J7cQtY')).toBe(true);
     expect(isValidYouTubeUrl('https://www.youtube.com/')).toBe(false);
-    expect(isValidYouTubeUrl('https://example.com/G9V69J7cQtY')).toBe(false);
+    expect(isValidYouTubeUrl('https://www.instagram.com/reel/C8example/')).toBe(true);
+    expect(isValidYouTubeUrl('https://www.tiktok.com/@ong/video/7412345678901234567')).toBe(true);
+    expect(isValidYouTubeUrl('https://example.com/story.mp4')).toBe(true);
   });
 });

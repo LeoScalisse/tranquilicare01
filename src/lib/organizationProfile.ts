@@ -1,3 +1,5 @@
+import { isValidVideoUrl } from '@/lib/mediaEmbed';
+
 const onlyDigits = (value: string): string => value.replace(/\D/g, '');
 
 export const normalizeCnpj = (value: string): string => onlyDigits(value).slice(0, 14);
@@ -68,19 +70,5 @@ export const isValidOptionalUrl = (value: string): boolean => {
   }
 };
 
-export const isValidYouTubeUrl = (value: string): boolean => {
-  const candidate = value.trim();
-  if (!candidate) return true;
-  try {
-    const url = new URL(candidate);
-    const hostname = url.hostname.toLowerCase();
-    const videoId = hostname === 'youtu.be' || hostname === 'www.youtu.be'
-      ? url.pathname.split('/').filter(Boolean)[0]
-      : ['youtube.com', 'www.youtube.com', 'm.youtube.com'].includes(hostname)
-        ? url.searchParams.get('v') || url.pathname.match(/^\/(?:embed|shorts)\/([^/?]+)/)?.[1]
-        : null;
-    return Boolean(videoId && /^[A-Za-z0-9_-]{6,}$/.test(videoId));
-  } catch {
-    return false;
-  }
-};
+export const isValidYouTubeUrl = (value: string): boolean => isValidVideoUrl(value);
+export const isValidProfileVideoUrl = isValidVideoUrl;

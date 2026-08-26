@@ -11,6 +11,7 @@ const organization = (status: 'pending' | 'approved'): AppUser => ({
   credits: 0,
   accountType: 'ngo',
   ngoProfile: {
+    publicEmail: 'contato@causareal.org',
     description: 'Uma causa cadastrada no Supabase.',
     category: 'Educação',
     goal: 'Abrir uma nova turma.',

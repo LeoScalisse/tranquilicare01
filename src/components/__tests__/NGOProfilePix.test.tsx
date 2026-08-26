@@ -74,9 +74,12 @@ describe("NGOProfile PIX checkout", () => {
       screen.getByRole("button", { name: /Editar valor manualmente/i }),
     );
 
-    const amountInput = screen.getByRole("textbox");
+    const amountInput = screen.getByLabelText(/em reais$/i);
     fireEvent.change(amountInput, { target: { value: "50" } });
     fireEvent.blur(amountInput);
+    fireEvent.change(screen.getByLabelText("Seu e-mail para o pagamento"), {
+      target: { value: "doador@exemplo.com" },
+    });
     fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
 
     expect(await screen.findByText("Seu PIX está pronto.")).not.toBeNull();
@@ -88,7 +91,7 @@ describe("NGOProfile PIX checkout", () => {
     expect(screen.queryByText("PIX pronto")).toBeNull();
 
     const supportButton = screen.getByRole("button", {
-      name: "Só Abrir QR",
+      name: "Abrir QR",
     });
     expect(
       screen.queryByRole("img", {
@@ -120,6 +123,7 @@ describe("NGOProfile PIX checkout", () => {
     expect(startPix).toHaveBeenCalledWith({
       organizationId: demoNgos[0].id,
       amountCents: 5000,
+      payerEmail: "doador@exemplo.com",
     });
     expect(
       document.querySelector(".apple-edge-glow")?.getAttribute("data-stage"),
@@ -138,7 +142,7 @@ describe("NGOProfile PIX checkout", () => {
     ).not.toBeNull();
     expect(waitForConfirmation).toHaveBeenCalledWith(
       "ORD-1",
-      null,
+      "doador@exemplo.com",
       "confirmation-token",
     );
 
@@ -158,10 +162,25 @@ describe("NGOProfile PIX checkout", () => {
     expect(
       screen.queryByText("Parabéns por transformar intenção em apoio."),
     ).toBeNull();
+    const startViewTransition = vi.fn((update: () => void) => {
+      update();
+      return {
+        finished: Promise.resolve(),
+        ready: Promise.resolve(),
+        updateCallbackDone: Promise.resolve(),
+        skipTransition: vi.fn(),
+      };
+    });
+    Object.defineProperty(document, "startViewTransition", {
+      configurable: true,
+      value: startViewTransition,
+    });
+
     fireEvent.click(successCheck);
 
+    expect(startViewTransition).toHaveBeenCalledTimes(1);
     expect(
-      await screen.findByText("Parabéns por transformar intenção em apoio."),
+      await screen.findByText("Agora você faz parte desta história. E ela só está começando."),
     ).not.toBeNull();
   });
 });

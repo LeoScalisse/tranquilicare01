@@ -5,6 +5,7 @@ export interface DonationPaymentInput {
   organizationId: string;
   campaignId?: string;
   amountCents: number;
+  payerEmail?: string;
   method?: "card" | "pix" | "boleto";
   provider?: "stripe" | "mercado_pago";
 }

@@ -24,3 +24,18 @@ verify_jwt = false
 
 [functions.payment-webhook]
 verify_jwt = false
+
+# OAuth endpoints validate the Supabase user inside the handler. The callback
+# is invoked by Mercado Pago and is protected by single-use state + PKCE.
+[functions.mercado-pago-connect]
+verify_jwt = false
+
+[functions.mercado-pago-oauth-callback]
+verify_jwt = false
+
+[functions.mercado-pago-connection]
+verify_jwt = false
+
+# Invoked only by the operations scheduler with PAYMENT_OPERATIONS_SECRET.
+[functions.reconcile-payments]
+verify_jwt = false

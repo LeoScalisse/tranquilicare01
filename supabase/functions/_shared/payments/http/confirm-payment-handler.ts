@@ -3,6 +3,7 @@ import { PaymentError } from '../domain/payment.errors.ts';
 import { authorizePaymentConfirmation } from '../domain/payment-confirmation.ts';
 import { createPaymentConfirmationEvent } from '../domain/payment-confirmation-event.ts';
 import { SupabasePaymentEventRepository } from '../infrastructure/supabase-payment-repository.ts';
+import { createMercadoPagoProviderOptions } from '../infrastructure/mercado-pago-runtime.ts';
 import { PaymentEventService } from '../services/payment-event-service.ts';
 import type { PaymentProviderName, PaymentStatus } from '../domain/payment.types.ts';
 import { createPaymentRuntime } from '../infrastructure/payment-runtime.ts';
@@ -45,7 +46,7 @@ export const confirmPaymentHandler = (options: ConfirmPaymentHandlerOptions = {}
   const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data: payment, error: paymentError } = await admin
     .from('payments')
-    .select('id, donation_id, provider, provider_action_id, provider_payment_id, status, confirmation_token_hash, confirmation_expires_at')
+    .select('id, donation_id, provider, provider_action_id, provider_payment_id, recipient_id, status, confirmation_token_hash, confirmation_expires_at')
     .eq('provider_action_id', actionId)
     .maybeSingle();
   if (paymentError) return jsonResponse({ error: 'Could not load payment' }, 500, headers);
@@ -73,11 +74,14 @@ export const confirmPaymentHandler = (options: ConfirmPaymentHandlerOptions = {}
       confirmationExpiresAt: payment.confirmation_expires_at,
     });
 
-    const runtime = createPaymentRuntime();
+    const runtime = createPaymentRuntime({
+      mercadoPago: createMercadoPagoProviderOptions(admin),
+    });
     const providerStatus = await runtime.service.getPaymentStatus({
       provider: payment.provider as PaymentProviderName,
       providerActionId: actionId,
       providerPaymentId: payment.provider_payment_id ?? undefined,
+      recipientId: payment.recipient_id ?? undefined,
     });
     const internalStatus = payment.status as PaymentStatus;
     const confirmationEvent = createPaymentConfirmationEvent({

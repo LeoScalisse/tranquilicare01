@@ -16,7 +16,7 @@ PaymentService
 PaymentProviderRegistry
         |
         +-- StripeProvider (active)
-        +-- MercadoPagoProvider (future)
+        +-- MercadoPagoProvider (PIX sandbox + Marketplace Split 1:1 live)
         +-- PagarMeProvider (future)
 ```
 
@@ -69,7 +69,7 @@ Migration `20260821000100_provider_agnostic_payments.sql` adds:
 - `payments`: provider-neutral attempts, amounts, method, status, and external
   references.
 - `payment_events`: idempotent event ledger with sanitized provider context.
-- `payment_reconciliations`: internal/provider comparisons for future jobs.
+- `payment_reconciliations`: internal/provider comparisons written by the private reconciliation job.
 - neutral `provider_*` fields on `donations`, backfilled from Stripe fields.
 
 The old `ngo_payment_accounts`, `stripe_webhook_events`, and `stripe_*` columns
@@ -84,8 +84,8 @@ Frontend: startDonationPayment
   -> create-payment Edge Function
   -> DonationPaymentService
   -> PaymentService
-  -> StripeProvider
-  -> redirect action
+  -> provider adapter
+  -> redirect or PIX QR action
   -> signed provider webhook
   -> provider webhook adapter
   -> NormalizedPaymentEvent
@@ -102,13 +102,14 @@ The old `create-checkout-session`, `confirm-checkout-session`, and
 
 ## Webhooks and Idempotency
 
-The generic endpoint is:
+The generic endpoints are:
 
 ```text
 https://PROJECT_REF.supabase.co/functions/v1/payment-webhook?provider=stripe
+https://PROJECT_REF.supabase.co/functions/v1/payment-webhook?provider=mercado_pago
 ```
 
-The Stripe adapter verifies `Stripe-Signature` before normalizing the event.
+Each adapter verifies the provider signature before normalizing the event.
 `payment_events` has `UNIQUE(provider, provider_event_id)`. Processed or
 currently processing events are ignored; failed events can be claimed again on
 the provider's retry. Only a sanitized subset is stored, not secrets or PCI
@@ -117,10 +118,12 @@ data.
 ## Reconciliation, Refunds, and Disputes
 
 `PaymentProvider` exposes status, refunds, and an optional reconciliation
-contract. `PaymentService.reconcilePayment` already compares canonical status
-when a provider has no specialized implementation. Stripe refund and dispute
-events map to canonical states. An administrative UI and automated
-reconciliation schedule are deliberately out of scope.
+contract. The private `reconcile-payments` Edge Function rechecks stale Mercado
+Pago attempts with the original NGO credential and records every comparison.
+It is protected by `PAYMENT_OPERATIONS_SECRET` and should be invoked by a
+scheduler. Mercado Pago refunds remain intentionally disabled until the
+business policy and automated endpoint are approved; the pilot uses the manual
+operations procedure in the production runbook.
 
 ## Adding a Provider
 
@@ -134,8 +137,10 @@ reconciliation schedule are deliberately out of scope.
 8. Enable it through configuration only after recipient onboarding, refunds,
    split behavior, and webhook retries are verified end to end.
 
-Mercado Pago and Pagar.me are names in the central type only. No runtime adapter
-or fake integration is registered for either provider.
+Pagar.me remains a domain placeholder. Mercado Pago is registered at runtime,
+uses OAuth PKCE per NGO, encrypts seller credentials at rest, routes live PIX
+with `application_fee`, and remains opt-in through a live organization
+allowlist.
 
 ## Decisions Before Another Provider
 

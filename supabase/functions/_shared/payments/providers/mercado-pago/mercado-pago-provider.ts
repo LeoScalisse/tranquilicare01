@@ -14,57 +14,98 @@ import type {
   RefundPaymentInput,
   RefundPaymentResult,
 } from "../../domain/payment.types.ts";
-type P = {
+
+type SandboxPayment = {
   id?: string;
   status?: string;
   payment_method?: { qr_code?: string; qr_code_base64?: string };
 };
-type O = {
+type SandboxOrder = {
   id: string;
   status?: string;
   external_reference?: string;
-  transactions?: { payments?: P[] };
+  transactions?: { payments?: SandboxPayment[] };
 };
+type LivePayment = {
+  id: string | number;
+  status?: string;
+  external_reference?: string;
+  transaction_amount?: number;
+  point_of_interaction?: {
+    transaction_data?: { qr_code?: string; qr_code_base64?: string };
+  };
+};
+
+export interface MercadoPagoProviderOptions {
+  resolveAccessToken?: (
+    recipientId: string,
+    livemode: boolean,
+  ) => Promise<string>;
+  webhookUrl?: string;
+}
+
 const MERCADO_PAGO_PIX_TEST_EMAIL = "test_user_br@testuser.com";
 const PIX_ORDER_POLL_ATTEMPTS = 16;
 const PIX_ORDER_POLL_INTERVAL_MS = 750;
-const p = (o: O) => o.transactions?.payments?.[0] ?? {};
-const s = (o: O): PaymentStatus => {
-  const v = p(o).status ?? o.status ?? "";
-  return ["approved", "processed"].includes(v)
+
+const sandboxPayment = (order: SandboxOrder) =>
+  order.transactions?.payments?.[0] ?? {};
+
+const sandboxStatus = (order: SandboxOrder): PaymentStatus => {
+  const status = sandboxPayment(order).status ?? order.status ?? "";
+  return ["approved", "processed"].includes(status)
     ? "paid"
-    : ["rejected", "failed"].includes(v)
+    : ["rejected", "failed"].includes(status)
       ? "failed"
-      : ["cancelled", "canceled", "expired"].includes(v)
+      : ["cancelled", "canceled", "expired"].includes(status)
         ? "canceled"
         : "pending";
 };
+
+const liveStatus = (status = ""): PaymentStatus => {
+  if (status === "approved") return "paid";
+  if (["rejected", "failed"].includes(status)) return "failed";
+  if (["cancelled", "canceled"].includes(status)) return "canceled";
+  if (status === "refunded") return "refunded";
+  if (status === "charged_back") return "disputed";
+  return "pending";
+};
+
 export class MercadoPagoProvider implements PaymentProvider {
   readonly name = "mercado_pago" as const;
-  readonly capabilities = {
-    card: false,
-    pix: true,
-    boleto: false,
-    split: false,
-    refunds: false,
-    recipients: false,
-  } as const;
+  readonly capabilities;
+
   constructor(
-    private token: string,
-    private secret: string | null,
+    private readonly token: string,
+    private readonly secret: string | null,
     public readonly livemode: boolean,
-  ) {}
-  private async api<T>(path: string, init: RequestInit) {
-    const r = await fetch(`https://api.mercadopago.com${path}`, {
+    private readonly options: MercadoPagoProviderOptions = {},
+  ) {
+    this.capabilities = {
+      card: false,
+      pix: true,
+      boleto: false,
+      split: livemode,
+      refunds: false,
+      recipients: livemode,
+    } as const;
+  }
+
+  private async api<T>(
+    path: string,
+    init: RequestInit,
+    accessToken = this.token,
+  ): Promise<T> {
+    const response = await fetch(`https://api.mercadopago.com${path}`, {
       ...init,
       headers: {
-        Authorization: `Bearer ${this.token}`,
+        Authorization: `Bearer ${accessToken}`,
         Accept: "application/json",
         ...init.headers,
       },
     });
-    const payload = await r.json().catch(() => null);
-    if (!r.ok) {
+    const payload = await response.json().catch(() => null);
+    if (!response.ok) {
       const providerMessage =
         payload && typeof payload === "object" && "message" in payload
           ? String(payload.message)
@@ -72,70 +113,117 @@ export class MercadoPagoProvider implements PaymentProvider {
       throw new PaymentProviderError(
         "mercado-pago-request-failed",
         "Could not communicate with the payment provider",
-        { cause: { status: r.status, providerMessage } },
+        { cause: { status: response.status, providerMessage } },
       );
     }
     return payload as T;
   }
-  private async waitForPixPayload(order: O): Promise<O> {
+
+  private async waitForPixPayload(order: SandboxOrder): Promise<SandboxOrder> {
     let current = order;
     for (let attempt = 0; attempt < PIX_ORDER_POLL_ATTEMPTS; attempt += 1) {
-      if (p(current).payment_method?.qr_code) return current;
+      if (sandboxPayment(current).payment_method?.qr_code) return current;
       if (attempt > 0) {
         await new Promise((resolve) =>
-          setTimeout(resolve, PIX_ORDER_POLL_INTERVAL_MS),
+          setTimeout(resolve, PIX_ORDER_POLL_INTERVAL_MS)
         );
       }
-      current = await this.api<O>(
+      current = await this.api<SandboxOrder>(
         `/v1/orders/${encodeURIComponent(order.id)}`,
         { method: "GET" },
       );
     }
     return current;
   }
-  async createPayment(i: CreatePaymentInput): Promise<CreatePaymentResult> {
-    if (i.method !== "pix")
-      throw new PaymentError(
-        "mercado-pago-method-not-supported",
-        "Mercado Pago PIX is the only enabled method",
-        409,
-      );
-    if (this.livemode)
-      throw new PaymentError(
-        "mercado-pago-marketplace-not-configured",
-        "Mercado Pago live marketplace routing is not configured yet",
-        409,
-      );
-    // Orders sandbox uses a predefined buyer. Custom test-account emails can
-    // produce a valid order without the PIX action payload.
-    const email = this.livemode ? i.payerEmail : MERCADO_PAGO_PIX_TEST_EMAIL;
-    if (!email)
+
+  private async createLivePayment(
+    input: CreatePaymentInput,
+  ): Promise<CreatePaymentResult> {
+    if (!input.payerEmail) {
       throw new PaymentError(
         "mercado-pago-payer-email-required",
         "A payer email is required for Mercado Pago PIX",
         422,
       );
-    // Mercado Pago's PIX sandbox only authorizes the documented R$ 50,00 test
-    // order. The platform fee remains visible in the checkout but is not
-    // collected in the sandbox; production remains intentionally blocked.
-    const amount = (
-      (this.livemode
-        ? i.amounts.totalAmountCents
-        : i.amounts.donationAmountCents) / 100
-    ).toFixed(2);
-    // Mercado Pago's PIX sandbox accepts its documented predefined test buyer.
-    // Production stays blocked until marketplace routing has been implemented.
-    const createdOrder = await this.api<O>("/v1/orders", {
+    }
+    if (!this.options.resolveAccessToken || !this.options.webhookUrl) {
+      throw new PaymentError(
+        "mercado-pago-marketplace-not-configured",
+        "Mercado Pago marketplace routing is not configured",
+        503,
+      );
+    }
+
+    const sellerToken = await this.options.resolveAccessToken(
+      input.recipient.id,
+      true,
+    );
+    const payment = await this.api<LivePayment>(
+      "/v1/payments",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Idempotency-Key": input.donationId,
+        },
+        body: JSON.stringify({
+          transaction_amount: input.amounts.totalAmountCents / 100,
+          application_fee: input.amounts.platformFeeCents / 100,
+          description: "Doacao TranquiliCare",
+          payment_method_id: "pix",
+          external_reference: input.donationId,
+          payer: { email: input.payerEmail },
+          notification_url: this.options.webhookUrl,
+          metadata: input.metadata ?? {},
+        }),
+      },
+      sellerToken,
+    );
+    const qr = payment.point_of_interaction?.transaction_data;
+    if (!qr?.qr_code) {
+      throw new PaymentProviderError(
+        "mercado-pago-pix-payload-missing",
+        "Could not create PIX payment",
+      );
+    }
+    const paymentId = String(payment.id);
+    return {
+      provider: this.name,
+      status: liveStatus(payment.status),
+      providerActionId: paymentId,
+      providerPaymentId: paymentId,
+      action: {
+        type: "qr_code",
+        ...(qr.qr_code_base64
+          ? { qrCode: `data:image/png;base64,${qr.qr_code_base64}` }
+          : {}),
+        qrCodeText: qr.qr_code,
+      },
+    };
+  }
+
+  async createPayment(input: CreatePaymentInput): Promise<CreatePaymentResult> {
+    if (input.method !== "pix") {
+      throw new PaymentError(
+        "mercado-pago-method-not-supported",
+        "Mercado Pago PIX is the only enabled method",
+        409,
+      );
+    }
+    if (this.livemode) return await this.createLivePayment(input);
+
+    const amount = (input.amounts.donationAmountCents / 100).toFixed(2);
+    const createdOrder = await this.api<SandboxOrder>("/v1/orders", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Idempotency-Key": i.donationId,
+        "X-Idempotency-Key": input.donationId,
       },
       body: JSON.stringify({
         type: "online",
         total_amount: amount,
-        external_reference: i.donationId,
-        payer: { email, first_name: "APRO" },
+        external_reference: input.donationId,
+        payer: { email: MERCADO_PAGO_PIX_TEST_EMAIL, first_name: "APRO" },
         transactions: {
           payments: [
             {
@@ -146,58 +234,89 @@ export class MercadoPagoProvider implements PaymentProvider {
         },
       }),
     });
-    // Order creation may be asynchronous. Mercado Pago documents that the
-    // first response can omit transaction details and recommends a GET by ID.
     const order = await this.waitForPixPayload(createdOrder);
-    const q = p(order).payment_method;
-    if (!q?.qr_code)
+    const qr = sandboxPayment(order).payment_method;
+    if (!qr?.qr_code) {
       throw new PaymentProviderError(
         "mercado-pago-pix-payload-missing",
         "Could not create PIX payment",
       );
+    }
     return {
       provider: this.name,
-      status: s(order),
+      status: sandboxStatus(order),
       providerActionId: order.id,
-      providerPaymentId: p(order).id ?? null,
+      providerPaymentId: sandboxPayment(order).id ?? null,
       action: {
         type: "qr_code",
-        ...(q.qr_code_base64
-          ? { qrCode: `data:image/png;base64,${q.qr_code_base64}` }
+        ...(qr.qr_code_base64
+          ? { qrCode: `data:image/png;base64,${qr.qr_code_base64}` }
           : {}),
-        qrCodeText: q.qr_code,
+        qrCodeText: qr.qr_code,
       },
     };
   }
+
   async getPaymentStatus(
-    i: GetPaymentStatusInput,
+    input: GetPaymentStatusInput,
   ): Promise<PaymentStatusResult> {
-    if (!i.providerActionId)
+    if (this.livemode) {
+      const paymentId = input.providerPaymentId ?? input.providerActionId;
+      if (!paymentId || !input.recipientId || !this.options.resolveAccessToken) {
+        throw new PaymentError(
+          "missing-provider-reference",
+          "Payment and recipient references are required",
+        );
+      }
+      const sellerToken = await this.options.resolveAccessToken(
+        input.recipientId,
+        true,
+      );
+      const payment = await this.api<LivePayment>(
+        `/v1/payments/${encodeURIComponent(paymentId)}`,
+        { method: "GET" },
+        sellerToken,
+      );
+      return {
+        provider: this.name,
+        status: liveStatus(payment.status),
+        providerActionId: String(payment.id),
+        providerPaymentId: String(payment.id),
+        donationId: payment.external_reference ?? null,
+      };
+    }
+
+    if (!input.providerActionId) {
       throw new PaymentError(
         "missing-provider-reference",
         "Payment reference is required",
       );
-    const o = await this.api<O>(
-      `/v1/orders/${encodeURIComponent(i.providerActionId)}`,
+    }
+    const order = await this.api<SandboxOrder>(
+      `/v1/orders/${encodeURIComponent(input.providerActionId)}`,
       { method: "GET" },
     );
     return {
       provider: this.name,
-      status: s(o),
-      providerActionId: o.id,
-      providerPaymentId: p(o).id ?? null,
-      donationId: o.external_reference ?? null,
+      status: sandboxStatus(order),
+      providerActionId: order.id,
+      providerPaymentId: sandboxPayment(order).id ?? null,
+      donationId: order.external_reference ?? null,
     };
   }
-  async refundPayment(_i: RefundPaymentInput): Promise<RefundPaymentResult> {
+
+  async refundPayment(
+    _input: RefundPaymentInput,
+  ): Promise<RefundPaymentResult> {
     throw new PaymentError(
       "mercado-pago-refunds-not-configured",
       "Mercado Pago refunds are not configured yet",
       409,
     );
   }
+
   async parseWebhook(
-    _i: ProviderWebhookInput,
+    _input: ProviderWebhookInput,
   ): Promise<NormalizedPaymentEvent | null> {
     throw new PaymentError(
       "mercado-pago-webhook-not-configured",
@@ -206,8 +325,10 @@ export class MercadoPagoProvider implements PaymentProvider {
     );
   }
 }
+
 export const createMercadoPagoProvider = (
   token: string,
   secret: string | null,
   live: boolean,
-) => new MercadoPagoProvider(token, secret, live);
+  options: MercadoPagoProviderOptions = {},
+) => new MercadoPagoProvider(token, secret, live, options);

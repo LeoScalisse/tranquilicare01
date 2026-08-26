@@ -31,7 +31,7 @@ const EXPANDED_WIDTH = 304;
 export const PixQrDisclosure = ({
   value,
   qrCodeImage,
-  buttonLabel = "Só Abrir QR",
+  buttonLabel = "Abrir QR",
   onCopy,
   onCopyError,
   onExpandedChange,

@@ -176,3 +176,65 @@ describe("MercadoPagoProvider PIX sandbox", () => {
     expect(fetchMock).toHaveBeenCalledTimes(8);
   });
 });
+describe("MercadoPagoProvider PIX marketplace", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("creates a live split payment with the NGO OAuth token", async () => {
+    const resolveAccessToken = vi.fn().mockResolvedValue("seller-oauth-token");
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      new Response(JSON.stringify({
+        id: 987654321,
+        status: "pending",
+        external_reference: input.donationId,
+        point_of_interaction: {
+          transaction_data: {
+            qr_code: "000201-live-pix",
+            qr_code_base64: "live-base64-png",
+          },
+        },
+      }), { status: 201, headers: { "content-type": "application/json" } }),
+    );
+    const provider = createMercadoPagoProvider(
+      "platform-token-not-used-for-live-payment",
+      "webhook-secret",
+      true,
+      {
+        resolveAccessToken,
+        webhookUrl: "https://project.supabase.co/functions/v1/payment-webhook?provider=mercado_pago",
+      },
+    );
+
+    const result = await provider.createPayment({
+      ...input,
+      payerEmail: "donor@example.com",
+      recipient: { ...input.recipient, livemode: true },
+    });
+
+    expect(resolveAccessToken).toHaveBeenCalledWith(input.recipient.id, true);
+    expect(fetchMock.mock.calls[0][0]).toBe("https://api.mercadopago.com/v1/payments");
+    const request = fetchMock.mock.calls[0][1];
+    expect(request?.headers).toMatchObject({
+      Authorization: "Bearer seller-oauth-token",
+      "X-Idempotency-Key": input.donationId,
+    });
+    expect(JSON.parse(String(request?.body))).toMatchObject({
+      transaction_amount: 52.5,
+      application_fee: 2.5,
+      payment_method_id: "pix",
+      external_reference: input.donationId,
+      payer: { email: "donor@example.com" },
+      notification_url: "https://project.supabase.co/functions/v1/payment-webhook?provider=mercado_pago",
+    });
+    expect(result).toMatchObject({
+      providerPaymentId: "987654321",
+      providerActionId: "987654321",
+      action: {
+        type: "qr_code",
+        qrCode: "data:image/png;base64,live-base64-png",
+        qrCodeText: "000201-live-pix",
+      },
+    });
+  });
+});

@@ -52,6 +52,7 @@ export interface StartDonationPaymentInput {
   organizationId: string;
   campaignId?: string | null;
   amountCents: number;
+  payerEmail?: string;
   donor?: { id: string; email?: string } | null;
   successUrl: string;
   cancelUrl: string;
@@ -124,7 +125,7 @@ export class DonationPaymentService {
         ],
         successUrl: `${input.successUrl}${input.successUrl.includes('?') ? '&' : '?'}payment_confirmation_token=${encodeURIComponent(confirmation.token)}`,
         cancelUrl: input.cancelUrl,
-        payerEmail: input.donor?.email,
+        payerEmail: input.donor?.email ?? input.payerEmail,
         metadata: {
           payment_id: paymentId,
           organization_id: input.organizationId,

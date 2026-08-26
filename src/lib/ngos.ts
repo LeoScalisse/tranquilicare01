@@ -1,4 +1,10 @@
 import { demoNgos } from '@/data/demoNgos';
+import {
+  isTranquiliCarePrototypeAccount,
+  isTranquiliCarePrototypeOrganization,
+  TRANQUILICARE_FOUNDER_NGO,
+  TRANQUILICARE_PROTOTYPE_STORIES,
+} from '@/data/tranquilicarePrototype';
 import type { PublicOrganizationRecord } from '@/data/repositories/organization.repository';
 import { SupabaseOrganizationRepository } from '@/data/supabase/supabase-organization.repository';
 import type { AppUser } from '@/lib/authTypes';
@@ -18,7 +24,7 @@ const rowToNgo = (row: PublicOrganizationRecord): NGO => ({
   objectives: stringArray(row.objectives),
   causeVideo: row.youtubeUrl || undefined,
   image: row.avatarUrl || '/favicon.png',
-  coverImage: row.coverImageUrl || undefined,
+  coverImage: undefined,
   email: row.publicEmail,
   instagram: row.instagram,
   phone: row.phone || undefined,
@@ -29,7 +35,9 @@ const rowToNgo = (row: PublicOrganizationRecord): NGO => ({
   geocodedAddress: row.geocodedAddress || undefined,
   verified: row.verified,
   status: 'approved',
-  posts: [],
+  posts: isTranquiliCarePrototypeOrganization({ name: row.name, email: row.publicEmail })
+    ? TRANQUILICARE_PROTOTYPE_STORIES
+    : [],
 });
 
 export const ngoFromUser = (user: AppUser): NGO | null => {
@@ -45,8 +53,8 @@ export const ngoFromUser = (user: AppUser): NGO | null => {
     objectives: details.objectives,
     causeVideo: details.youtubeUrl.trim() || undefined,
     image: user.avatar || '/favicon.png',
-    coverImage: details.coverImage.trim() || undefined,
-    email: user.email,
+    coverImage: undefined,
+    email: details.publicEmail.trim() || user.email,
     instagram: details.instagram.trim(),
     phone: details.phone.trim() || undefined,
     cnpj: details.cnpj.trim() || undefined,
@@ -56,7 +64,9 @@ export const ngoFromUser = (user: AppUser): NGO | null => {
     geocodedAddress: details.geocodedAddress?.trim() || undefined,
     verified: status === 'approved',
     status,
-    posts: [],
+    posts: isTranquiliCarePrototypeAccount(details.publicEmail) || isTranquiliCarePrototypeAccount(user.email)
+      ? TRANQUILICARE_PROTOTYPE_STORIES
+      : [],
   };
 };
 
@@ -85,6 +95,7 @@ export const loadMarketplaceNgos = async (viewer?: AppUser | null): Promise<NGO[
 };
 
 export const loadNgoById = async (ngoId: string, viewer?: AppUser | null): Promise<NGO | null> => {
+  if (ngoId === TRANQUILICARE_FOUNDER_NGO.id) return TRANQUILICARE_FOUNDER_NGO;
   const demo = demoNgos.find((ngo) => ngo.id === ngoId);
   if (demo) return demo;
   const owner = viewer ? ngoFromUser(viewer) : null;

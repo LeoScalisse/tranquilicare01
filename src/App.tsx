@@ -12,15 +12,15 @@ import {
   type Location,
 } from 'react-router-dom';
 import Index from './pages/Index';
-import NGOAuth from './pages/NGOAuth';
-import DonorAuth from './pages/DonorAuth';
-import DonorProfile from './pages/DonorProfile';
-import NGOAccountProfile from './pages/NGOAccountProfile';
-import NGOPublicProfile from './pages/NGOPublicProfile';
-import AuthCallback from './pages/AuthCallback';
-import NotFound from './pages/NotFound';
 import { matchesDiscoveryOrigin, readDiscoveryOrigin } from '@/lib/discoveryNavigation';
 
+const NGOAuth = lazy(() => import('./pages/NGOAuth'));
+const DonorAuth = lazy(() => import('./pages/DonorAuth'));
+const DonorProfile = lazy(() => import('./pages/DonorProfile'));
+const NGOAccountProfile = lazy(() => import('./pages/NGOAccountProfile'));
+const NGOPublicProfile = lazy(() => import('./pages/NGOPublicProfile'));
+const AuthCallback = lazy(() => import('./pages/AuthCallback'));
+const NotFound = lazy(() => import('./pages/NotFound'));
 const VerificationDiscovery = lazy(() => import('./pages/VerificationDiscovery'));
 const DonationIntegrityDiscovery = lazy(() => import('./pages/DonationIntegrityDiscovery'));
 
@@ -60,32 +60,20 @@ const AppRoutes = () => {
 
   return (
     <>
-      <Routes location={backgroundLocation ?? location}>
-        <Route path='/' element={<Index />} />
-        <Route path='/ngo/auth' element={<NGOAuth />} />
-        <Route path='/donor/auth' element={<DonorAuth />} />
-        <Route path='/donor/profile' element={<DonorProfile />} />
-        <Route path='/ngo/profile' element={<NGOAccountProfile />} />
-        <Route path='/ong/:ngoId' element={<NGOPublicProfile />} />
-        <Route path='/auth/callback' element={<AuthCallback />} />
-        <Route
-          path='/descobertas/verificacao'
-          element={(
-            <Suspense fallback={<DiscoveryLoading />}>
-              <VerificationDiscovery />
-            </Suspense>
-          )}
-        />
-        <Route
-          path='/descobertas/doacao-integral'
-          element={(
-            <Suspense fallback={<DiscoveryLoading />}>
-              <DonationIntegrityDiscovery />
-            </Suspense>
-          )}
-        />
-        <Route path='*' element={<NotFound />} />
-      </Routes>
+      <Suspense fallback={<DiscoveryLoading />}>
+        <Routes location={backgroundLocation ?? location}>
+          <Route path='/' element={<Index />} />
+          <Route path='/ngo/auth' element={<NGOAuth />} />
+          <Route path='/donor/auth' element={<DonorAuth />} />
+          <Route path='/donor/profile' element={<DonorProfile />} />
+          <Route path='/ngo/profile' element={<NGOAccountProfile />} />
+          <Route path='/ong/:ngoId' element={<NGOPublicProfile />} />
+          <Route path='/auth/callback' element={<AuthCallback />} />
+          <Route path='/descobertas/verificacao' element={<VerificationDiscovery />} />
+          <Route path='/descobertas/doacao-integral' element={<DonationIntegrityDiscovery />} />
+          <Route path='*' element={<NotFound />} />
+        </Routes>
+      </Suspense>
 
       <AnimatePresence>
         {backgroundLocation && (

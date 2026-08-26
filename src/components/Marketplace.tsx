@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { NGO, FlashCampaign } from "../types";
 import { Search, HeartHandshake, ChevronRight } from "lucide-react";
@@ -14,6 +14,7 @@ import { SmoothInput } from "@/components/ui/smooth-input";
 import CauseShowcaseCard from "@/components/marketplace/CauseShowcaseCard";
 import FundraiserDisclosureCard from "@/components/ui/fundraiser-disclosure-card";
 import cowHead from "@/assets/cow-head.png";
+import FounderOrganizationsSection from "@/components/FounderOrganizationsSection";
 
 const SEARCH_PLACEHOLDERS = [
   "Busque uma causa...",
@@ -36,6 +37,7 @@ interface MarketplaceProps {
   ngos: NGO[];
   onSelectNGO: (ngo: NGO) => void;
   onSupportNGO: (ngo: NGO) => void;
+  founderNgo?: NGO | null;
   /** Slim heading + capped sections for when embedded in the home dashboard */
   embedded?: boolean;
 }
@@ -170,9 +172,11 @@ const CowCampaignSection: React.FC<{
 const Marketplace: React.FC<MarketplaceProps> = ({
   ngos,
   onSelectNGO,
+  founderNgo = null,
   embedded = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [selectedCategory, setSelectedCategory] = useState("Todas");
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [favorites, setFavorites] = useState<Set<string>>(loadFavorites);
@@ -211,7 +215,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({
   }, [ngos]);
 
   const searchedNgos = useMemo(() => {
-    const query = searchTerm.toLowerCase().trim();
+    const query = deferredSearchTerm.toLowerCase().trim();
     if (!query) return ngos;
     return ngos.filter(
       (ngo) =>
@@ -220,7 +224,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({
         ngo.category.toLowerCase().includes(query) ||
         ngo.goal.toLowerCase().includes(query),
     );
-  }, [ngos, searchTerm]);
+  }, [ngos, deferredSearchTerm]);
 
   // Airbnb-style themed rows. A category becomes a carousel only when it has
   // enough cards to feel like a row; thin/leftover ones fold into a grid so a
@@ -233,15 +237,6 @@ const Marketplace: React.FC<MarketplaceProps> = ({
       category: string | null;
       storyPreview?: boolean;
     }[] = [];
-    const verified = ngos.filter((n) => n.verified);
-    if (ngos.length >= 5 && verified.length >= 3) {
-      rows.push({
-        key: "featured",
-        title: "Causas para conhecer",
-        items: verified,
-        category: null,
-      });
-    }
     const withRecentStories = ngos
       .filter((ngo) => ngo.posts?.length)
       .sort(
@@ -273,7 +268,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({
     return { rows, leftovers };
   }, [ngos, categories]);
 
-  const isSearching = searchTerm.trim().length > 0;
+  const isSearching = deferredSearchTerm.trim().length > 0;
   const isCampaignFilter = selectedCategory === "Vaquinhas";
   const isCategoryFilter = selectedCategory !== "Todas" && !isCampaignFilter;
   const mode: "search" | "campaigns" | "category" | "sections" = isSearching
@@ -501,6 +496,10 @@ const Marketplace: React.FC<MarketplaceProps> = ({
             />
           )}
 
+          {founderNgo && (
+            <FounderOrganizationsSection ngos={[founderNgo]} onOpen={onSelectNGO} />
+          )}
+
           {rows.map((row) => {
             const categoryDefinition = row.category
               ? getNgoCategory(row.category)
@@ -509,6 +508,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({
               <section
                 key={row.key}
                 className={`mx-auto max-w-[1400px] overflow-hidden rounded-[28px] py-9 md:rounded-[34px] ${getSectionBackground(row.key, row.category)}`}
+                style={{ contentVisibility: "auto", containIntrinsicSize: "520px" }}
               >
                 <div className="mx-auto max-w-7xl px-4">
                   <div className="mb-5 flex items-start gap-3">
@@ -584,6 +584,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({
 
           {rows.length === 0 &&
             leftovers.length === 0 &&
+            !founderNgo &&
             flashCampaigns.length === 0 && (
               <div className="mx-auto max-w-7xl px-4">
                 <EmptyState />

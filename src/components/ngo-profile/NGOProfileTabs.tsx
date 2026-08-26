@@ -10,6 +10,7 @@ import {
 
 import { getNgoCategoryTheme } from '@/data/ngoCategories';
 import ExpandableVideoPlayer from '@/components/ui/expandable-video-player';
+import { VideoPreview } from '@/components/ui/embedded-video';
 import { ImpactMetric, NGO, NGOPost } from '@/types';
 
 interface CauseTabProps {
@@ -48,7 +49,7 @@ export const NGOCauseTab: React.FC<CauseTabProps> = ({ ngo, onOpenGoal }) => {
         <div data-testid='cause-video-region' className='flex justify-center pb-8 pt-6 sm:pt-8'>
           <ExpandableVideoPlayer
             src={ngo.causeVideo}
-            poster={ngo.coverImage}
+            poster={ngo.image}
             title={`A causa de ${ngo.name} em movimento`}
             triggerLabel={`Assistir ao vídeo da causa ${ngo.name}`}
           />
@@ -103,9 +104,9 @@ export const NGOStoriesTab: React.FC<StoriesTabProps> = ({ ngo, ownerMode, onOpe
       {storiesCount > 0 ? (
         <div className='mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5'>
           {ngo.posts.map((post) => (
-            <button key={post.id} type='button' onClick={() => onOpenStory(post)} className='group relative aspect-square overflow-hidden rounded-lg bg-secondary text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-brand-blue' aria-label={`Abrir história: ${post.caption || 'publicação da organização'}`}>
+            <button key={post.id} type='button' onClick={() => onOpenStory(post)} className='group self-start overflow-hidden rounded-lg border border-border bg-secondary text-left shadow-[0_16px_34px_-28px_rgba(17,54,79,0.55)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-brand-blue' aria-label={`Abrir história: ${post.caption || 'publicação da organização'}`}>
               <PostMedia post={post} />
-              <span className='absolute inset-x-0 bottom-0 bg-brand-ink/85 p-3 text-xs font-semibold leading-5 text-white backdrop-blur-sm'>{post.caption || 'Uma nova história foi compartilhada pela organização.'}</span>
+              <span className='block border-t border-border bg-background p-3 text-xs font-semibold leading-5 text-brand-ink'>{post.caption || 'Uma nova história foi compartilhada pela organização.'}</span>
             </button>
           ))}
         </div>
@@ -184,5 +185,5 @@ export const ImpactEmptyState: React.FC = () => (
 );
 
 const PostMedia: React.FC<{ post: NGOPost }> = ({ post }) => post.type === 'image'
-  ? <img src={post.url} className='h-full w-full object-cover transition-transform duration-500 group-hover:scale-105' alt='' />
-  : <div className='relative h-full w-full'><video src={post.url} className='h-full w-full object-cover' preload='metadata' /><VideoIcon className='absolute right-3 top-3 text-white drop-shadow' size={20} aria-hidden='true' /><span className='absolute inset-0 grid place-items-center bg-brand-ink/15'><Play className='fill-white text-white' size={32} aria-hidden='true' /></span></div>;
+  ? <img src={post.url} loading='lazy' decoding='async' className='block h-auto w-full object-contain' alt='' />
+  : <div className='relative aspect-[4/5] w-full'><VideoPreview src={post.url} title={post.caption || 'História da organização'} /><VideoIcon className='absolute right-3 top-3 text-white drop-shadow' size={20} aria-hidden='true' /></div>;

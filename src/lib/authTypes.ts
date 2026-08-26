@@ -1,6 +1,7 @@
 export type AccountType = 'donor' | 'ngo';
 
 export interface NgoProfileDetails {
+  publicEmail: string;
   description: string;
   category: string;
   goal: string;
