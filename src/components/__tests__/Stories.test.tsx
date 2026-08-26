@@ -195,6 +195,8 @@ describe('Stories infinite feed', () => {
     });
 
     fireEvent.pointerDown(commentButton, { pointerId: 1, pointerType: 'touch', clientX: 10, clientY: 10 });
+    expect(screen.getByText('Carregando comentários')).not.toBeNull();
+    expect(screen.queryByRole('dialog', { name: 'Comentários da história' })).toBeNull();
     await act(async () => {
       vi.advanceTimersByTime(550);
     });

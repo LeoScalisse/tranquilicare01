@@ -451,8 +451,90 @@ html[data-tc-auth-theme-vt='active']::view-transition-old(root) {
   z-index: 1;
 }
 
+html[data-tc-donation-success-vt='active']::view-transition-old(root),
+html[data-tc-donation-success-vt='active']::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+html[data-tc-donation-success-vt='active']::view-transition-group(root) {
+  animation-duration: 1000ms;
+  animation-timing-function: cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+html[data-tc-donation-success-vt='active']::view-transition-old(root) {
+  z-index: 1;
+}
+
+html[data-tc-donation-success-vt='active']::view-transition-new(root) {
+  z-index: 2;
+  transform-origin: 50% 0%;
+  animation: tc-donation-circle-reveal 1000ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes tc-donation-circle-reveal {
+  0% {
+    clip-path: circle(0% at 50% 0%);
+    filter: blur(8px);
+    opacity: 0.92;
+  }
+  52% {
+    filter: blur(4px);
+    opacity: 1;
+  }
+  100% {
+    clip-path: circle(150% at 50% 0%);
+    filter: blur(0);
+    opacity: 1;
+  }
+}
+
 .donation-intelligence-frame {
   isolation: isolate;
+}
+
+.donation-celebration-surface {
+  isolation: isolate;
+  background: hsl(var(--brand-blue));
+}
+
+.donation-celebration-surface::before {
+  content: "";
+  position: absolute;
+  inset: -65%;
+  z-index: 0;
+  pointer-events: none;
+  background: conic-gradient(
+    from 25deg,
+    hsl(var(--brand-blue)) 0deg,
+    hsl(var(--brand-yellow) / 0.92) 78deg,
+    rgb(255 255 255 / 0.9) 132deg,
+    hsl(var(--brand-blue) / 0.95) 210deg,
+    rgb(255 255 255 / 0.62) 278deg,
+    hsl(var(--brand-yellow) / 0.78) 326deg,
+    hsl(var(--brand-blue)) 360deg
+  );
+  filter: blur(46px) saturate(112%);
+  opacity: 0.72;
+  animation: tc-donation-surface-spin 7s linear infinite;
+  transform-origin: center;
+}
+
+.donation-celebration-surface::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 8%, rgb(255 255 255 / 0.24), transparent 34%),
+    linear-gradient(145deg, hsl(var(--brand-blue) / 0.66), hsl(var(--brand-blue) / 0.2) 58%, rgb(255 222 89 / 0.14));
+}
+
+@keyframes tc-donation-surface-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 html[data-tc-auth-handoff-vt='active']::view-transition-old(root),
@@ -472,6 +554,25 @@ html[data-tc-auth-handoff-vt='active']::view-transition-new(root) {
 @media (prefers-reduced-motion: reduce) {
   .auth-theme-page {
     transition-duration: 1ms;
+  }
+
+  html[data-tc-donation-success-vt='active']::view-transition-new(root) {
+    animation-duration: 1ms;
+    filter: none;
+  }
+
+  .donation-celebration-surface::before {
+    animation: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .donation-celebration-surface::before {
+    display: none;
+  }
+
+  .donation-celebration-surface::after {
+    background: hsl(var(--brand-blue) / 0.12);
   }
 }
 
@@ -610,6 +711,54 @@ html[data-tc-auth-handoff-vt='active']::view-transition-new(root) {
 @media (prefers-reduced-motion: reduce) {
   .verification-code-input {
     transition-duration: 1ms;
+  }
+}
+
+.founder-card-aurora {
+  isolation: isolate;
+  overflow: hidden;
+  background: hsl(var(--brand-blue));
+}
+
+.founder-card-aurora::before {
+  content: '';
+  position: absolute;
+  inset: -85%;
+  background: conic-gradient(
+    from 35deg,
+    hsl(var(--brand-blue)) 0deg,
+    hsl(var(--primary) / 0.72) 78deg,
+    rgb(255 255 255 / 0.96) 132deg,
+    hsl(var(--brand-yellow)) 188deg,
+    hsl(var(--brand-yellow) / 0.72) 224deg,
+    hsl(var(--primary) / 0.72) 286deg,
+    hsl(var(--brand-blue)) 360deg
+  );
+  transform: rotate(0deg);
+  animation: founder-aurora-spin 18s linear infinite;
+  will-change: transform;
+}
+
+.founder-card-aurora::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 76% 12%, rgb(255 255 255 / 0.3), transparent 29%),
+    linear-gradient(125deg, hsl(var(--brand-blue) / 0.25), hsl(var(--brand-blue) / 0.78));
+  pointer-events: none;
+}
+
+@keyframes founder-aurora-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .founder-card-aurora::before {
+    animation: none;
+    transform: rotate(24deg);
   }
 }
 

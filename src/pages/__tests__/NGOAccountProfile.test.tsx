@@ -58,14 +58,15 @@ describe('NGOAccountProfile', () => {
 
     expect(await screen.findByRole('heading', { name: /Complete o perfil da organização/i })).toBeTruthy();
     expect(screen.getByDisplayValue('Instituto Horizonte')).toBeTruthy();
+    expect(screen.getByDisplayValue('contato@horizonte.org')).toBeTruthy();
     expect(screen.queryByText('Abraço Sereno')).toBeNull();
     expect(screen.getByLabelText(/Categoria principal/i)).toBeTruthy();
     expect(screen.getByLabelText(/^CNPJ/i)).toBeTruthy();
     expect(screen.getByLabelText(/^Endereço/i)).toBeTruthy();
     expect(screen.getByLabelText(/Sobre a organização/i)).toBeTruthy();
     expect(screen.getByLabelText(/Objetivo atual/i)).toBeTruthy();
-    expect(screen.getByLabelText(/Vídeo da causa no YouTube/i)).toBeTruthy();
-    expect(screen.getByLabelText(/Imagem de capa/i)).toBeTruthy();
+    expect(screen.getByLabelText(/Vídeo da causa/i)).toBeTruthy();
+    expect(screen.queryByLabelText(/Imagem de capa/i)).toBeNull();
     expect(screen.getByRole('button', { name: /Adicionar objetivo/i })).toBeTruthy();
   });
 
@@ -110,7 +111,7 @@ describe('NGOAccountProfile', () => {
     fireEvent.change(screen.getByLabelText(/Objetivo atual/i), { target: { value: 'Abrir uma nova turma comunitária.' } });
     await user.click(screen.getByRole('button', { name: /Adicionar objetivo/i }));
     fireEvent.change(screen.getByLabelText('Objetivo 1'), { target: { value: 'Formar novos voluntários.' } });
-    fireEvent.change(screen.getByLabelText(/Vídeo da causa no YouTube/i), { target: { value: 'https://youtu.be/G9V69J7cQtY' } });
+    fireEvent.change(screen.getByLabelText(/Vídeo da causa/i), { target: { value: 'https://youtu.be/G9V69J7cQtY' } });
     fireEvent.change(screen.getByLabelText(/^Instagram/i), { target: { value: '@institutohorizonte' } });
     await user.click(screen.getByRole('button', { name: /Salvar e visualizar perfil/i }));
 
@@ -119,6 +120,7 @@ describe('NGOAccountProfile', () => {
         name: 'Instituto Horizonte',
         avatar: null,
         ngoProfile: {
+          publicEmail: 'contato@horizonte.org',
           category: 'Educação',
           cnpj: '11222333000181',
           address: 'Rua das Flores, 120 - Centro, São Paulo - SP',

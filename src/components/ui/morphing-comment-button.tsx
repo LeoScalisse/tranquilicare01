@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, MotionConfig, useReducedMotion } from 'framer-motion';
 import { MessageCircle, Send, X } from 'lucide-react';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { SmoothInput } from '@/components/ui/smooth-input';
@@ -32,9 +32,9 @@ const INPUT_SPRING = {
 
 const DISCLOSURE_SPRING = {
   type: 'spring',
-  stiffness: 520,
-  damping: 46,
-  mass: 1.35,
+  stiffness: 300,
+  damping: 30,
+  mass: 1,
 } as const;
 
 const LONG_PRESS_MS = 480;
@@ -57,6 +57,7 @@ export const MorphingCommentButton: React.FC<MorphingCommentButtonProps> = ({
 }) => {
   const [comment, setComment] = useState('');
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [holding, setHolding] = useState(false);
   const [submittedComments, setSubmittedComments] = useState<StoryComment[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -64,6 +65,7 @@ export const MorphingCommentButton: React.FC<MorphingCommentButtonProps> = ({
   const pressTimerRef = useRef<number | null>(null);
   const pressOriginRef = useRef({ x: 0, y: 0 });
   const longPressTriggeredRef = useRef(false);
+  const gooeyFilterId = `story-comments-gooey-${useId().replace(/:/g, '')}`;
   const reduceMotion = useReducedMotion();
   const transition = reduceMotion ? { duration: 0.01 } : INPUT_SPRING;
   const contentTransition = reduceMotion
@@ -75,13 +77,16 @@ export const MorphingCommentButton: React.FC<MorphingCommentButtonProps> = ({
       window.clearTimeout(pressTimerRef.current);
       pressTimerRef.current = null;
     }
+    setHolding(false);
   }, []);
 
   const closeComments = useCallback(() => {
     setCommentsOpen(false);
   }, []);
 
-  useEffect(() => clearLongPress, [clearLongPress]);
+  useEffect(() => () => {
+    if (pressTimerRef.current !== null) window.clearTimeout(pressTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (!expanded) return undefined;
@@ -147,9 +152,11 @@ export const MorphingCommentButton: React.FC<MorphingCommentButtonProps> = ({
 
     clearLongPress();
     longPressTriggeredRef.current = false;
+    setHolding(true);
     pressOriginRef.current = { x: event.clientX, y: event.clientY };
     pressTimerRef.current = window.setTimeout(() => {
       longPressTriggeredRef.current = true;
+      setHolding(false);
       onExpandedChange(false);
       setCommentsOpen(true);
       pressTimerRef.current = null;
@@ -184,11 +191,54 @@ export const MorphingCommentButton: React.FC<MorphingCommentButtonProps> = ({
 
   return (
     <>
+      <svg aria-hidden='true' className='pointer-events-none absolute h-0 w-0'>
+        <defs>
+          <filter id={gooeyFilterId}>
+            <feGaussianBlur in='SourceGraphic' stdDeviation='4.4' result='blur' />
+            <feColorMatrix
+              in='blur'
+              mode='matrix'
+              values='1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -7'
+              result='gooey'
+            />
+            <feBlend in='SourceGraphic' in2='gooey' />
+          </filter>
+        </defs>
+      </svg>
       <motion.div
         layout='position'
         transition={transition}
-        className={cn('min-w-[3rem] shrink-0', expanded && 'flex-1', className)}
+        className={cn('relative min-w-[3rem] shrink-0', expanded && 'flex-1', className)}
       >
+        <AnimatePresence>
+          {holding && !expanded && (
+            <motion.div
+              key='comment-hold-loader'
+              aria-live='polite'
+              initial={{ opacity: 0, transform: 'translate3d(0, 8px, 0) scale(0.96)' }}
+              animate={{ opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' }}
+              exit={{ opacity: 0, transform: 'translate3d(0, 4px, 0) scale(0.97)' }}
+              transition={{ duration: reduceMotion ? 0.01 : 0.18, ease: [0.23, 1, 0.32, 1] }}
+              className='pointer-events-none absolute bottom-[calc(100%+0.45rem)] left-1/2 z-30 h-10 w-32 -translate-x-1/2'
+            >
+              <span
+                className='absolute inset-0 flex items-center justify-center'
+                style={{ filter: `url(#${gooeyFilterId})` }}
+              >
+                <motion.span
+                  initial={{ transform: reduceMotion ? 'none' : 'translate3d(0, 12px, 0) scale(0.9)' }}
+                  animate={{ transform: 'translate3d(0, 0, 0) scale(1)' }}
+                  className='absolute h-9 w-28 rounded-xl bg-brand-blue'
+                />
+                <span className='absolute -bottom-1 h-5 w-5 rounded-full bg-brand-blue' />
+              </span>
+              <span className='relative grid h-full place-items-center text-[11px] font-bold text-white'>
+                Carregando comentários
+              </span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         <motion.div
           ref={containerRef}
           layout
@@ -248,18 +298,32 @@ export const MorphingCommentButton: React.FC<MorphingCommentButtonProps> = ({
             onPointerMove={cancelMovedPress}
             onPointerUp={clearLongPress}
             onPointerCancel={clearLongPress}
+            onPointerLeave={clearLongPress}
             onContextMenu={(event) => event.preventDefault()}
             onClick={handleCommentClick}
             transition={transition}
             whileTap={reduceMotion ? undefined : { transform: 'scale(0.97)' }}
             aria-label={expanded ? 'Enviar comentário' : 'Comentar'}
             className={cn(
-              'relative inline-flex h-10 shrink-0 touch-pan-y items-center justify-center gap-1.5 rounded-lg font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/35',
+              'relative inline-flex h-10 shrink-0 touch-pan-y items-center justify-center gap-1.5 overflow-hidden rounded-lg font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/35',
               expanded
                 ? 'h-9 w-10 bg-brand-blue text-white hover:bg-brand-blue/90'
                 : 'px-2 text-muted-foreground hover:bg-brand-blue/10 hover:text-brand-blue',
             )}
           >
+            <AnimatePresence>
+              {holding && !expanded && (
+                <motion.span
+                  key='comment-hold-progress'
+                  aria-hidden='true'
+                  className='absolute inset-x-0 bottom-0 h-1 origin-left bg-brand-blue'
+                  initial={{ transform: 'scaleX(0)' }}
+                  animate={{ transform: 'scaleX(1)' }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: reduceMotion ? 0.01 : LONG_PRESS_MS / 1000, ease: 'linear' }}
+                />
+              )}
+            </AnimatePresence>
             <AnimatePresence mode='popLayout' initial={false}>
               {expanded ? (
                 <motion.span
@@ -322,7 +386,29 @@ export const MorphingCommentButton: React.FC<MorphingCommentButtonProps> = ({
                   className='relative z-10 w-full max-w-sm rounded-2xl border border-border bg-background p-2 text-brand-ink shadow-[0_24px_80px_rgba(7,40,62,0.3)]'
                 >
                   <div className='flex items-center justify-between px-4 pb-5 pt-3'>
-                    <h2 className='font-display text-2xl font-semibold'>Comentários</h2>
+                    <div className='relative flex h-12 min-w-0 items-center'>
+                      <span
+                        aria-hidden='true'
+                        className='absolute left-0 h-11 w-44'
+                        style={{ filter: `url(#${gooeyFilterId})` }}
+                      >
+                        <motion.span
+                          initial={reduceMotion
+                            ? { opacity: 0 }
+                            : { opacity: 0, transform: 'translate3d(0, 12px, 0) scale(0.94)' }}
+                          animate={{ opacity: 1, transform: 'translate3d(0, 0, 0) scale(1)' }}
+                          className='absolute inset-y-1 left-0 w-40 rounded-xl bg-brand-blue/12'
+                        />
+                        <motion.span
+                          initial={reduceMotion
+                            ? { opacity: 0 }
+                            : { opacity: 0, transform: 'translate3d(28px, 28px, 0)' }}
+                          animate={{ opacity: 1, transform: 'translate3d(0, 0, 0)' }}
+                          className='absolute bottom-0 left-3 h-6 w-6 rounded-full bg-brand-blue/12'
+                        />
+                      </span>
+                      <h2 className='relative px-3 font-display text-2xl font-semibold'>Comentários</h2>
+                    </div>
                     <button
                       ref={closeRef}
                       type='button'

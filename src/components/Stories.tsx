@@ -120,50 +120,53 @@ const STORY_ACTION_SPRING = {
   mass: 1.1,
 } as const;
 
-const BrandHeartReaction: React.FC<{ liked: boolean }> = ({ liked }) => (
-  <span className='relative grid h-6 w-6 shrink-0 place-items-center'>
-    <AnimatePresence mode='popLayout' initial={false}>
-      {liked ? (
-        <motion.img
-          key='brand-heart'
-          src={BRAND_HEART_SRC}
-          alt=''
-          className='h-6 w-6 object-contain'
-          initial={{ opacity: 0, scale: 0.25, rotate: -16 }}
-          animate={{
-            opacity: 1,
-            scale: [0.25, 1.4, 0.9, 1],
-            rotate: [-16, 8, -3, 0],
-          }}
-          exit={{ opacity: 0, scale: 0.4 }}
-          transition={{ duration: 0.48, ease: [0.22, 1, 0.36, 1] }}
-        />
-      ) : (
-        <motion.span
-          key='outline-heart'
-          initial={{ opacity: 0, scale: 0.7 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.5 }}
-          transition={{ duration: 0.16 }}
-        >
-          <Heart size={19} />
-        </motion.span>
-      )}
-    </AnimatePresence>
-    <AnimatePresence>
-      {liked && (
-        <motion.span
-          key='heart-pop-ring'
-          className='pointer-events-none absolute inset-0 rounded-full border-2 border-brand-yellow'
-          initial={{ opacity: 0.85, scale: 0.35 }}
-          animate={{ opacity: 0, scale: 1.9 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.52, ease: 'easeOut' }}
-        />
-      )}
-    </AnimatePresence>
-  </span>
-);
+const BrandHeartReaction: React.FC<{ liked: boolean }> = ({ liked }) => {
+  const reduceMotion = useReducedMotion();
+  const transition = reduceMotion
+    ? { duration: 0.01 }
+    : { duration: 0.18, ease: [0.23, 1, 0.32, 1] as const };
+
+  return (
+    <span className='relative grid h-6 w-6 shrink-0 place-items-center'>
+      <AnimatePresence mode='popLayout' initial={false}>
+        {liked ? (
+          <motion.img
+            key='brand-heart'
+            src={BRAND_HEART_SRC}
+            alt=''
+            className='h-6 w-6 object-contain'
+            initial={{ opacity: 0, transform: reduceMotion ? 'none' : 'scale(0.9)' }}
+            animate={{ opacity: 1, transform: 'scale(1)' }}
+            exit={{ opacity: 0, transform: reduceMotion ? 'none' : 'scale(0.94)' }}
+            transition={transition}
+          />
+        ) : (
+          <motion.span
+            key='outline-heart'
+            initial={{ opacity: 0, transform: reduceMotion ? 'none' : 'scale(0.94)' }}
+            animate={{ opacity: 1, transform: 'scale(1)' }}
+            exit={{ opacity: 0, transform: reduceMotion ? 'none' : 'scale(0.94)' }}
+            transition={transition}
+          >
+            <Heart size={19} />
+          </motion.span>
+        )}
+      </AnimatePresence>
+      <AnimatePresence>
+        {liked && !reduceMotion && (
+          <motion.span
+            key='heart-feedback-ring'
+            className='pointer-events-none absolute inset-0 rounded-full border border-brand-yellow'
+            initial={{ opacity: 0.7, transform: 'scale(0.72)' }}
+            animate={{ opacity: 0, transform: 'scale(1.45)' }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+          />
+        )}
+      </AnimatePresence>
+    </span>
+  );
+};
 
 interface StoryFeedProps {
   stories: StoryItem[];
@@ -265,23 +268,25 @@ const StoryFeed: React.FC<StoryFeedProps> = ({
             <button
               type='button'
               onClick={() => onOpenStory(story)}
-              className='group relative ml-14 mt-3 block aspect-[16/10] w-[calc(100%_-_3.5rem)] overflow-hidden rounded-lg border border-brand-ink/10 bg-secondary text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20'
+              className='group relative ml-14 mt-3 block w-[calc(100%_-_3.5rem)] overflow-hidden rounded-lg border border-brand-ink/10 bg-secondary text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20'
             >
               {story.type === 'image' ? (
                 <img
                   src={story.url}
                   alt={story.caption || 'História de impacto'}
-                  className='h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.025]'
+                  loading='lazy'
+                  decoding='async'
+                  className='block h-auto w-full object-contain'
                 />
               ) : (
-                <>
+                <div className='relative aspect-[16/10] w-full'>
                   <video src={story.url} className='h-full w-full object-cover' muted playsInline preload='metadata' />
                   <span className='absolute inset-0 grid place-items-center bg-brand-ink/15'>
                     <span className='grid h-12 w-12 place-items-center rounded-full bg-background/90 text-brand-blue shadow-lg'>
                       <Play size={21} className='ml-0.5 fill-current' />
                     </span>
                   </span>
-                </>
+                </div>
               )}
             </button>
 
@@ -307,16 +312,18 @@ const StoryFeed: React.FC<StoryFeedProps> = ({
                       }}
                       transition={actionVisibilityTransition}
                     >
-                      <button
+                      <motion.button
                         type='button'
                         onClick={() => onToggleLiked(story.id)}
                         aria-pressed={liked}
+                        whileTap={reduceMotion ? undefined : { transform: 'scale(0.97)' }}
+                        transition={{ duration: reduceMotion ? 0.01 : 0.16, ease: [0.23, 1, 0.32, 1] }}
                         className={'relative inline-flex min-h-10 items-center gap-1.5 rounded-lg px-2 transition-colors hover:bg-brand-blue/10 ' + (liked ? 'text-brand-blue' : '')}
                         aria-label={liked ? 'Remover curtida' : 'Curtir história'}
                       >
                         <BrandHeartReaction liked={liked} />
                         <span className='text-xs tabular-nums'>{24 + index * 7 + (liked ? 1 : 0)}</span>
-                      </button>
+                      </motion.button>
                     </motion.div>
                   )}
                 </AnimatePresence>

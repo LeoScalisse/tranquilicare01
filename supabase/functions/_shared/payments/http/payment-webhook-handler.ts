@@ -5,6 +5,7 @@ import {
   type PaymentProviderName,
 } from "../domain/payment.types.ts";
 import { SupabasePaymentEventRepository } from "../infrastructure/supabase-payment-repository.ts";
+import { createMercadoPagoProviderOptions } from "../infrastructure/mercado-pago-runtime.ts";
 import { createPaymentRuntime } from "../infrastructure/payment-runtime.ts";
 import { PaymentEventService } from "../services/payment-event-service.ts";
 import { jsonResponse } from "./http.ts";
@@ -12,6 +13,7 @@ const mercadoEvent = async (
   payload: string,
   request: Request,
   runtime: ReturnType<typeof createPaymentRuntime>,
+  admin: ReturnType<typeof createClient>,
 ) => {
   const secret = Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET");
   const body = JSON.parse(payload) as { id?: string; data?: { id?: string } };
@@ -87,9 +89,30 @@ const mercadoEvent = async (
       "Invalid Mercado Pago webhook signature",
       400,
     );
+  let localPayment: { recipient_id: string | null } | null = null;
+  for (const field of ["provider_payment_id", "provider_action_id"] as const) {
+    if (localPayment) break;
+    const { data, error } = await admin
+      .from("payments")
+      .select("recipient_id")
+      .eq("provider", "mercado_pago")
+      .eq(field, orderId)
+      .maybeSingle();
+    if (error) throw error;
+    localPayment = data;
+  }
+  if (runtime.service.resolveProvider("mercado_pago").livemode && !localPayment?.recipient_id) {
+    throw new PaymentError(
+      "mercado-pago-webhook-payment-unknown",
+      "Payment is not registered yet",
+      409,
+    );
+  }
   const status = await runtime.service.getPaymentStatus({
     provider: "mercado_pago",
     providerActionId: orderId,
+    providerPaymentId: orderId,
+    recipientId: localPayment?.recipient_id ?? undefined,
   });
   return {
     provider: "mercado_pago" as const,
@@ -138,20 +161,20 @@ export const paymentWebhookHandler =
 
     try {
       const payload = await request.text();
-      const url = new URL(request.url);
-      const runtime = createPaymentRuntime();
+      const admin = createClient(supabaseUrl, serviceRoleKey, {
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const runtime = createPaymentRuntime({
+        mercadoPago: createMercadoPagoProviderOptions(admin),
+      });
       const event =
         provider === "mercado_pago"
-          ? await mercadoEvent(payload, request, runtime)
+          ? await mercadoEvent(payload, request, runtime, admin)
           : await runtime.service.parseWebhook(provider, {
               payload,
               signature: request.headers.get("Stripe-Signature"),
             });
       if (!event) return jsonResponse({ received: true, ignored: true });
-
-      const admin = createClient(supabaseUrl, serviceRoleKey, {
-        auth: { persistSession: false, autoRefreshToken: false },
-      });
       const events = new PaymentEventService(
         new SupabasePaymentEventRepository(admin),
       );

@@ -105,6 +105,7 @@ const safeNgoProfile = (value: unknown): NgoProfileDetails | null => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const profile = value as Record<string, unknown>;
   const details = {
+    publicEmail: safeText(profile.publicEmail ?? profile.public_email).trim(),
     description: safeText(profile.description).trim(),
     category: safeText(profile.category).trim(),
     goal: safeText(profile.goal).trim(),
@@ -217,7 +218,14 @@ const loadAppUser = async (user: User): Promise<AppUser> => {
       if (isOptionalSchemaIssue(ngoError)) logOptionalSchemaIssue('ngo-profile-load', ngoError);
       else console.error('Could not load organization profile:', ngoError);
     } else if (ngoProfile) {
-      appUser.ngoProfile = safeNgoProfile(ngoProfile) ?? appUser.ngoProfile;
+      const storedProfile = safeNgoProfile(ngoProfile);
+      appUser.ngoProfile = storedProfile
+        ? {
+            ...appUser.ngoProfile,
+            ...storedProfile,
+            publicEmail: appUser.ngoProfile?.publicEmail || appUser.email,
+          }
+        : appUser.ngoProfile;
     }
   } else {
     const { data: donorProfile, error: donorError } = await client()
@@ -436,6 +444,7 @@ export const updateUser = async (patch: EditableUserProfile): Promise<AppUser | 
   }
   if (patch.ngoProfile !== undefined) {
     const ngoProfile = patch.ngoProfile ? {
+      publicEmail: patch.ngoProfile.publicEmail.trim().toLowerCase(),
       description: patch.ngoProfile.description.trim(),
       category: patch.ngoProfile.category.trim(),
       goal: patch.ngoProfile.goal.trim(),
@@ -512,6 +521,18 @@ export const updateUser = async (patch: EditableUserProfile): Promise<AppUser | 
     if (ngoProfileError) {
       if (isOptionalSchemaIssue(ngoProfileError)) logOptionalSchemaIssue('ngo-profile-update', ngoProfileError);
       else console.error('Could not update organization profile:', ngoProfileError);
+    }
+
+    const { error: organizationError } = await client()
+      .from('organizations')
+      .update({
+        public_email: patch.ngoProfile.publicEmail.trim().toLowerCase() || null,
+      })
+      .eq('id', userId);
+
+    if (organizationError) {
+      if (isOptionalSchemaIssue(organizationError)) logOptionalSchemaIssue('organization-public-email-update', organizationError);
+      else console.error('Could not update organization public email:', organizationError);
     }
   }
 

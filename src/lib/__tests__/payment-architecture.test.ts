@@ -11,6 +11,7 @@ import type {
   NormalizedPaymentEvent,
   PaymentRecipient,
 } from '../../../supabase/functions/_shared/payments/domain/payment.types';
+import { normalizePayerEmail } from '../../../supabase/functions/_shared/payments/domain/payer-email';
 import { StripeProvider } from '../../../supabase/functions/_shared/payments/providers/stripe/stripe-provider';
 import type { StripeClientPort } from '../../../supabase/functions/_shared/payments/providers/stripe/stripe.types';
 import { DonationPaymentService, type DonationPaymentRepository } from '../../../supabase/functions/_shared/payments/services/donation-payment-service';
@@ -57,6 +58,11 @@ const fakeProvider = (createPayment = vi.fn()): PaymentProvider => ({
 });
 
 describe('provider-agnostic payment domain', () => {
+  it('normalizes a valid payer e-mail and rejects malformed input', () => {
+    expect(normalizePayerEmail(' Doador@Exemplo.com ')).toBe('doador@exemplo.com');
+    expect(normalizePayerEmail('sem-arroba')).toBeNull();
+    expect(normalizePayerEmail('a@b')).toBeNull();
+  });
   it('runs donation rules with a fake provider and keeps the provider behind the service', async () => {
     const providerResult: CreatePaymentResult = {
       provider: 'stripe',
@@ -78,6 +84,7 @@ describe('provider-agnostic payment domain', () => {
     const result = await donations.start({
       organizationId: 'ngo-1',
       amountCents: 10_000,
+      payerEmail: 'doador@exemplo.com',
       successUrl: createInput().successUrl,
       cancelUrl: createInput().cancelUrl,
     });
@@ -91,6 +98,7 @@ describe('provider-agnostic payment domain', () => {
         totalAmountCents: 10_500,
         recipientAmountCents: 10_000,
       }),
+      payerEmail: 'doador@exemplo.com',
     }));
     expect(repository.markActionCreated).toHaveBeenCalledOnce();
   });

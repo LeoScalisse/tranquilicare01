@@ -25,7 +25,7 @@ describe("PixQrDisclosure", () => {
     );
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Só Abrir QR" }),
+      screen.getByRole("button", { name: "Abrir QR" }),
     );
 
     expect(screen.queryByText("000201-payload-secreto")).toBeNull();

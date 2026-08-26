@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { View, NGO } from '../types';
 import { demoNgos } from '@/data/demoNgos';
@@ -7,9 +7,11 @@ import { getUser, onAuthChange, authReady, signOut, defaultDestForAccount, AppUs
 import Header from '../components/Header';
 import ImpactDashboard from '../components/ImpactDashboard';
 import Marketplace from '../components/Marketplace';
-import NGOProfile from '../components/NGOProfile';
-import Stories from '../components/Stories';
-import DonationThankYouDialog from '../components/DonationThankYouDialog';
+import {
+  isTranquiliCarePrototypeAccount,
+  isTranquiliCarePrototypeOrganization,
+  TRANQUILICARE_FOUNDER_NGO,
+} from '@/data/tranquilicarePrototype';
 import logo from '@/assets/logo.png';
 import { toast } from 'sonner';
 import { waitForDonationConfirmation } from '@/lib/donations';
@@ -24,6 +26,10 @@ import {
   VERIFICATION_DISCOVERY_PATH,
   VERIFICATION_DISCOVERY_TRIGGER_ID,
 } from '@/lib/discoveryNavigation';
+
+const NGOProfile = lazy(() => import('../components/NGOProfile'));
+const Stories = lazy(() => import('../components/Stories'));
+const DonationThankYouDialog = lazy(() => import('../components/DonationThankYouDialog'));
 
 const TranquiliCareApp: React.FC = () => {
   const navigate = useNavigate();
@@ -208,9 +214,21 @@ const TranquiliCareApp: React.FC = () => {
     navigate('/donor/auth?mode=signup');
   }, [handleDonationAnimationComplete, navigate]);
 
-  const confirmedNgoName = confirmedDonation
-    ? ngos.find((ngo) => ngo.id === confirmedDonation.ngo_id)?.name ?? 'esta causa'
-    : 'esta causa';
+  const confirmedNgo = confirmedDonation
+    ? ngos.find((ngo) => ngo.id === confirmedDonation.ngo_id) ?? null
+    : null;
+  const confirmedNgoName = confirmedNgo?.name ?? 'esta causa';
+  const founderNgo = useMemo(
+    () => ngos.find((ngo) => (
+      isTranquiliCarePrototypeOrganization(ngo)
+      || (isTranquiliCarePrototypeAccount(user?.email) && ngo.id === user?.id)
+    )) ?? TRANQUILICARE_FOUNDER_NGO,
+    [ngos, user?.email, user?.id],
+  );
+  const marketplaceNgos = useMemo(
+    () => ngos.filter((ngo) => ngo.id !== founderNgo.id && !isTranquiliCarePrototypeAccount(ngo.email)),
+    [founderNgo.id, ngos],
+  );
 
   const renderHome = () => (
     <>
@@ -231,7 +249,13 @@ const TranquiliCareApp: React.FC = () => {
         celebrationPhase={celebrationPhase}
         onDonationAnimationComplete={handleDonationAnimationComplete}
       />
-      <Marketplace embedded ngos={ngos} onSelectNGO={handleSelectNGO} onSupportNGO={handleSelectNGO} />
+      <Marketplace
+        embedded
+        ngos={marketplaceNgos}
+        founderNgo={founderNgo}
+        onSelectNGO={handleSelectNGO}
+        onSupportNGO={handleSelectNGO}
+      />
     </>
   );
 
@@ -266,20 +290,36 @@ const TranquiliCareApp: React.FC = () => {
         onLogout={handleLogout}
         onDonorLogin={() => navigate('/donor/auth')}
       />
-      <main className="animate-fade-in">{renderView()}</main>
+      <main className="animate-fade-in">
+        <Suspense fallback={<div className="min-h-[45vh]" aria-label="Carregando conteúdo" />}>
+          {renderView()}
+        </Suspense>
+      </main>
 
       {confirmedDonation && (
-        <DonationThankYouDialog
-          open={celebrationPhase === 'dialog'}
-          amountCents={confirmedDonation.amount}
-          ngoName={confirmedNgoName}
-          isLoggedIn={Boolean(user)}
-          onCreateAccount={handleCreateAccountAfterDonation}
-          onTransferComplete={() => {
-            if (user) setCelebrationPhase('card');
-            else handleDonationAnimationComplete();
-          }}
-        />
+        <Suspense fallback={null}>
+          <DonationThankYouDialog
+            open={celebrationPhase === 'dialog'}
+            amountCents={confirmedDonation.amount}
+            ngoName={confirmedNgoName}
+            ngoCategory={confirmedNgo?.category ?? "Social"}
+            ngoImage={confirmedNgo?.image ?? logo}
+            ngoPhotos={confirmedNgo ? [confirmedNgo.coverImage, ...confirmedNgo.posts.filter((post) => post.type === "image").map((post) => post.url)].filter(Boolean) as string[] : [logo]}
+            ngoVideo={confirmedNgo?.causeVideo}
+            ngoVideoPoster={confirmedNgo?.coverImage}
+            donorId={user?.id ?? null}
+            donorName={user?.name ?? "Apoiador TranquiliCare"}
+            donorUsername={user?.donorProfile?.instagram ?? "@apoiador"}
+            donorAvatar={user?.avatar ?? null}
+            friendCode={'TC-' + (user?.id ?? confirmedDonation.id).replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase()}
+            isLoggedIn={Boolean(user)}
+            onCreateAccount={handleCreateAccountAfterDonation}
+            onTransferComplete={() => {
+              if (user) setCelebrationPhase('card');
+              else handleDonationAnimationComplete();
+            }}
+          />
+        </Suspense>
       )}
 
       <footer className="bg-gray-50 border-t border-gray-200 py-8 md:py-12 mt-12">

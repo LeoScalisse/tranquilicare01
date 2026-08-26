@@ -90,6 +90,7 @@ export interface GetPaymentStatusInput {
   provider?: PaymentProviderName;
   providerPaymentId?: string;
   providerActionId?: string;
+  recipientId?: string;
 }
 
 export interface PaymentStatusResult {

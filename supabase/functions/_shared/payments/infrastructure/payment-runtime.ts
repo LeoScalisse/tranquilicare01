@@ -2,7 +2,10 @@ import { PaymentError } from "../domain/payment.errors.ts";
 import type { PaymentProviderName } from "../domain/payment.types.ts";
 import { PAYMENT_PROVIDER_NAMES } from "../domain/payment.types.ts";
 import { createStripeProvider } from "../providers/stripe/stripe-client.ts";
-import { createMercadoPagoProvider } from "../providers/mercado-pago/mercado-pago-provider.ts";
+import {
+  createMercadoPagoProvider,
+  type MercadoPagoProviderOptions,
+} from "../providers/mercado-pago/mercado-pago-provider.ts";
 import { PaymentProviderRegistry } from "../services/payment-provider-registry.ts";
 import { PaymentService } from "../services/payment-service.ts";
 
@@ -21,7 +24,13 @@ export interface PaymentRuntime {
   defaultProvider: PaymentProviderName;
 }
 
-export const createPaymentRuntime = (): PaymentRuntime => {
+export interface PaymentRuntimeOptions {
+  mercadoPago?: MercadoPagoProviderOptions;
+}
+
+export const createPaymentRuntime = (
+  options: PaymentRuntimeOptions = {},
+): PaymentRuntime => {
   const stripeSecret = Deno.env.get("STRIPE_SECRET_KEY");
   const mercadoToken = Deno.env.get("MERCADO_PAGO_ACCESS_TOKEN");
   const providers = [
@@ -39,6 +48,7 @@ export const createPaymentRuntime = (): PaymentRuntime => {
             mercadoToken,
             Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET") ?? null,
             Deno.env.get("MERCADO_PAGO_LIVEMODE") === "true",
+            options.mercadoPago,
           ),
         ]
       : []),

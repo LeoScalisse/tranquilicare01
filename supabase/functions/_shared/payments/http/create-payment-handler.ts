@@ -1,8 +1,13 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.53.0';
 import { PaymentError } from '../domain/payment.errors.ts';
+import { normalizePayerEmail } from '../domain/payer-email.ts';
 import { PAYMENT_PROVIDER_NAMES, type PaymentMethod, type PaymentProviderName } from '../domain/payment.types.ts';
 import { SupabaseDonationPaymentRepository } from '../infrastructure/supabase-payment-repository.ts';
+import { SupabasePaymentRateLimitRepository } from '../infrastructure/supabase-payment-rate-limit-repository.ts';
+import { createMercadoPagoProviderOptions } from '../infrastructure/mercado-pago-runtime.ts';
 import { createPaymentRuntime } from '../infrastructure/payment-runtime.ts';
+import { PaymentRateLimiter, paymentClientKey } from '../security/payment-rate-limit.ts';
+import { isLiveOrganizationAllowed } from '../security/payment-production-rollout.ts';
 import { DonationPaymentService } from '../services/donation-payment-service.ts';
 import { corsHeaders, jsonResponse, paymentHttpConfig } from './http.ts';
 
@@ -47,11 +52,15 @@ export const createPaymentHandler = (options: CreatePaymentHandlerOptions = {}) 
   const amountCents = integer(body.amountCents);
   const provider = parseProvider(body.provider);
   const method = (body.method ?? 'card') as PaymentMethod;
+  const suppliedPayerEmail = body.payerEmail === undefined ? null : normalizePayerEmail(body.payerEmail);
   if (!organizationId || organizationId.length > 100 || amountCents === null) {
     return jsonResponse({ error: 'Invalid payment input' }, 400, headers);
   }
   if (body.provider && !provider) return jsonResponse({ error: 'Invalid payment provider' }, 400, headers);
   if (!['card', 'pix', 'boleto'].includes(method)) return jsonResponse({ error: 'Invalid payment method' }, 400, headers);
+  if (body.payerEmail !== undefined && !suppliedPayerEmail) {
+    return jsonResponse({ error: 'Invalid payer email', code: 'payer-email-invalid' }, 400, headers);
+  }
 
   const userClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
   const adminClient = createClient(supabaseUrl, serviceRoleKey, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -62,8 +71,35 @@ export const createPaymentHandler = (options: CreatePaymentHandlerOptions = {}) 
     if (data.user) donor = { id: data.user.id, ...(data.user.email ? { email: data.user.email } : {}) };
   }
 
+  const payerEmail = normalizePayerEmail(donor?.email) ?? suppliedPayerEmail;
+  if (provider === 'mercado_pago' && method === 'pix' && !payerEmail) {
+    return jsonResponse({ error: 'Payer email is required for PIX', code: 'payer-email-required' }, 400, headers);
+  }
+  if (provider === 'mercado_pago' && !isLiveOrganizationAllowed(
+    organizationId,
+    Deno.env.get('MERCADO_PAGO_LIVEMODE') === 'true',
+    Deno.env.get('MERCADO_PAGO_LIVE_ORGANIZATION_ALLOWLIST') ?? null,
+  )) {
+    return jsonResponse({
+      error: 'Real payments are not enabled for this organization yet',
+      code: 'mercado-pago-live-rollout-blocked',
+    }, 409, headers);
+  }
+
   try {
-    const runtime = createPaymentRuntime();
+    const rateLimiter = new PaymentRateLimiter(
+      new SupabasePaymentRateLimitRepository(adminClient),
+      Deno.env.get('PAYMENT_RATE_LIMIT_PEPPER') ?? serviceRoleKey,
+    );
+    await rateLimiter.assertCreatePaymentAllowed({
+      clientIdentity: paymentClientKey(request.headers),
+      organizationId,
+      payerEmail: payerEmail ?? null,
+    });
+
+    const runtime = createPaymentRuntime({
+      mercadoPago: createMercadoPagoProviderOptions(adminClient),
+    });
     const donations = new DonationPaymentService(
       runtime.service,
       new SupabaseDonationPaymentRepository(adminClient),
@@ -74,6 +110,7 @@ export const createPaymentHandler = (options: CreatePaymentHandlerOptions = {}) 
       organizationId,
       campaignId,
       amountCents,
+      payerEmail: payerEmail ?? undefined,
       donor,
       successUrl: `${appUrl}/?payment=success&payment_action_id={PAYMENT_ACTION_ID}`,
       cancelUrl: `${appUrl}/?payment=cancelled`,

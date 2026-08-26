@@ -121,7 +121,6 @@ export const NGO_CATEGORY_ORDER = [
   'Social',
   'Pets',
   'Meio Ambiente',
-  'Outros',
 ];
 
 const fallbackTheme = {
