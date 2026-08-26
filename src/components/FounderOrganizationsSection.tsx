@@ -35,7 +35,7 @@ const FounderOrganizationsSection = memo(function FounderOrganizationsSection({
         <span className='founder-card-aurora absolute inset-0' aria-hidden='true' />
         <span
           aria-hidden='true'
-          className='absolute inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(255,255,255,0.26),transparent_30%),linear-gradient(115deg,rgba(0,126,190,0.42)_0%,rgba(0,126,190,0.76)_48%,rgba(0,76,122,0.86)_100%)]'
+          className='absolute inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(255,255,255,0.4),transparent_32%),linear-gradient(115deg,rgba(0,126,190,0.12)_0%,rgba(0,126,190,0.34)_48%,rgba(0,67,115,0.68)_100%)]'
         />
 
         {stories.length > 0 && (
@@ -82,7 +82,7 @@ const FounderOrganizationsSection = memo(function FounderOrganizationsSection({
           </span>
 
           <span>
-            <span className='block max-w-lg text-sm font-medium leading-6 text-white/90 sm:text-base'>
+            <span className='block max-w-lg text-sm font-semibold leading-6 text-white sm:text-base'>
               {ngo.description}
             </span>
             <span className='mt-5 inline-flex max-w-full items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-black text-brand-blue shadow-[0_12px_30px_-16px_rgba(4,62,94,0.9)] transition-transform duration-150 group-hover:translate-x-1'>
@@ -102,9 +102,9 @@ const FounderOrganizationsSection = memo(function FounderOrganizationsSection({
       className='mx-auto w-full max-w-[1400px]'
       style={{ contentVisibility: 'auto', containIntrinsicSize: '560px' }}
     >
-      <div className='relative overflow-hidden rounded-[30px] border border-brand-blue/15 bg-[radial-gradient(circle_at_14%_8%,rgba(255,217,87,0.32),transparent_30%),radial-gradient(circle_at_91%_84%,rgba(56,182,255,0.3),transparent_36%),linear-gradient(145deg,#f8fdff_0%,#e9f8fc_52%,#fffdf4_100%)] px-3 py-7 shadow-[0_28px_70px_-48px_rgba(14,116,164,0.65)] sm:px-6 md:rounded-[38px] md:py-9'>
+      <div className='founder-section-vibrant relative overflow-hidden rounded-[30px] px-3 py-7 sm:px-6 md:rounded-[38px] md:py-9'>
         <div className='relative z-10 px-2 sm:px-4'>
-          <div className='inline-flex items-center gap-2 rounded-full border border-brand-blue/15 bg-white/80 px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] text-brand-blue shadow-sm backdrop-blur'>
+          <div className='founder-section-badge inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em]'>
             <img src={founderSeal} alt='' className='h-5 w-5 object-contain' />
             ONGs fundadoras
           </div>
