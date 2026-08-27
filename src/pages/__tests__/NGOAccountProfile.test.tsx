@@ -142,4 +142,33 @@ describe('NGOAccountProfile', () => {
       expect(screen.getByTestId('location').textContent).toBe('/ngo/profile');
     });
   });
+
+  it('keeps setup open when the profile was not persisted', async () => {
+    const user = userEvent.setup();
+    const LocationProbe = () => {
+      const location = useLocation();
+      return <output data-testid='location'>{location.pathname}{location.search}</output>;
+    };
+    authMocks.updateUser.mockResolvedValue(null);
+
+    render(
+      <MemoryRouter initialEntries={['/ngo/profile?setup=1']}>
+        <NGOAccountProfile />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    await screen.findByRole('heading', { name: /Complete o perfil da organização/i });
+    await user.click(screen.getByLabelText(/Categoria principal/i));
+    await user.click(screen.getByRole('option', { name: 'Educação' }));
+    fireEvent.change(screen.getByLabelText(/^CNPJ/i), { target: { value: '11222333000181' } });
+    fireEvent.change(screen.getByLabelText(/^Endereço/i), { target: { value: 'Rua das Flores, 120 - Centro, São Paulo - SP' } });
+    fireEvent.change(screen.getByLabelText(/Sobre a organização/i), { target: { value: 'Apoio educacional para jovens.' } });
+    fireEvent.change(screen.getByLabelText(/Objetivo atual/i), { target: { value: 'Abrir uma nova turma comunitária.' } });
+    await user.click(screen.getByRole('button', { name: /Salvar e visualizar perfil/i }));
+
+    await waitFor(() => expect(authMocks.updateUser).toHaveBeenCalledOnce());
+    expect(screen.getByTestId('location').textContent).toBe('/ngo/profile?setup=1');
+    expect(screen.getByRole('heading', { name: /Complete o perfil da organização/i })).toBeTruthy();
+  });
 });

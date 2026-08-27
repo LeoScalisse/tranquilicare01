@@ -494,14 +494,15 @@ export const updateUser = async (patch: EditableUserProfile): Promise<AppUser | 
     updatedProfile = data;
     if (profileError) {
       if (isOptionalSchemaIssue(profileError)) logOptionalSchemaIssue('profile-update', profileError);
-      else console.error('Could not update profile row:', profileError);
+      throw profileError;
     }
   }
 
   if (patch.ngoProfile) {
-    const { error: ngoProfileError } = await client()
+    const { data: savedNgoProfile, error: ngoProfileError } = await client()
       .from('ngo_profiles')
-      .update({
+      .upsert({
+        user_id: userId,
         description: patch.ngoProfile.description.trim(),
         category: patch.ngoProfile.category.trim(),
         goal: patch.ngoProfile.goal.trim(),
@@ -515,25 +516,30 @@ export const updateUser = async (patch: EditableUserProfile): Promise<AppUser | 
         latitude: patch.ngoProfile.latitude ?? null,
         longitude: patch.ngoProfile.longitude ?? null,
         geocoded_address: patch.ngoProfile.geocodedAddress?.trim() || null,
-      })
-      .eq('user_id', userId);
+      }, { onConflict: 'user_id' })
+      .select('user_id')
+      .maybeSingle<{ user_id: string }>();
 
     if (ngoProfileError) {
       if (isOptionalSchemaIssue(ngoProfileError)) logOptionalSchemaIssue('ngo-profile-update', ngoProfileError);
-      else console.error('Could not update organization profile:', ngoProfileError);
+      throw ngoProfileError;
     }
+    if (!savedNgoProfile) throw new Error('organization-profile-not-persisted');
 
-    const { error: organizationError } = await client()
+    const { data: savedOrganization, error: organizationError } = await client()
       .from('organizations')
       .update({
         public_email: patch.ngoProfile.publicEmail.trim().toLowerCase() || null,
       })
-      .eq('id', userId);
+      .eq('id', userId)
+      .select('id')
+      .maybeSingle<{ id: string }>();
 
     if (organizationError) {
       if (isOptionalSchemaIssue(organizationError)) logOptionalSchemaIssue('organization-public-email-update', organizationError);
-      else console.error('Could not update organization public email:', organizationError);
+      throw organizationError;
     }
+    if (!savedOrganization) throw new Error('organization-not-persisted');
   }
 
   if (patch.donorProfile) {

@@ -533,7 +533,8 @@ const NGOAccountProfile: React.FC = () => {
         avatar,
         ngoProfile: normalizedDetails,
       });
-      if (updated) setUser(updated);
+      if (!updated) throw new Error('organization-profile-not-persisted');
+      setUser(updated);
       setDetails({
         ...normalizedDetails,
         cnpj: formatCnpj(normalizedDetails.cnpj),
