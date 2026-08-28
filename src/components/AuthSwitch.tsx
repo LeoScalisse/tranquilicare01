@@ -21,7 +21,6 @@ import {
   BadgeCheck,
   Building2,
   CheckCircle2,
-  CircleDollarSign,
   Compass,
   Eye,
   EyeOff,
@@ -46,7 +45,7 @@ import {
 
 type Side = AccountType;
 type Mode = 'login' | 'signup';
-type JourneyStage = 0 | 1 | 2;
+type JourneyStage = 0 | 1 | 2 | 3;
 
 type AuthJourneyProgress = {
   confirmationEmail: string | null;
@@ -101,10 +100,10 @@ const ROLE: Record<Side, RoleConfig> = {
     kickerText: 'text-brand-ink/70',
     submitBg: 'tc-button-3d-yellow',
     submitText: 'text-brand-ink',
-    titles: { login: 'Bem-vinda de volta.', signup: 'Cadastre sua organização' },
+    titles: { login: 'Bem-vinda de volta.', signup: 'Crie o acesso da sua organização' },
     subs: {
       login: 'Sua comunidade continua esperando por você.',
-      signup: 'Inspire as pessoas através da sua causa.',
+      signup: 'Sua causa merece ser encontrada.',
     },
     namePlaceholder: 'Nome da organização',
     emailPlaceholder: 'contato@suaong.org',
@@ -131,19 +130,24 @@ const JOURNEY_STEPS: Record<Side, JourneyStep[]> = {
   ],
   ngo: [
     {
-      title: 'Acesso e cadastro',
-      description: 'Entre ou apresente sua organização ao TranquiliCare.',
+      title: 'Criar acesso',
+      description: 'Crie o acesso da sua organização para começar.',
       tone: 'yellow',
     },
     {
-      title: 'Verificação e dados',
-      description: 'Confirme o e-mail e prepare dados e recebimentos.',
+      title: 'Confirmar e-mail',
+      description: 'Confirme seu e-mail para proteger o acesso.',
       tone: 'azure',
     },
     {
-      title: 'Uma jornada que inspira',
-      description: 'Comece a aproximar pessoas do propósito da sua organização.',
+      title: 'Apresentar a causa',
+      description: 'Dê forma à causa que as pessoas vão conhecer.',
       tone: 'blue',
+    },
+    {
+      title: 'Preparar recebimentos',
+      description: 'Configure a verificação e os recebimentos quando estiver pronto.',
+      tone: 'azure',
     },
   ],
 };
@@ -448,7 +452,8 @@ const AuthForm: React.FC<AuthFormProps> = ({
         });
         onStepComplete(0);
         if (role === 'ngo') {
-          onStepChange(1);
+          onStepComplete(1);
+          onStepChange(2);
         } else {
           onStepComplete(1);
           onStepChange(2);
@@ -464,7 +469,7 @@ const AuthForm: React.FC<AuthFormProps> = ({
             resendAvailableAt: Date.now() + RESEND_COOLDOWN_SECONDS * 1000,
           });
           onStepChange(1);
-          toast.success('Enviamos um código de verificação para seu e-mail.');
+          toast.success('Código de verificação enviado.');
           return;
         }
         toast.success(role === 'ngo' ? 'Organização cadastrada com sucesso!' : 'Conta criada com sucesso!');
@@ -475,7 +480,8 @@ const AuthForm: React.FC<AuthFormProps> = ({
           journeyReady: true,
         });
         if (role === 'ngo') {
-          onStepChange(1);
+          onStepComplete(1);
+          onStepChange(2);
         } else {
           onStepComplete(1);
           onStepChange(2);
@@ -522,7 +528,8 @@ const AuthForm: React.FC<AuthFormProps> = ({
         journeyReady: true,
       });
       if (role === 'ngo') {
-        onStepChange(1);
+        onStepComplete(1);
+        onStepChange(2);
       } else {
         onStepComplete(1);
         onStepChange(2);
@@ -562,7 +569,6 @@ const AuthForm: React.FC<AuthFormProps> = ({
           </div>
           <div>
             <h2 className="font-display text-2xl font-semibold text-brand-ink">Verifique seu e-mail</h2>
-            <p className="text-sm text-muted-foreground">Enviamos um código para sua caixa de entrada.</p>
           </div>
         </div>
 
@@ -620,48 +626,6 @@ const AuthForm: React.FC<AuthFormProps> = ({
   }
 
   if (activeStep === 1) {
-    if (journeyReady && role === 'ngo') {
-      return (
-        <div className='w-full'>
-          <div className='mb-7 flex items-start gap-4'>
-            <div className='grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-brand-yellow/30 text-brand-ink'>
-              <CircleDollarSign size={24} />
-            </div>
-            <div>
-              <p className='text-xs font-bold uppercase tracking-[0.16em] text-brand-blue'>Próxima preparação</p>
-              <h2 className='mt-1 font-display text-3xl font-semibold leading-tight text-brand-ink'>Dados e recebimentos</h2>
-              <p className='mt-2 text-sm leading-6 text-muted-foreground'>Antes de receber apoio, sua organização completa as informações que dão segurança para toda a comunidade.</p>
-            </div>
-          </div>
-
-          <div className='divide-y divide-brand-ink/10 border-y border-brand-ink/10'>
-            {[
-              ['Identidade da organização', 'Dados oficiais e canais de contato.'],
-              ['Responsáveis', 'Quem representa e acompanha a organização.'],
-              ['Recebimentos', 'Configuração segura para repasses e doações.'],
-            ].map(([title, description], index) => (
-              <div key={title} className='flex items-start gap-3 py-4'>
-                <span className='grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-blue/10 text-xs font-bold text-brand-blue'>{index + 1}</span>
-                <span>
-                  <strong className='block text-sm text-brand-ink'>{title}</strong>
-                  <span className='mt-0.5 block text-sm text-muted-foreground'>{description}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <button
-            type='button'
-            onClick={() => { onStepComplete(1); onStepChange(2); }}
-            className='tc-button-3d tc-button-3d-yellow btn-shine mt-7 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 font-bold text-brand-ink'
-          >
-            Seguir para o início da jornada
-            <ArrowRight size={18} />
-          </button>
-        </div>
-      );
-    }
-
     if (journeyReady) {
       return (
         <div className='grid min-h-[360px] place-items-center text-center'>
@@ -688,9 +652,9 @@ const AuthForm: React.FC<AuthFormProps> = ({
   }
 
   if (activeStep === 2) {
-    const title = role === 'ngo' ? 'Uma jornada que inspira começa aqui.' : 'O começo do bem.';
+    const title = role === 'ngo' ? 'Apresente sua causa.' : 'O começo do bem.';
     const description = role === 'ngo'
-      ? 'Leve sua organização para perto de pessoas que querem transformar intenção em impacto.'
+      ? 'É assim que as pessoas vão conhecê-la pela primeira vez.'
       : 'Sua conta está pronta. Agora você pode descobrir causas e acompanhar o impacto que ajuda a construir.';
 
     return (
@@ -710,7 +674,7 @@ const AuthForm: React.FC<AuthFormProps> = ({
               className={`tc-button-3d btn-shine mt-8 inline-flex min-h-12 items-center gap-2 rounded-2xl px-7 font-bold disabled:opacity-60 ${role === 'ngo' ? 'tc-button-3d-yellow text-brand-ink' : 'text-white'}`}
             >
               {handoffLoading ? <Loader2 size={18} className='animate-spin' /> : null}
-              {role === 'ngo' ? 'Configurar minha organização' : 'Personalizar meu perfil'}
+              {role === 'ngo' ? 'Continuar' : 'Personalizar meu perfil'}
               {!handoffLoading ? <ArrowRight size={18} /> : null}
             </button>
           ) : (
@@ -895,7 +859,7 @@ const AuthForm: React.FC<AuthFormProps> = ({
           className={`tc-button-3d btn-shine w-full py-3.5 ${cfg.submitBg} ${cfg.submitText} rounded-2xl font-bold shadow-lg disabled:opacity-50 flex items-center justify-center gap-2`}
         >
           {loading ? <Loader2 size={19} className="animate-spin" /> : null}
-          {mode === 'login' ? 'Entrar' : role === 'ngo' ? 'Cadastrar organização' : 'Criar conta'}
+          {mode === 'login' ? 'Entrar' : role === 'ngo' ? 'Continuar' : 'Criar conta'}
         </button>
       </form>
     </div>
@@ -1087,13 +1051,13 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
   }, []);
 
   const changeStep = (step: number) => {
-    const nextStep = Math.max(0, Math.min(2, step)) as JourneyStage;
+    const nextStep = Math.max(0, Math.min(3, step)) as JourneyStage;
     setActiveSteps((current) => ({ ...current, [side]: nextStep }));
     setOpenStage(nextStep);
   };
 
   const openStep = (step: number) => {
-    const nextStep = Math.max(0, Math.min(2, step)) as JourneyStage;
+    const nextStep = Math.max(0, Math.min(3, step)) as JourneyStage;
     const available = nextStep === activeStep || completedSteps[side].includes(nextStep);
     if (!available) return;
     setOpenStage((current) => current === nextStep ? null : nextStep);
@@ -1164,12 +1128,12 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
               {isDonor ? 'Caminho do doador' : 'Caminho da organização'}
             </div>
             <h1 className="mx-auto mt-4 max-w-[calc(100vw-2rem)] break-words px-1 font-display text-3xl font-semibold leading-tight text-brand-ink sm:max-w-3xl sm:text-4xl lg:text-5xl">
-              {isDonor ? 'Toda boa ação começa com uma escolha.' : 'Sua causa também tem um lugar aqui.'}
+              {isDonor ? 'Toda boa ação começa com uma escolha.' : 'Sua causa merece ser encontrada.'}
             </h1>
             <p className="mx-auto mt-3 max-w-[calc(100vw-2rem)] px-1 text-base leading-7 text-brand-ink/75 sm:max-w-2xl">
               {isDonor
                 ? 'Entre, confirme sua conta e encontre uma causa para começar a construir impacto.'
-                : 'Prepare sua presença, organize os dados essenciais e conecte pessoas ao seu propósito.'}
+                : 'Crie o acesso da sua organização para começar.'}
             </p>
           </motion.div>
 

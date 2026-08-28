@@ -30,6 +30,10 @@ export const mergeNgoProfileSources = (
     longitude: null,
     geocodedAddress: '',
     status: 'pending' as const,
+    profileStatus: 'not_started' as const,
+    verificationStatus: 'pending' as const,
+    payoutStatus: 'not_configured' as const,
+    paymentStatus: 'disabled' as const,
   };
 
   return {
@@ -48,6 +52,10 @@ export const mergeNgoProfileSources = (
     longitude: canonical.longitude ?? legacy.longitude,
     geocodedAddress: preferText(canonical.geocodedAddress ?? '', legacy.geocodedAddress ?? ''),
     status: canonical.status,
+    profileStatus: canonical.profileStatus,
+    verificationStatus: canonical.verificationStatus,
+    payoutStatus: canonical.payoutStatus,
+    paymentStatus: canonical.paymentStatus,
     isFounder: canonical.isFounder === true,
   };
 };

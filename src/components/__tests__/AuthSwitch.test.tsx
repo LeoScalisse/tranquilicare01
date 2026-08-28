@@ -77,7 +77,7 @@ const signupPaths: SignupPath[] = [
     name: "Instituto Horizonte",
     email: "contato@horizonte.org",
     emailPlaceholder: "contato@suaong.org",
-    submitLabel: /Cadastrar organização/i,
+    submitLabel: /^Continuar$/i,
   },
 ];
 
@@ -101,7 +101,11 @@ const renderSignup = async (path: SignupPath) => {
   );
 
   await user.click(
-    screen.getByRole("button", { name: /Etapa atual: Acesso e cadastro/i }),
+    screen.getByRole("button", {
+      name: path.side === "ngo"
+        ? /Etapa atual: Criar acesso/i
+        : /Etapa atual: Acesso e cadastro/i,
+    }),
   );
   return user;
 };
@@ -461,12 +465,7 @@ describe("AuthSwitch signup", () => {
     await user.click(screen.getByRole("button", { name: /Confirmar código/i }));
     await user.click(
       await screen.findByRole("button", {
-        name: /Seguir para o início da jornada/i,
-      }),
-    );
-    await user.click(
-      await screen.findByRole("button", {
-        name: /Configurar minha organização/i,
+        name: /Continuar/i,
       }),
     );
 

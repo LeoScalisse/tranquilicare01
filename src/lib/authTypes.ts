@@ -16,6 +16,14 @@ export interface NgoProfileDetails {
   longitude?: number | null;
   geocodedAddress?: string;
   status?: 'pending' | 'approved' | 'rejected';
+  /** Public cause setup is independent from financial readiness. */
+  profileStatus?: 'not_started' | 'ready';
+  /** Controlled by the verification workflow, never inferred from profile completion. */
+  verificationStatus?: 'pending' | 'in_review' | 'verified' | 'needs_review';
+  /** Provider-neutral state for where the organization receives funds. */
+  payoutStatus?: 'not_configured' | 'in_review' | 'configured' | 'needs_review';
+  /** Checkout can only be enabled after verification and configured payouts. */
+  paymentStatus?: 'disabled' | 'enabled';
   /** Granted only by the server after a valid founder invitation is redeemed. */
   isFounder?: boolean;
 }

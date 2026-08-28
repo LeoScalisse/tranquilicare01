@@ -30,7 +30,7 @@ import type {
 const PENDING_ROLE_KEY = 'tc-pending-account-type';
 
 const PROFILE_SELECT = 'id,email,name,avatar_url,credits,account_type,ngo_profile';
-const NGO_PROFILE_SELECT = 'description,category,goal,objectives,youtube_url,cover_image_url,instagram,phone,cnpj,address,latitude,longitude,geocoded_address,status,is_founder';
+const NGO_PROFILE_SELECT = 'description,category,goal,objectives,youtube_url,cover_image_url,instagram,phone,cnpj,address,latitude,longitude,geocoded_address,status,is_founder,profile_status,verification_status,payout_status,payment_status';
 const DONOR_PROFILE_SELECT = 'credits,bio,location,instagram,phone,cover_image_url,interests';
 const OPTIONAL_SCHEMA_CODES = new Set(['42P01', '42703', 'PGRST202', 'PGRST205']);
 const warnedOptionalSchema = new Set<string>();
@@ -61,6 +61,10 @@ type NgoProfileRow = {
   geocoded_address: string | null;
   status: string | null;
   is_founder: boolean | null;
+  profile_status: string | null;
+  verification_status: string | null;
+  payout_status: string | null;
+  payment_status: string | null;
 };
 
 type DonorProfileRow = {
@@ -124,6 +128,18 @@ const safeNgoProfile = (value: unknown): NgoProfileDetails | null => {
     status: ['pending', 'approved', 'rejected'].includes(safeText(profile.status))
       ? safeText(profile.status) as 'pending' | 'approved' | 'rejected'
       : 'pending',
+    profileStatus: ['not_started', 'ready'].includes(safeText(profile.profileStatus ?? profile.profile_status))
+      ? safeText(profile.profileStatus ?? profile.profile_status) as 'not_started' | 'ready'
+      : 'not_started',
+    verificationStatus: ['pending', 'in_review', 'verified', 'needs_review'].includes(safeText(profile.verificationStatus ?? profile.verification_status))
+      ? safeText(profile.verificationStatus ?? profile.verification_status) as 'pending' | 'in_review' | 'verified' | 'needs_review'
+      : 'pending',
+    payoutStatus: ['not_configured', 'in_review', 'configured', 'needs_review'].includes(safeText(profile.payoutStatus ?? profile.payout_status))
+      ? safeText(profile.payoutStatus ?? profile.payout_status) as 'not_configured' | 'in_review' | 'configured' | 'needs_review'
+      : 'not_configured',
+    paymentStatus: ['disabled', 'enabled'].includes(safeText(profile.paymentStatus ?? profile.payment_status))
+      ? safeText(profile.paymentStatus ?? profile.payment_status) as 'disabled' | 'enabled'
+      : 'disabled',
     isFounder: profile.isFounder === true || profile.is_founder === true,
   };
   return [...Object.values(details).flat()].some(Boolean) ? details : null;
@@ -458,6 +474,12 @@ export const updateUser = async (patch: EditableUserProfile): Promise<AppUser | 
       longitude: patch.ngoProfile.longitude ?? null,
       geocodedAddress: patch.ngoProfile.geocodedAddress?.trim() ?? '',
       status: patch.ngoProfile.status ?? 'pending',
+      profileStatus: patch.ngoProfile.profileStatus ?? cached?.ngoProfile?.profileStatus ?? 'not_started',
+      // Verification, payouts and payment eligibility are server-controlled.
+      // Never allow a browser patch to elevate any of these statuses.
+      verificationStatus: cached?.ngoProfile?.verificationStatus ?? 'pending',
+      payoutStatus: cached?.ngoProfile?.payoutStatus ?? 'not_configured',
+      paymentStatus: cached?.ngoProfile?.paymentStatus ?? 'disabled',
     } : null;
     metadata.ngo_profile = ngoProfile;
     profile.ngo_profile = ngoProfile;

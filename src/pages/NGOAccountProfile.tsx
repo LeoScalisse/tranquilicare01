@@ -48,6 +48,7 @@ import {
 } from '@/lib/organizationProfile';
 import { geocodeAddress } from '@/lib/geocoding';
 import { organizationProfileSaveError } from '@/lib/organizationProfileSaveError';
+import NGOOnboardingFlow from '@/components/ngo-profile/NGOOnboardingFlow';
 
 const EMPTY_DETAILS: NgoProfileDetails = {
   publicEmail: '',
@@ -65,15 +66,17 @@ const EMPTY_DETAILS: NgoProfileDetails = {
   longitude: null,
   geocodedAddress: '',
   status: 'pending',
+  profileStatus: 'not_started',
+  verificationStatus: 'pending',
+  payoutStatus: 'not_configured',
+  paymentStatus: 'disabled',
 };
 
-const hasRequiredDetails = (details: NgoProfileDetails) => Boolean(
-  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(details.publicEmail.trim())
-  &&
+const hasCauseDetails = (details: NgoProfileDetails) => Boolean(
   details.description.trim()
   && details.category.trim()
+  && details.objectives[0]?.trim()
   && details.goal.trim()
-  && isValidCnpj(details.cnpj)
   && isValidAddress(details.address),
 );
 
@@ -370,7 +373,8 @@ const ProfileFields: React.FC<ProfileFieldsProps> = ({
 const NGOAccountProfile: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const isSetup = searchParams.get('setup') === '1';
+  const setupStage = searchParams.get('setup') === '4' ? 4 : 3;
+  const isSetup = searchParams.get('setup') === '1' || searchParams.get('setup') === '4';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -380,7 +384,6 @@ const NGOAccountProfile: React.FC = () => {
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState<string | null>(null);
   const [details, setDetails] = useState<NgoProfileDetails>(EMPTY_DETAILS);
-  const [founderCode, setFounderCode] = useState('');
   const [fieldErrors, setFieldErrors] = useState<ProfileFieldErrors>({});
 
   useEffect(() => {
@@ -407,7 +410,7 @@ const NGOAccountProfile: React.FC = () => {
       setName(current.name || '');
       setAvatar(current.avatar);
       setDetails(profileDetails);
-      setProfileSaved(hasRequiredDetails(profileDetails));
+      setProfileSaved(hasCauseDetails(profileDetails));
       setLoading(false);
     });
     return () => { alive = false; };
@@ -434,7 +437,7 @@ const NGOAccountProfile: React.FC = () => {
     latitude: details.latitude ?? null,
     longitude: details.longitude ?? null,
     geocodedAddress: details.geocodedAddress?.trim() || undefined,
-    verified: details.status === 'approved',
+    verified: details.verificationStatus === 'verified' || details.status === 'approved',
     status: details.status ?? 'pending',
     posts: isTranquiliCarePrototypeAccount(user?.email)
       ? TRANQUILICARE_PROTOTYPE_STORIES
@@ -467,6 +470,96 @@ const NGOAccountProfile: React.FC = () => {
       toast.error('Não foi possível processar essa imagem.');
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const normalizeOnboardingDetails = (patch: Partial<NgoProfileDetails> = {}): NgoProfileDetails => ({
+    ...details,
+    ...patch,
+    publicEmail: (details.publicEmail || user?.email || '').trim().toLowerCase(),
+    description: details.description.trim(),
+    category: details.category.trim(),
+    goal: details.goal.trim(),
+    objectives: details.objectives.map((objective) => objective.trim()).filter(Boolean),
+    youtubeUrl: details.youtubeUrl.trim(),
+    coverImage: details.coverImage.trim(),
+    instagram: details.instagram.trim(),
+    phone: normalizePhone(details.phone),
+    cnpj: normalizeCnpj(details.cnpj),
+    address: details.address.trim().replace(/\s+/g, ' '),
+    geocodedAddress: details.geocodedAddress?.trim() || '',
+  });
+
+  const saveOnboardingDetails = async (patch: Partial<NgoProfileDetails> = {}) => {
+    const normalized = normalizeOnboardingDetails(patch);
+    const updated = await updateUser({
+      name: name.trim(),
+      avatar,
+      ngoProfile: normalized,
+    });
+    if (!updated) throw new Error('organization-profile-not-persisted');
+    setUser(updated);
+    setDetails({ ...normalized, cnpj: formatCnpj(normalized.cnpj), phone: formatPhone(normalized.phone) });
+    setProfileSaved(hasCauseDetails(normalized));
+  };
+
+  const continueCauseSetup = async () => {
+    if (!NGO_CATEGORY_ORDER.includes(details.category)) {
+      toast.error('Escolha a principal causa da organização.');
+      return;
+    }
+    if (!details.description.trim() || !details.objectives[0]?.trim() || !details.goal.trim() || !isValidAddress(details.address)) {
+      toast.error('Preencha a apresentação da causa, a atuação, o foco atual e a localização.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await saveOnboardingDetails({
+        profileStatus: 'ready',
+        verificationStatus: details.verificationStatus ?? 'pending',
+        payoutStatus: details.payoutStatus ?? 'not_configured',
+        paymentStatus: 'disabled',
+      });
+      setSearchParams({ setup: '4' }, { replace: true });
+    } catch (error) {
+      toast.error(organizationProfileSaveError(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const finishPreparation = async () => {
+    if (!isValidCnpj(details.cnpj) || !isValidAddress(details.address)) {
+      toast.error('Informe um CNPJ válido e o endereço oficial da organização.');
+      return;
+    }
+    setSaving(true);
+    try {
+      await saveOnboardingDetails({
+        profileStatus: 'ready',
+      });
+      setSearchParams({}, { replace: true });
+      toast.success('Preparação salva. Você poderá configurar os recebimentos quando estiver pronto.');
+    } catch (error) {
+      toast.error(organizationProfileSaveError(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const deferPreparation = async () => {
+    setSaving(true);
+    try {
+      await saveOnboardingDetails({
+        profileStatus: 'ready',
+        payoutStatus: details.payoutStatus ?? 'not_configured',
+        paymentStatus: 'disabled',
+      });
+      setSearchParams({}, { replace: true });
+    } catch (error) {
+      toast.error(organizationProfileSaveError(error));
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -529,12 +622,15 @@ const NGOAccountProfile: React.FC = () => {
         longitude,
         geocodedAddress,
         status: details.status ?? 'pending',
+        profileStatus: details.profileStatus ?? 'not_started',
+        verificationStatus: details.verificationStatus ?? 'pending',
+        payoutStatus: details.payoutStatus ?? 'not_configured',
+        paymentStatus: details.paymentStatus ?? 'disabled',
       };
       const updated = await updateUser({
         name: name.trim(),
         avatar,
         ngoProfile: normalizedDetails,
-        ...(founderCode.trim() ? { founderCode: founderCode.trim().toUpperCase() } : {}),
       });
       if (!updated) throw new Error('organization-profile-not-persisted');
       setUser(updated);
@@ -585,58 +681,29 @@ const NGOAccountProfile: React.FC = () => {
         </div>
       </header>
 
-      {!profileSaved ? (
-        <main className='mx-auto w-full max-w-5xl px-4 pb-28 pt-8 md:pt-12'>
-          <section className='border-b border-brand-ink/10 pb-8'>
-            <div className='flex flex-col gap-5 sm:flex-row sm:items-center'>
-              <div className='grid h-16 w-16 shrink-0 place-items-center rounded-lg bg-brand-yellow text-brand-ink'><Building2 size={30} /></div>
-              <div>
-                <p className='text-xs font-bold uppercase tracking-[0.16em] text-brand-blue'>Primeira configuração</p>
-                <h1 className='mt-1 font-display text-3xl font-semibold leading-tight sm:text-4xl'>Complete o perfil da organização</h1>
-                <p className='mt-2 max-w-2xl text-sm leading-6 text-muted-foreground'>Essas informações formarão o perfil que as pessoas encontrarão ao conhecer sua causa.</p>
-              </div>
-            </div>
-          </section>
-
-          <form onSubmit={saveProfile} className='py-8' noValidate>
-            <div className='mb-8 flex flex-col gap-5 border-b border-brand-ink/10 pb-8 sm:flex-row sm:items-center'>
-              <div className='grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-dashed border-brand-blue/40 bg-brand-blue/5'>
-                {avatar ? <img src={avatar} alt='' className='h-full w-full object-cover' /> : <Building2 className='text-brand-blue/55' size={34} />}
-              </div>
-              <div>
-                <button type='button' onClick={() => fileInputRef.current?.click()} className='inline-flex items-center gap-2 rounded-lg border-2 border-border px-4 py-2.5 text-sm font-bold transition-colors hover:border-brand-blue hover:text-brand-blue'><Camera size={17} />Adicionar imagem</button>
-                <input ref={fileInputRef} type='file' accept='image/*' className='hidden' onChange={chooseImage} />
-                <p className='mt-2 text-xs text-muted-foreground'>Opcional. JPG ou PNG em formato quadrado.</p>
-              </div>
-            </div>
-
-            <section className='mb-8 rounded-2xl border border-brand-yellow/45 bg-brand-yellow/10 p-5'>
-              <label className={labelClass} htmlFor='setup-ngo-founder-code'>
-                Código de ONG fundadora
-                <SmoothInput
-                  id='setup-ngo-founder-code'
-                  value={founderCode}
-                  onChange={(event) => setFounderCode(event.target.value.toUpperCase())}
-                  autoComplete='off'
-                  spellCheck={false}
-                  className={`${inputClass} font-mono tracking-[0.12em]`}
-                  placeholder='TC-XXXX-XXXX'
-                />
-              </label>
-              <p className='mt-2 text-xs leading-5 text-muted-foreground'>
-                Se sua organização recebeu um convite, informe o código aqui. Ele é validado com segurança e libera o selo e os benefícios de ONG fundadora após a aprovação da organização.
-              </p>
-            </section>
-
-            <ProfileFields name={name} onNameChange={setName} details={details} onDetailsChange={updateDetails} idPrefix='setup-ngo' errors={fieldErrors} onClearError={clearFieldError} />
-
-            <div className='mt-8 flex justify-end border-t border-brand-ink/10 pt-6'>
-              <button type='submit' disabled={saving} className='tc-button-3d tc-button-3d-yellow inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-6 font-bold text-brand-ink disabled:opacity-60'>{saving ? <Loader2 size={18} className='animate-spin' /> : <Save size={18} />}{saving ? 'Salvando...' : 'Salvar e visualizar perfil'}</button>
-            </div>
-          </form>
-        </main>
+      {(isSetup || !profileSaved) ? (
+        <NGOOnboardingFlow
+          stage={isSetup ? setupStage : 3}
+          avatar={avatar}
+          details={details}
+          categories={CATEGORY_ITEMS}
+          saving={saving}
+          onDetailsChange={updateDetails}
+          onChooseImage={chooseImage}
+          onCauseSubmit={() => void continueCauseSetup()}
+          onPreparationSubmit={() => void finishPreparation()}
+          onDoLater={() => void deferPreparation()}
+        />
       ) : (
-        <NGOProfile ngo={profile} ownerMode onEditProfile={() => setEditing(true)} />
+        <>
+          {details.payoutStatus !== 'configured' && (
+            <section className='mx-auto mt-6 flex w-full max-w-6xl items-center justify-between gap-4 rounded-xl border border-brand-blue/15 bg-brand-blue/[0.04] px-5 py-4'>
+              <div><p className='font-semibold text-brand-ink'>Prepare sua organização para receber apoio</p><p className='mt-1 text-sm text-muted-foreground'>Conclua a verificação e configure os recebimentos quando estiver pronto.</p></div>
+              <button type='button' onClick={() => setSearchParams({ setup: '4' })} className='shrink-0 text-sm font-bold text-brand-blue'>Continuar preparação</button>
+            </section>
+          )}
+          <NGOProfile ngo={profile} ownerMode onEditProfile={() => setEditing(true)} />
+        </>
       )}
 
       <AnimatePresence>
