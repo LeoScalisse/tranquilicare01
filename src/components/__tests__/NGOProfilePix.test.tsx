@@ -2,15 +2,25 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { startPix, waitForConfirmation, writeText } = vi.hoisted(() => ({
+const {
+  startPix,
+  waitForConfirmation,
+  startPrototypePix,
+  confirmPrototypePix,
+  writeText,
+} = vi.hoisted(() => ({
   startPix: vi.fn(),
   waitForConfirmation: vi.fn(),
+  startPrototypePix: vi.fn(),
+  confirmPrototypePix: vi.fn(),
   writeText: vi.fn(),
 }));
 
 vi.mock("@/lib/donations", () => ({
   startMercadoPagoPixDonation: startPix,
   waitForDonationConfirmation: waitForConfirmation,
+  startPrototypePixDonation: startPrototypePix,
+  confirmPrototypePixDonation: confirmPrototypePix,
 }));
 
 vi.mock("@/components/ui/payment-success-check", () => ({
@@ -23,6 +33,7 @@ vi.mock("@/components/ui/payment-success-check", () => ({
 
 import NGOProfile from "@/components/NGOProfile";
 import { demoNgos } from "@/data/demoNgos";
+import { TRANQUILICARE_FOUNDER_NGO } from "@/data/tranquilicarePrototype";
 
 describe("NGOProfile PIX checkout", () => {
   let resolveConfirmation: (value: {
@@ -47,6 +58,26 @@ describe("NGOProfile PIX checkout", () => {
       confirmationToken: "confirmation-token",
       qrCodeText: "000201-test-pix",
     });
+    startPrototypePix.mockReturnValue({
+      actionId: "prototype-pix-test",
+      confirmationToken: "prototype-confirmation-token",
+      qrCodeText: "SIMULACAO-PIX:prototype-pix-test",
+      isPrototype: true,
+      prototypeDonation: {
+        organizationId: TRANQUILICARE_FOUNDER_NGO.id,
+        amountCents: 5000,
+        createdAt: "2026-08-27T12:00:00.000Z",
+      },
+    });
+    confirmPrototypePix.mockReturnValue({
+      id: "prototype-donation-test",
+      amount: 5000,
+      donor_id: null,
+      donor_email: null,
+      created_at: "2026-08-27T12:00:00.000Z",
+      ngo_id: TRANQUILICARE_FOUNDER_NGO.id,
+      payment_action_id: "prototype-pix-test",
+    });
     waitForConfirmation.mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -59,6 +90,8 @@ describe("NGOProfile PIX checkout", () => {
     cleanup();
     startPix.mockReset();
     waitForConfirmation.mockReset();
+    startPrototypePix.mockReset();
+    confirmPrototypePix.mockReset();
     writeText.mockReset();
   });
 
@@ -77,21 +110,15 @@ describe("NGOProfile PIX checkout", () => {
     const amountInput = screen.getByLabelText(/em reais$/i);
     fireEvent.change(amountInput, { target: { value: "50" } });
     fireEvent.blur(amountInput);
-    fireEvent.change(screen.getByLabelText("Seu e-mail para o pagamento"), {
-      target: { value: "doador@exemplo.com" },
-    });
+    expect(screen.getByText("TranquiliCare · 5%")).not.toBeNull();
+    expect(screen.getByText((_, element) => element?.textContent?.includes("que você escolheu chegam à organização. O valor do TranquiliCare é adicionado separadamente.") ?? false, { selector: "p" })).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
 
-    expect(await screen.findByText("Seu PIX está pronto.")).not.toBeNull();
-    expect(
-      screen.getByText(
-        "Abra o QR Code ou copie o código para concluir o pagamento pelo seu banco.",
-      ),
-    ).not.toBeNull();
-    expect(screen.queryByText("PIX pronto")).toBeNull();
-
+    expect(await screen.findByText("PIX PRONTO")).not.toBeNull();
+    expect(screen.getByText("Tudo pronto para concluir sua doação.")).not.toBeNull();
+    expect(screen.getByText("Abra o QR Code ou copie o código PIX para pagar pelo app do seu banco.")).not.toBeNull();
     const supportButton = screen.getByRole("button", {
-      name: "Abrir QR",
+      name: "Ver PIX",
     });
     expect(
       screen.queryByRole("img", {
@@ -101,12 +128,8 @@ describe("NGOProfile PIX checkout", () => {
 
     fireEvent.click(supportButton);
 
-    expect(
-      await screen.findByText("Pague pelo app do seu banco"),
-    ).not.toBeNull();
-    expect(
-      screen.getByText("Escaneie o QR Code ou copie o código PIX."),
-    ).not.toBeNull();
+    expect(screen.queryByText("PIX PRONTO")).toBeNull();
+    expect(await screen.findByText("Sua doação será confirmada automaticamente assim que o pagamento for identificado.")).not.toBeNull();
     expect(
       await screen.findByRole("img", {
         name: "QR Code PIX para pagamento",
@@ -123,7 +146,7 @@ describe("NGOProfile PIX checkout", () => {
     expect(startPix).toHaveBeenCalledWith({
       organizationId: demoNgos[0].id,
       amountCents: 5000,
-      payerEmail: "doador@exemplo.com",
+      payerEmail: undefined,
     });
     expect(
       document.querySelector(".apple-edge-glow")?.getAttribute("data-stage"),
@@ -132,17 +155,11 @@ describe("NGOProfile PIX checkout", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Pagamento concluído" }),
     );
-    expect(
-      await screen.findByText("Confirmando seu pagamento..."),
-    ).not.toBeNull();
-    expect(
-      screen.getByText(
-        "Assim que o PIX for identificado, sua doação será confirmada automaticamente.",
-      ),
-    ).not.toBeNull();
+    expect(await screen.findByText("Só um instante. Estamos confirmando seu PIX.")).not.toBeNull();
+    expect(screen.queryByText("Assim que o PIX for identificado, sua doação será confirmada automaticamente.")).toBeNull();
     expect(waitForConfirmation).toHaveBeenCalledWith(
       "ORD-1",
-      "doador@exemplo.com",
+      null,
       "confirmation-token",
     );
 
@@ -182,5 +199,32 @@ describe("NGOProfile PIX checkout", () => {
     expect(
       await screen.findByText("Agora você faz parte desta história. E ela só está começando."),
     ).not.toBeNull();
+  });
+
+  it("gera um PIX de demonstração para a TranquiliCare sem acionar uma cobrança real", async () => {
+    render(
+      <MemoryRouter>
+        <NGOProfile ngo={TRANQUILICARE_FOUNDER_NGO} />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Apoiar esta causa" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /Editar valor manualmente/i }),
+    );
+    fireEvent.change(screen.getByLabelText(/em reais$/i), {
+      target: { value: "50" },
+    });
+    fireEvent.blur(screen.getByLabelText(/em reais$/i));
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByText("PIX de demonstração")).not.toBeNull();
+    expect(screen.getByText(/Nenhuma cobrança será realizada/i)).not.toBeNull();
+    expect(startPix).not.toHaveBeenCalled();
+    expect(startPrototypePix).toHaveBeenCalledWith({
+      organizationId: TRANQUILICARE_FOUNDER_NGO.id,
+      amountCents: 5000,
+      payerEmail: undefined,
+    });
   });
 });

@@ -16,13 +16,25 @@ interface AppleEdgeGlowProps {
 
 const edgeNames = ["right", "bottom", "left", "top"] as const;
 
-const edgeEntry = {
-  right: { hidden: "translateX(115%)", visible: "translateX(0%)" },
-  bottom: { hidden: "translateY(115%)", visible: "translateY(0%)" },
-  left: { hidden: "translateX(-115%)", visible: "translateX(0%)" },
-  top: { hidden: "translateY(-115%)", visible: "translateY(0%)" },
-} as const;
+const visibleTransform = "translate3d(0, 0, 0)";
 
+const getHiddenTransform = (
+  edge: (typeof edgeNames)[number],
+  stage: number,
+) => {
+  const distance = 115 * Math.max(stage, 1);
+
+  switch (edge) {
+    case "right":
+      return `translate3d(${distance}%, 0, 0)`;
+    case "bottom":
+      return `translate3d(0, ${distance}%, 0)`;
+    case "left":
+      return `translate3d(-${distance}%, 0, 0)`;
+    case "top":
+      return `translate3d(0, -${distance}%, 0)`;
+  }
+};
 const intensityOpacity: Record<GlowIntensity, number> = {
   sm: 0.58,
   md: 0.66,
@@ -58,12 +70,10 @@ export const AppleEdgeGlow: React.FC<AppleEdgeGlowProps> = ({
       <span className="apple-edge-glow__surface">
         {edgeNames.map((edge, index) => {
           const active = stage >= index + 1;
-          const transform = reduceMotion
-            ? edgeEntry[edge].visible
-            : active
-              ? edgeEntry[edge].visible
-              : edgeEntry[edge].hidden;
-
+          const transform =
+            reduceMotion || active
+              ? visibleTransform
+              : getHiddenTransform(edge, stage);
           return (
             <motion.span
               key={edge}
@@ -78,7 +88,9 @@ export const AppleEdgeGlow: React.FC<AppleEdgeGlowProps> = ({
                 duration: reduceMotion ? 0.18 : 1.15,
                 ease: [0.77, 0, 0.175, 1],
               }}
-            />
+            >
+              <span className="apple-edge-glow__edge-fill" />
+            </motion.span>
           );
         })}
       </span>

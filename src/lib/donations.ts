@@ -82,6 +82,55 @@ export type PixPaymentAction = {
   confirmationToken: string;
 };
 
+export type PrototypePixPaymentAction = PixPaymentAction & {
+  isPrototype: true;
+  prototypeDonation: {
+    organizationId: string;
+    amountCents: number;
+    createdAt: string;
+  };
+};
+
+let prototypePixSequence = 0;
+
+/**
+ * Produces a local-only PIX action for the TranquiliCare demonstration NGO.
+ * It deliberately does not invoke a payment provider or persist a charge.
+ */
+export const startPrototypePixDonation = (
+  input: Pick<DonationPaymentInput, "organizationId" | "amountCents" | "payerEmail">,
+): PrototypePixPaymentAction => {
+  prototypePixSequence += 1;
+  const createdAt = new Date().toISOString();
+  const actionId = `prototype-pix-${Date.now().toString(36)}-${prototypePixSequence}`;
+
+  return {
+    actionId,
+    qrCodeText: `SIMULACAO-PIX:${actionId}`,
+    confirmationToken: `prototype-confirmation-${actionId}`,
+    isPrototype: true,
+    prototypeDonation: {
+      organizationId: input.organizationId,
+      amountCents: input.amountCents,
+      createdAt,
+    },
+  };
+};
+
+/** Completes a local-only demonstration donation after the user confirms it. */
+export const confirmPrototypePixDonation = (
+  payment: PrototypePixPaymentAction,
+  donorEmail: string | null,
+): DonationRow => ({
+  id: `prototype-donation-${payment.actionId}`,
+  amount: payment.prototypeDonation.amountCents,
+  donor_id: null,
+  donor_email: donorEmail,
+  created_at: payment.prototypeDonation.createdAt,
+  ngo_id: payment.prototypeDonation.organizationId,
+  payment_action_id: payment.actionId,
+});
+
 export const startMercadoPagoPixDonation = async (
   input: Omit<DonationPaymentInput, "provider" | "method">,
 ): Promise<PixPaymentAction> => {

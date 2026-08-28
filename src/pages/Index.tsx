@@ -1,7 +1,6 @@
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { View, NGO } from '../types';
-import { demoNgos } from '@/data/demoNgos';
 import { loadMarketplaceNgos } from '@/lib/ngos';
 import { getUser, onAuthChange, authReady, signOut, defaultDestForAccount, AppUser } from '@/lib/auth';
 import Header from '../components/Header';
@@ -38,7 +37,7 @@ const TranquiliCareApp: React.FC = () => {
   const [currentView, setCurrentView] = useState<View>(View.HOME);
   const [viewingNGO, setViewingNGO] = useState<NGO | null>(null);
   const [user, setUser] = useState<AppUser | null>(getUser);
-  const [ngos, setNgos] = useState<NGO[]>(demoNgos);
+  const [ngos, setNgos] = useState<NGO[]>([]);
   const [authHydrated, setAuthHydrated] = useState(false);
   const [confirmedDonation, setConfirmedDonation] = useState<DonationRow | null>(null);
   const [celebrationPhase, setCelebrationPhase] = useState<'idle' | 'card' | 'dialog'>('idle');
@@ -218,16 +217,21 @@ const TranquiliCareApp: React.FC = () => {
     ? ngos.find((ngo) => ngo.id === confirmedDonation.ngo_id) ?? null
     : null;
   const confirmedNgoName = confirmedNgo?.name ?? 'esta causa';
-  const founderNgo = useMemo(
-    () => ngos.find((ngo) => (
+  const founderNgos = useMemo<NGO[]>(() => {
+    const prototypeFounder = ngos.find((ngo) => (
       isTranquiliCarePrototypeOrganization(ngo)
       || (isTranquiliCarePrototypeAccount(user?.email) && ngo.id === user?.id)
-    )) ?? TRANQUILICARE_FOUNDER_NGO,
-    [ngos, user?.email, user?.id],
-  );
+    )) ?? TRANQUILICARE_FOUNDER_NGO;
+    const redeemedFounders = ngos.filter((ngo) => ngo.isFounder && ngo.id !== prototypeFounder.id);
+
+    return [prototypeFounder, ...redeemedFounders];
+  }, [ngos, user?.email, user?.id]);
   const marketplaceNgos = useMemo(
-    () => ngos.filter((ngo) => ngo.id !== founderNgo.id && !isTranquiliCarePrototypeAccount(ngo.email)),
-    [founderNgo.id, ngos],
+    () => {
+      const founderIds = new Set(founderNgos.map((ngo) => ngo.id));
+      return ngos.filter((ngo) => !founderIds.has(ngo.id) && !isTranquiliCarePrototypeAccount(ngo.email));
+    },
+    [founderNgos, ngos],
   );
 
   const renderHome = () => (
@@ -252,7 +256,7 @@ const TranquiliCareApp: React.FC = () => {
       <Marketplace
         embedded
         ngos={marketplaceNgos}
-        founderNgo={founderNgo}
+        founderNgos={founderNgos}
         onSelectNGO={handleSelectNGO}
         onSupportNGO={handleSelectNGO}
       />
@@ -305,14 +309,12 @@ const TranquiliCareApp: React.FC = () => {
             ngoCategory={confirmedNgo?.category ?? "Social"}
             ngoImage={confirmedNgo?.image ?? logo}
             ngoPhotos={confirmedNgo ? [confirmedNgo.coverImage, ...confirmedNgo.posts.filter((post) => post.type === "image").map((post) => post.url)].filter(Boolean) as string[] : [logo]}
-            ngoVideo={confirmedNgo?.causeVideo}
-            ngoVideoPoster={confirmedNgo?.coverImage}
             donorId={user?.id ?? null}
             donorName={user?.name ?? "Apoiador TranquiliCare"}
             donorUsername={user?.donorProfile?.instagram ?? "@apoiador"}
             donorAvatar={user?.avatar ?? null}
             friendCode={'TC-' + (user?.id ?? confirmedDonation.id).replace(/[^a-zA-Z0-9]/g, '').slice(-6).toUpperCase()}
-            isLoggedIn={Boolean(user)}
+            hasDonorAccount={Boolean(confirmedDonation.donor_id)}
             onCreateAccount={handleCreateAccountAfterDonation}
             onTransferComplete={() => {
               if (user) setCelebrationPhase('card');

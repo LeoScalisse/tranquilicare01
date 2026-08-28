@@ -1,10 +1,7 @@
-import {
-  useAnimate,
-  useReducedMotion,
-  type AnimationPlaybackControlsWithThen,
-} from "framer-motion";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useReducedMotion } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { gsap, useGSAP } from "@/lib/gsap";
 import { cn } from "@/lib/utils";
 
 interface Rotating3DStaggerTextProps {
@@ -13,168 +10,7 @@ interface Rotating3DStaggerTextProps {
   className?: string;
 }
 
-interface CharacterProps {
-  character: string;
-}
-
-interface WordPart {
-  characters: string[];
-  needsSpace: boolean;
-}
-
-const HAS_SEGMENTER = typeof Intl !== "undefined" && "Segmenter" in Intl;
-const STAGGER_DURATION = 0.05;
-const RESTING_TRANSFORM = "translateZ(-0.5lh) rotateX(0deg)";
-const FLIPPED_TRANSFORM = "translateZ(-0.5lh) rotateX(-90deg)";
-const FRONT_FACE_TRANSFORM = "translateZ(0.5lh)";
-const SECOND_FACE_TRANSFORM = "rotateX(90deg) translateZ(0.5lh)";
-
-const splitIntoCharacters = (text: string): string[] => {
-  if (HAS_SEGMENTER) {
-    const segmenter = new (
-      Intl as typeof Intl & {
-        Segmenter: new (
-          locale: string,
-          options: { granularity: "grapheme" },
-        ) => { segment: (value: string) => Iterable<{ segment: string }> };
-      }
-    ).Segmenter("pt-BR", { granularity: "grapheme" });
-
-    return Array.from(segmenter.segment(text), ({ segment }) => segment);
-  }
-
-  return Array.from(text);
-};
-
-const Character = memo(({ character }: CharacterProps) => (
-  <span
-    className="tc-3d-stagger-character inline-block"
-    style={{
-      transformStyle: "preserve-3d",
-      transform: RESTING_TRANSFORM,
-      WebkitTransform: RESTING_TRANSFORM,
-    }}
-  >
-    <span
-      className="relative block h-[1lh] text-current"
-      style={{
-        backfaceVisibility: "hidden",
-        WebkitBackfaceVisibility: "hidden",
-        transform: FRONT_FACE_TRANSFORM,
-        WebkitTransform: FRONT_FACE_TRANSFORM,
-      }}
-    >
-      {character}
-    </span>
-    <span
-      className="absolute left-0 top-0 block h-[1lh] text-current"
-      style={{
-        backfaceVisibility: "hidden",
-        WebkitBackfaceVisibility: "hidden",
-        transform: SECOND_FACE_TRANSFORM,
-        WebkitTransform: SECOND_FACE_TRANSFORM,
-      }}
-    >
-      {character}
-    </span>
-  </span>
-));
-
-Character.displayName = "Character";
-
-interface Text3DStaggerFlipProps {
-  text: string;
-  reducedMotion: boolean;
-}
-
-const Text3DStaggerFlip = ({ text, reducedMotion }: Text3DStaggerFlipProps) => {
-  const [scope, scopedAnimate] = useAnimate();
-  const animationRef = useRef<AnimationPlaybackControlsWithThen | null>(null);
-  const mountedRef = useRef(false);
-
-  const words = useMemo<WordPart[]>(
-    () =>
-      text.split(" ").map((word, index, list) => ({
-        characters: splitIntoCharacters(word),
-        needsSpace: index !== list.length - 1,
-      })),
-    [text],
-  );
-
-  const characterOffsets = useMemo(() => {
-    const offsets = [0];
-    for (const word of words) {
-      offsets.push(offsets[offsets.length - 1] + word.characters.length);
-    }
-    return offsets;
-  }, [words]);
-
-  const playAnimation = useCallback(async () => {
-    if (reducedMotion) return;
-
-    const totalCharacters = words.reduce(
-      (total, word) => total + word.characters.length,
-      0,
-    );
-    const center = Math.floor(totalCharacters / 2);
-
-    animationRef.current?.stop();
-    animationRef.current = scopedAnimate(
-      ".tc-3d-stagger-character",
-      { transform: FLIPPED_TRANSFORM },
-      {
-        type: "spring",
-        damping: 30,
-        stiffness: 300,
-        mass: 1,
-        delay: (index: number) => Math.abs(center - index) * STAGGER_DURATION,
-      },
-    );
-
-    await animationRef.current;
-    if (!mountedRef.current) return;
-
-    animationRef.current = scopedAnimate(
-      ".tc-3d-stagger-character",
-      { transform: RESTING_TRANSFORM },
-      { duration: 0 },
-    );
-  }, [reducedMotion, scopedAnimate, words]);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    void playAnimation();
-
-    return () => {
-      mountedRef.current = false;
-      animationRef.current?.stop();
-    };
-  }, [playAnimation, text]);
-
-  return (
-    <span
-      ref={scope}
-      aria-label={text}
-      className="flex w-full flex-wrap text-left [perspective:800px] [perspective-origin:center_center]"
-    >
-      {words.map((word, wordIndex) => (
-        <span
-          key={wordIndex}
-          aria-hidden="true"
-          className="inline-flex [transform-style:preserve-3d]"
-        >
-          {word.characters.map((character, characterIndex) => (
-            <Character
-              key={characterOffsets[wordIndex] + characterIndex}
-              character={character}
-            />
-          ))}
-          {word.needsSpace ? <span className="whitespace-pre"> </span> : null}
-        </span>
-      ))}
-    </span>
-  );
-};
+const TRANSITION_DURATION = 0.24;
 
 export const Rotating3DStaggerText = ({
   texts,
@@ -186,11 +22,21 @@ export const Rotating3DStaggerText = ({
     () => texts.map((text) => text.trim()).filter(Boolean),
     [texts],
   );
+  const textKey = safeTexts.join("\u0001");
+  const shouldAnimate = !reducedMotion && import.meta.env.MODE !== "test";
   const [activeIndex, setActiveIndex] = useState(0);
+  const [displayedIndex, setDisplayedIndex] = useState(0);
+  const [incomingText, setIncomingText] = useState<string | null>(null);
+  const scopeRef = useRef<HTMLSpanElement>(null);
+  const outgoingRef = useRef<HTMLSpanElement>(null);
+  const incomingRef = useRef<HTMLSpanElement>(null);
+  const strokeRef = useRef<SVGPathElement>(null);
 
   useEffect(() => {
     setActiveIndex(0);
-  }, [safeTexts]);
+    setDisplayedIndex(0);
+    setIncomingText(null);
+  }, [textKey]);
 
   useEffect(() => {
     if (safeTexts.length < 2) return undefined;
@@ -202,22 +48,106 @@ export const Rotating3DStaggerText = ({
     return () => window.clearInterval(timer);
   }, [intervalMs, safeTexts.length]);
 
+  const activeText = safeTexts[activeIndex] ?? safeTexts[0];
+
+  useEffect(() => {
+    if (activeIndex === displayedIndex) return;
+
+    if (!shouldAnimate) {
+      setDisplayedIndex(activeIndex);
+      return;
+    }
+
+    setIncomingText(activeText);
+  }, [activeIndex, activeText, displayedIndex, shouldAnimate]);
+
+  useGSAP(
+    () => {
+      if (!incomingText || !outgoingRef.current || !incomingRef.current) return;
+
+      const outgoing = outgoingRef.current;
+      const incoming = incomingRef.current;
+      const stroke = strokeRef.current;
+
+      gsap.set(incoming, { autoAlpha: 0, yPercent: 100 });
+      if (stroke) gsap.set(stroke, { autoAlpha: 0, drawSVG: 0 });
+
+      const timeline = gsap.timeline({
+        defaults: { ease: "power3.out" },
+        onComplete: () => {
+          gsap.set(outgoing, { clearProps: "transform,opacity,visibility" });
+          setDisplayedIndex(activeIndex);
+          setIncomingText(null);
+        },
+      });
+
+      timeline
+        .to(outgoing, { autoAlpha: 0, yPercent: -100, duration: 0.2 }, 0)
+        .to(
+          incoming,
+          { autoAlpha: 1, yPercent: 0, duration: TRANSITION_DURATION },
+          0.03,
+        );
+
+      if (stroke) {
+        timeline.to(
+          stroke,
+          { autoAlpha: 0.9, drawSVG: "100%", duration: TRANSITION_DURATION },
+          0.01,
+        );
+      }
+    },
+    { scope: scopeRef, dependencies: [activeIndex, incomingText] },
+  );
+
   if (safeTexts.length === 0) return null;
+
+  const displayedText = safeTexts[displayedIndex] ?? safeTexts[0];
 
   return (
     <span
-      className={cn(
-        "relative flex min-h-[2.1em] items-center overflow-visible",
-        className,
-      )}
+      ref={scopeRef}
+      aria-label={displayedText}
       aria-live="polite"
       aria-atomic="true"
+      className={cn(
+        "relative flex min-h-[2.1em] max-w-full items-center overflow-visible",
+        className,
+      )}
       data-testid="rotating-3d-stagger-text"
     >
-      <Text3DStaggerFlip
-        text={safeTexts[activeIndex]}
-        reducedMotion={reducedMotion}
-      />
+      <span className="relative block min-h-[1.35em] max-w-full overflow-hidden text-left">
+        <span
+          ref={outgoingRef}
+          aria-hidden="true"
+          className="block will-change-transform"
+        >
+          {displayedText}
+        </span>
+        {incomingText ? (
+          <span
+            ref={incomingRef}
+            aria-hidden="true"
+            className="absolute inset-x-0 top-0 block will-change-transform"
+          >
+            {incomingText}
+          </span>
+        ) : null}
+      </span>
+      <svg
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-1 right-0 h-3 w-12 overflow-visible text-white/70 opacity-0"
+        fill="none"
+        viewBox="0 0 48 12"
+      >
+        <path
+          ref={strokeRef}
+          d="M1 9C12 2 27 2 47 6"
+          stroke="currentColor"
+          strokeLinecap="round"
+          strokeWidth="1.5"
+        />
+      </svg>
     </span>
   );
 };

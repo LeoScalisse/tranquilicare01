@@ -74,6 +74,25 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      boxShadow: {
+        sm: "inset 0 1px 0 rgb(255 255 255 / 0.78), 0 5px 14px -10px rgb(5 54 83 / 0.26)",
+        DEFAULT: "inset 0 1px 0 rgb(255 255 255 / 0.8), 0 10px 24px -16px rgb(5 54 83 / 0.3)",
+        md: "inset 0 1px 0 rgb(255 255 255 / 0.82), 0 14px 32px -22px rgb(5 54 83 / 0.34)",
+        lg: "inset 0 1px 0 rgb(255 255 255 / 0.84), 0 18px 42px -28px rgb(5 54 83 / 0.36)",
+        xl: "inset 0 1px 0 rgb(255 255 255 / 0.86), 0 24px 56px -34px rgb(5 54 83 / 0.4)",
+        "2xl": "inset 0 1px 0 rgb(255 255 255 / 0.88), 0 30px 72px -42px rgb(5 54 83 / 0.42)",
+        inner: "inset 5px 5px 12px rgb(5 54 83 / 0.1), inset -5px -5px 12px rgb(255 255 255 / 0.72)",
+        none: "none",
+      },
+      dropShadow: {
+        sm: "0 3px 7px rgb(5 54 83 / 0.16)",
+        DEFAULT: "0 6px 14px rgb(5 54 83 / 0.18)",
+        md: "0 9px 20px rgb(5 54 83 / 0.2)",
+        lg: "0 13px 28px rgb(5 54 83 / 0.22)",
+        xl: "0 18px 38px rgb(5 54 83 / 0.24)",
+        "2xl": "0 24px 50px rgb(5 54 83 / 0.26)",
+        none: "0 0 #0000",
+      },
       keyframes: {
         "accordion-down": {
           from: {

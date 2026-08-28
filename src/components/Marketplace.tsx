@@ -8,6 +8,8 @@ import {
   getNgoCategoryTheme,
   getNgoCategory,
   NGO_CATEGORY_ORDER,
+  ngoCategories,
+  type NgoCategoryDefinition,
 } from "@/data/ngoCategories";
 import { formatBRL } from "@/lib/impact";
 import { SmoothInput } from "@/components/ui/smooth-input";
@@ -37,6 +39,7 @@ interface MarketplaceProps {
   ngos: NGO[];
   onSelectNGO: (ngo: NGO) => void;
   onSupportNGO: (ngo: NGO) => void;
+  founderNgos?: NGO[];
   founderNgo?: NGO | null;
   /** Slim heading + capped sections for when embedded in the home dashboard */
   embedded?: boolean;
@@ -169,13 +172,112 @@ const CowCampaignSection: React.FC<{
     </motion.section>
   );
 };
+const EmptyCategorySection: React.FC<{
+  category: NgoCategoryDefinition;
+}> = ({ category }) => {
+  const reduceMotion = useReducedMotion();
+  const [isRevealed, setIsRevealed] = useState(false);
+  const transition = reduceMotion
+    ? { duration: 0.01 }
+    : { duration: 0.46, ease: [0.22, 1, 0.36, 1] as const };
+
+  return (
+    <section
+      className={`mx-auto max-w-[1400px] overflow-hidden rounded-[28px] py-9 md:rounded-[34px] ${category.theme.sectionBg}`}
+      style={{ contentVisibility: "auto", containIntrinsicSize: "390px" }}
+      aria-labelledby={`empty-category-${category.id}`}
+    >
+      <div className="mx-auto max-w-7xl px-4">
+        <div className="mb-5 flex items-start gap-3">
+          <img src={category.sealSrc} alt="" className="h-9 w-9 shrink-0 object-contain" />
+          <h3
+            id={`empty-category-${category.id}`}
+            className="text-balance font-display text-xl font-semibold text-brand-ink md:text-2xl"
+          >
+            {category.sectionTitle}
+          </h3>
+        </div>
+
+        <motion.button
+          type="button"
+          onClick={() => setIsRevealed((current) => !current)}
+          whileTap={reduceMotion ? undefined : { scale: 0.985 }}
+          transition={transition}
+          style={{ transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
+          aria-expanded={isRevealed}
+          aria-label={isRevealed
+            ? `Ocultar novidades de ${category.label}`
+            : `Ver novidades de ${category.label}`}
+          className={`group relative block w-full overflow-hidden rounded-[26px] p-1.5 text-left outline-none ring-offset-4 transition-shadow duration-500 focus-visible:ring-4 focus-visible:ring-brand-blue/45 ${category.theme.bg} shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_44px_-34px_rgba(5,54,83,0.36)]`}
+        >
+          <span className="relative flex min-h-48 items-center overflow-hidden rounded-[20px] bg-white/60 px-6 py-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.96)] sm:min-h-52 sm:px-8">
+            <AnimatePresence mode="wait" initial={false}>
+              {isRevealed ? (
+                <motion.span
+                  key="message"
+                  initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -14 }}
+                  transition={transition}
+                  className="flex max-w-2xl items-center gap-5"
+                >
+                  <span className={`grid size-16 shrink-0 place-items-center rounded-[22px] bg-white/72 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_28px_-20px_rgba(5,54,83,0.34)] ${category.theme.border}`}>
+                    <img src={category.sealSrc} alt="" className="h-full w-full object-contain" />
+                  </span>
+                  <span>
+                    <span className={`block text-lg font-semibold leading-snug sm:text-xl ${category.theme.text}`}>
+                      Ainda estamos buscando causas e histórias para {category.sectionTitle}.
+                    </span>
+                    <span className="mt-2 block text-sm font-medium text-brand-ink/65">
+                      Voltaremos com novidades em breve.
+                    </span>
+                  </span>
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="seal"
+                  initial={reduceMotion ? false : { opacity: 0, y: 14 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -14 }}
+                  transition={transition}
+                  className="flex max-w-2xl items-center gap-5"
+                >
+                  <span
+                    className="grid size-20 shrink-0 place-items-center rounded-[26px] bg-white/76 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_32px_-22px_rgba(5,54,83,0.32)] transition-transform duration-500 group-hover:scale-105"
+                    style={{ transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
+                  >
+                    <img src={category.sealSrc} alt={`Selo de ${category.label}`} className="h-full w-full object-contain" />
+                  </span>
+                  <span>
+                    <span className={`block text-lg font-semibold sm:text-xl ${category.theme.text}`}>
+                      Uma nova causa pode nascer aqui.
+                    </span>
+                    <span className="mt-2 block text-sm font-medium text-brand-ink/65">
+                      Toque para saber o que estamos preparando.
+                    </span>
+                  </span>
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </span>
+        </motion.button>
+      </div>
+    </section>
+  );
+};
 const Marketplace: React.FC<MarketplaceProps> = ({
   ngos,
   onSelectNGO,
+  founderNgos,
   founderNgo = null,
   embedded = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const founderOrganizations = founderNgos?.length
+    ? founderNgos
+    : founderNgo
+      ? [founderNgo]
+      : [];
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const [selectedCategory, setSelectedCategory] = useState("Todas");
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
@@ -207,11 +309,8 @@ const Marketplace: React.FC<MarketplaceProps> = ({
 
   const categories = useMemo(() => {
     const present = Array.from(new Set(ngos.map((n) => n.category)));
-    const ordered = [
-      ...NGO_CATEGORY_ORDER.filter((c) => present.includes(c)),
-      ...present.filter((c) => !NGO_CATEGORY_ORDER.includes(c)),
-    ];
-    return ["Todas", ...ordered];
+    const extraCategories = present.filter((category) => !NGO_CATEGORY_ORDER.includes(category));
+    return ["Todas", ...NGO_CATEGORY_ORDER, ...extraCategories];
   }, [ngos]);
 
   const searchedNgos = useMemo(() => {
@@ -268,6 +367,12 @@ const Marketplace: React.FC<MarketplaceProps> = ({
     return { rows, leftovers };
   }, [ngos, categories]);
 
+  const emptyCategories = useMemo(
+    () => ngoCategories.filter((category) => !ngos.some(
+      (ngo) => getNgoCategory(ngo.category)?.id === category.id,
+    )),
+    [ngos],
+  );
   const isSearching = deferredSearchTerm.trim().length > 0;
   const isCampaignFilter = selectedCategory === "Vaquinhas";
   const isCategoryFilter = selectedCategory !== "Todas" && !isCampaignFilter;
@@ -387,7 +492,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({
                     )
                   }
                   aria-pressed={selected}
-                  className={`tc-motion-control shrink-0 rounded-full px-5 py-2.5 text-sm font-bold whitespace-nowrap transition-[color,background-color,box-shadow,transform] ${theme.chipText} ${
+                  className={`tc-motion-control ${cat === "Todas" ? "order-1" : "order-3"} shrink-0 rounded-full px-5 py-2.5 text-sm font-bold whitespace-nowrap transition-[color,background-color,box-shadow,transform] ${theme.chipText} ${
                     selected
                       ? `${theme.chipBg} shadow-[inset_3px_3px_7px_rgba(16,42,67,0.20),inset_-3px_-3px_7px_rgba(255,255,255,0.75)]`
                       : "bg-background shadow-[4px_4px_10px_rgba(16,42,67,0.12),-4px_-4px_10px_rgba(255,255,255,0.95)] hover:-translate-y-0.5 active:translate-y-0 active:shadow-[inset_3px_3px_6px_rgba(16,42,67,0.16)]"
@@ -407,7 +512,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({
               aria-label="Vaquinhas"
               title="Vaquinhas"
               aria-pressed={isCampaignFilter}
-              className={`tc-motion-control relative grid h-11 w-14 shrink-0 place-items-center overflow-hidden rounded-full border border-brand-ink/10 transition-[background-color,border-color,box-shadow,transform] ${
+              className={`tc-motion-control order-2 relative grid h-11 w-14 shrink-0 place-items-center overflow-hidden rounded-full border border-brand-ink/10 transition-[background-color,border-color,box-shadow,transform] ${
                 isCampaignFilter
                   ? "bg-white shadow-[inset_3px_3px_7px_rgba(16,42,67,0.18),inset_-3px_-3px_7px_rgba(255,255,255,0.9)]"
                   : "bg-white shadow-[4px_4px_10px_rgba(16,42,67,0.12),-4px_-4px_10px_rgba(255,255,255,0.95)] hover:-translate-y-0.5 active:translate-y-0"
@@ -496,10 +601,13 @@ const Marketplace: React.FC<MarketplaceProps> = ({
             />
           )}
 
-          {founderNgo && (
-            <FounderOrganizationsSection ngos={[founderNgo]} onOpen={onSelectNGO} />
+          {founderOrganizations.length > 0 && (
+            <FounderOrganizationsSection ngos={founderOrganizations} onOpen={onSelectNGO} />
           )}
 
+          {emptyCategories.map((category) => (
+            <EmptyCategorySection key={category.id} category={category} />
+          ))}
           {rows.map((row) => {
             const categoryDefinition = row.category
               ? getNgoCategory(row.category)
@@ -584,7 +692,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({
 
           {rows.length === 0 &&
             leftovers.length === 0 &&
-            !founderNgo &&
+            founderOrganizations.length === 0 &&
             flashCampaigns.length === 0 && (
               <div className="mx-auto max-w-7xl px-4">
                 <EmptyState />

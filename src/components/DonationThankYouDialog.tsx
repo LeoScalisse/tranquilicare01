@@ -4,7 +4,6 @@ import { ArrowRight, Check, HeartHandshake, Share2, UserPlus } from "lucide-reac
 import { useEffect, useRef, useState } from "react";
 
 import DonationShareStudio from "@/components/DonationShareStudio";
-import ExpandableVideoPlayer from "@/components/ui/expandable-video-player";
 import Rotating3DStaggerText from "@/components/ui/rotating-3d-stagger-text";
 import { formatBRL } from "@/lib/impact";
 
@@ -15,14 +14,12 @@ interface Props {
   ngoCategory: string;
   ngoImage: string;
   ngoPhotos: string[];
-  ngoVideo?: string;
-  ngoVideoPoster?: string;
   donorId: string | null;
   donorName: string;
   donorUsername: string;
   donorAvatar: string | null;
   friendCode: string;
-  isLoggedIn: boolean;
+  hasDonorAccount: boolean;
   onCreateAccount: () => void;
   onTransferComplete: () => void;
 }
@@ -43,20 +40,17 @@ const DonationThankYouDialog = ({
   ngoCategory,
   ngoImage,
   ngoPhotos,
-  ngoVideo,
-  ngoVideoPoster,
   donorId,
   donorName,
   donorUsername,
   donorAvatar,
   friendCode,
-  isLoggedIn,
+  hasDonorAccount,
   onCreateAccount,
   onTransferComplete,
 }: Props) => {
   const [departing, setDeparting] = useState(false);
   const [shareStudioOpen, setShareStudioOpen] = useState(false);
-  const [videoOpen, setVideoOpen] = useState(false);
   const [destination, setDestination] = useState<Destination>({ x: 0, y: 0 });
   const [enteredViaCircle] = useState(
     () =>
@@ -85,7 +79,7 @@ const DonationThankYouDialog = ({
   );
 
   const startTransfer = () => {
-    if (departing || shareStudioOpen || videoOpen) return;
+    if (departing || shareStudioOpen) return;
     const card = document.querySelector<HTMLElement>("[data-donation-card-target]");
     const rect = card?.getBoundingClientRect();
     setDestination({
@@ -129,17 +123,7 @@ const DonationThankYouDialog = ({
             asChild
             onPointerDownOutside={(event) => {
               event.preventDefault();
-              const target = event.target;
-              if (target instanceof Element && target.closest("[data-video-overlay]")) {
-                return;
-              }
               startTransfer();
-            }}
-            onFocusOutside={(event) => {
-              const target = event.target;
-              if (target instanceof Element && target.closest("[data-video-overlay]")) {
-                event.preventDefault();
-              }
             }}
             onEscapeKeyDown={(event) => {
               event.preventDefault();
@@ -257,22 +241,11 @@ const DonationThankYouDialog = ({
                       Agora você faz parte desta história. E ela só está começando.
                     </DialogPrimitive.Title>
                     <DialogPrimitive.Description className="sr-only">
-                      Sua doação foi confirmada. Assista à história e compartilhe este capítulo.
+                      Sua doação foi confirmada. Compartilhe este capítulo com quem também acredita na causa.
                     </DialogPrimitive.Description>
-                    {ngoVideo && (
-                      <div className="mt-5">
-                        <ExpandableVideoPlayer
-                          src={ngoVideo}
-                          poster={ngoVideoPoster}
-                          title={'História de ' + ngoName}
-                          triggerLabel={'Assistir à história de ' + ngoName}
-                          onOpenChange={setVideoOpen}
-                        />
-                      </div>
-                    )}
                   </motion.div>
 
-                  {!isLoggedIn && (
+                  {!hasDonorAccount && (
                     <motion.section
                       className="mt-6 rounded-2xl border border-brand-blue/24 bg-brand-blue/10 p-4"
                       initial={entrance({
@@ -304,7 +277,7 @@ const DonationThankYouDialog = ({
                         onClick={onCreateAccount}
                         className="tc-button-3d mt-4 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold text-white"
                       >
-                        Quero Impactar
+                        Quero acompanhar
                         <ArrowRight className="size-4" />
                       </button>
                     </motion.section>
@@ -326,9 +299,6 @@ const DonationThankYouDialog = ({
                     <h3 className="font-display text-xl font-semibold text-brand-ink">
                       Leve esta causa para mais gente
                     </h3>
-                    <p className="mt-1 text-sm leading-6 text-brand-ink/72">
-                      Transforme sua doação em um capítulo pronto para postar.
-                    </p>
                     <button
                       type="button"
                       onClick={() => setShareStudioOpen(true)}

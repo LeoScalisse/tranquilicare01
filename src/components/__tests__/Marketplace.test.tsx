@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import Marketplace from '@/components/Marketplace';
@@ -50,6 +50,9 @@ describe('Marketplace editorial sections', () => {
     expect(screen.getAllByRole('button', { name: /Conhecer a causa/i }).length).toBeGreaterThan(0);
     expect(container.querySelectorAll('article').length).toBeGreaterThan(0);
 
+    expect(screen.getByRole('button', { name: 'Todas' }).className).toContain('order-1');
+    expect(screen.getByRole('button', { name: 'Vaquinhas' }).className).toContain('order-2');
+    expect(screen.getByRole('button', { name: 'Educação' }).className).toContain('order-3');
     const cowFilter = screen.getByRole('button', { name: 'Vaquinhas' });
     const initialCowSection = container.querySelector('[data-cow-campaign-section]');
     const founderHeading = screen.getByText('Quem acreditou nessa história desde o começo');
@@ -64,6 +67,41 @@ describe('Marketplace editorial sections', () => {
     fireEvent.click(cowFilter);
     expect(cowFilter.getAttribute('aria-pressed')).toBe('false');
     expect(screen.getByText('Quem acreditou nessa história desde o começo')).toBeTruthy();
+  });
+
+  it('shows interactive seal cards for categories with no registered organizations', async () => {
+    render(
+      <Marketplace
+        ngos={[]}
+        onSelectNGO={vi.fn()}
+        onSupportNGO={vi.fn()}
+        embedded
+      />,
+    );
+
+    expect(screen.getByRole('heading', { name: 'Para quem alegra nossos dias' })).not.toBeNull();
+    expect(screen.getByAltText('Selo de Pets')).not.toBeNull();
+
+    const petsCard = screen.getByRole('button', { name: 'Ver novidades de Pets' });
+    expect(petsCard.getAttribute('aria-expanded')).toBe('false');
+    fireEvent.click(petsCard);
+
+    expect(petsCard.getAttribute('aria-expanded')).toBe('true');
+    await waitFor(() => expect(screen.getByText('Ainda estamos buscando causas e histórias para Para quem alegra nossos dias.')).not.toBeNull());
+  });
+  it('keeps every cause category filter available before organizations are registered', () => {
+    render(
+      <Marketplace
+        ngos={[]}
+        onSelectNGO={vi.fn()}
+        onSupportNGO={vi.fn()}
+        embedded
+      />,
+    );
+
+    ['Educação', 'Saúde', 'Saúde Mental', 'Social', 'Pets', 'Meio Ambiente'].forEach((category) => {
+      expect(screen.getByRole('button', { name: category })).not.toBeNull();
+    });
   });
 
   it('uses the new empty-state copy when no cause matches', () => {

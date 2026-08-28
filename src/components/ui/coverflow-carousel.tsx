@@ -283,7 +283,7 @@ export function CoverflowCarousel({
                 aria-roledescription='slide'
                 aria-label={`${index + 1} de ${count}: ${slide.label}`}
                 className={cn(
-                  'absolute left-1/2 top-0 overflow-hidden rounded-[28px] bg-card shadow-[0_24px_70px_-38px_rgba(0,126,190,0.66)] will-change-transform',
+                  'absolute left-1/2 top-0 overflow-hidden rounded-[28px] bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.84),0_22px_54px_-38px_rgba(4,62,94,0.4)] will-change-transform',
                   cardClassName,
                 )}
                 style={{ width: 'var(--cf-card)', height: 'var(--cf-card-height)' }}

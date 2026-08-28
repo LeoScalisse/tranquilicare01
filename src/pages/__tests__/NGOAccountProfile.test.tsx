@@ -63,6 +63,7 @@ describe('NGOAccountProfile', () => {
     expect(screen.getByLabelText(/Categoria principal/i)).toBeTruthy();
     expect(screen.getByLabelText(/^CNPJ/i)).toBeTruthy();
     expect(screen.getByLabelText(/^Endereço/i)).toBeTruthy();
+    expect(screen.getByLabelText(/^Código de ONG fundadora/i)).toBeTruthy();
     expect(screen.getByLabelText(/Sobre a organização/i)).toBeTruthy();
     expect(screen.getByLabelText(/Objetivo atual/i)).toBeTruthy();
     expect(screen.getByLabelText(/Vídeo da causa/i)).toBeTruthy();
@@ -113,12 +114,14 @@ describe('NGOAccountProfile', () => {
     fireEvent.change(screen.getByLabelText('Objetivo 1'), { target: { value: 'Formar novos voluntários.' } });
     fireEvent.change(screen.getByLabelText(/Vídeo da causa/i), { target: { value: 'https://youtu.be/G9V69J7cQtY' } });
     fireEvent.change(screen.getByLabelText(/^Instagram/i), { target: { value: '@institutohorizonte' } });
+    fireEvent.change(screen.getByLabelText(/^Código de ONG fundadora/i), { target: { value: 'tc-primeira-chama' } });
     await user.click(screen.getByRole('button', { name: /Salvar e visualizar perfil/i }));
 
     await waitFor(() => {
       expect(authMocks.updateUser).toHaveBeenCalledWith({
         name: 'Instituto Horizonte',
         avatar: null,
+        founderCode: 'TC-PRIMEIRA-CHAMA',
         ngoProfile: {
           publicEmail: 'contato@horizonte.org',
           category: 'Educação',

@@ -16,6 +16,8 @@ export interface NgoProfileDetails {
   longitude?: number | null;
   geocodedAddress?: string;
   status?: 'pending' | 'approved' | 'rejected';
+  /** Granted only by the server after a valid founder invitation is redeemed. */
+  isFounder?: boolean;
 }
 
 export interface DonorProfileDetails {
@@ -40,7 +42,10 @@ export interface AppUser {
 }
 
 /** Fields the user is allowed to edit directly from the browser. */
-export type EditableUserProfile = Partial<Pick<AppUser, 'name' | 'avatar' | 'ngoProfile' | 'donorProfile'>>;
+export type EditableUserProfile = Partial<Pick<AppUser, 'name' | 'avatar' | 'ngoProfile' | 'donorProfile'>> & {
+  /** One-time, optional invitation code accepted only while completing NGO setup. */
+  founderCode?: string;
+};
 
 export type Listener = (user: AppUser | null) => void;
 

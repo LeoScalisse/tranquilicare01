@@ -93,9 +93,9 @@ export const PaymentSuccessCheck = ({ onComplete, className }: PaymentSuccessChe
   }, [reduceMotion]);
 
   return (
-    <div className={cn("mx-auto grid size-36 place-items-center overflow-hidden", className)} role="img" aria-label="Pagamento identificado">
+    <div className={cn("mx-auto grid size-44 place-items-center overflow-hidden", className)} role="img" aria-label="Pagamento identificado">
       {reduceMotion ? (
-        <CircleCheckBig className="size-24 text-emerald-500" strokeWidth={1.7} aria-hidden="true" />
+        <CircleCheckBig className="size-32 text-emerald-500" strokeWidth={1.7} aria-hidden="true" />
       ) : (
         <div ref={containerRef} className="size-full" aria-hidden="true" />
       )}

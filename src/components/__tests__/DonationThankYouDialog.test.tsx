@@ -4,7 +4,6 @@ import {
   fireEvent,
   render,
   screen,
-  waitFor,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -17,14 +16,12 @@ const defaultProps = {
   ngoCategory: "Saúde Mental",
   ngoImage: "/ngo-logo.png",
   ngoPhotos: ["/historia-1.jpg", "/historia-2.jpg", "/historia-3.jpg"],
-  ngoVideo: "/historia.mp4",
-  ngoVideoPoster: "/historia.jpg",
   donorId: "donor-1",
   donorName: "Leonardo Scalisse",
   donorUsername: "@leonardo",
   donorAvatar: "/leonardo.jpg",
   friendCode: "TC-LEO10",
-  isLoggedIn: false,
+  hasDonorAccount: false,
   onCreateAccount: vi.fn(),
   onTransferComplete: vi.fn(),
 };
@@ -37,7 +34,7 @@ describe("DonationThankYouDialog", () => {
     vi.useRealTimers();
   });
 
-  it("resume a confirmação, continua no vídeo e não exibe contador ou X", () => {
+  it("resume a confirmação sem player e com o convite de acompanhamento", () => {
     renderDialog();
 
     expect(screen.getByText("DOAÇÃO CONFIRMADA")).not.toBeNull();
@@ -46,17 +43,16 @@ describe("DonationThankYouDialog", () => {
         "Agora você faz parte desta história. E ela só está começando.",
       ),
     ).not.toBeNull();
-    expect(screen.queryByText("A história continua aqui.")).toBeNull();
     expect(
-      screen.queryByText(/Sua doação foi confirmada e seguirá/),
-    ).toBeNull();
-    expect(
-      screen.getByRole("button", {
-        name: "Assistir à história de Abraço Sereno",
-      }),
+      screen.getByRole("button", { name: "Quero acompanhar" }),
     ).not.toBeNull();
     expect(
-      screen.queryByRole("button", { name: "Fechar agradecimento" }),
+      screen.queryByRole("button", {
+        name: "Assistir à história de Abraço Sereno",
+      }),
+    ).toBeNull();
+    expect(
+      screen.queryByText("Transforme sua doação em um capítulo pronto para postar."),
     ).toBeNull();
     expect(
       screen.getByText("Leve esta causa para mais gente").closest("section")
@@ -119,35 +115,20 @@ describe("DonationThankYouDialog", () => {
     expect(
       screen
         .getByTestId("rotating-3d-stagger-text")
-        .querySelector(".tc-3d-stagger-character"),
+        .querySelector("svg path"),
     ).not.toBeNull();
     act(() => vi.advanceTimersByTime(3_000));
     expect(screen.getByLabelText("2 kits de alimento")).not.toBeNull();
   });
-  it("mantém a confirmação aberta enquanto o vídeo expandido está ativo", async () => {
-    renderDialog();
 
-    fireEvent.click(
-      screen.getByRole("button", {
-        name: "Assistir à história de Abraço Sereno",
-      }),
+  it("não mostra o convite para quem já fez a doação com conta", () => {
+    render(
+      <DonationThankYouDialog {...defaultProps} hasDonorAccount />,
     );
-    const videoDialog = screen.getByRole("dialog", {
-      name: "História de Abraço Sereno",
-    });
 
-    fireEvent.pointerDown(videoDialog);
-    fireEvent.click(videoDialog);
-
-    expect(screen.getByText("DOAÇÃO CONFIRMADA")).not.toBeNull();
-    expect(defaultProps.onTransferComplete).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole("button", { name: "Fechar vídeo" }));
-    await waitFor(() => {
-      expect(
-        screen.queryByRole("dialog", { name: "História de Abraço Sereno" }),
-      ).toBeNull();
-    });
-    expect(screen.getByText("DOAÇÃO CONFIRMADA")).not.toBeNull();
+    expect(
+      screen.queryByRole("button", { name: "Quero acompanhar" }),
+    ).toBeNull();
+    expect(screen.queryByText("Guarde esta história com você")).toBeNull();
   });
 });

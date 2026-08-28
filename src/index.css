@@ -717,13 +717,16 @@ html[data-tc-auth-handoff-vt='active']::view-transition-new(root) {
 .founder-card-aurora {
   isolation: isolate;
   overflow: hidden;
-  background: oklch(0.7 0.18 235);
+  background:
+    radial-gradient(circle at 18% 8%, oklch(0.98 0.02 220 / 0.46), transparent 31%),
+    radial-gradient(circle at 88% 94%, oklch(0.9 0.17 96 / 0.24), transparent 38%),
+    linear-gradient(132deg, oklch(0.72 0.17 235), oklch(0.58 0.17 242));
 }
 
 .founder-card-aurora::before {
   content: '';
   position: absolute;
-  inset: -85%;
+  inset: 0;
   background: conic-gradient(
     from 35deg,
     oklch(0.7 0.2 238) 0deg,
@@ -734,9 +737,8 @@ html[data-tc-auth-handoff-vt='active']::view-transition-new(root) {
     oklch(0.77 0.19 218) 288deg,
     oklch(0.7 0.2 238) 360deg
   );
-  transform: rotate(0deg);
-  animation: founder-aurora-spin 18s linear infinite;
-  will-change: transform;
+  opacity: 0.28;
+  transform: rotate(24deg) scale(1.45);
 }
 
 .founder-card-aurora::after {
@@ -751,31 +753,64 @@ html[data-tc-auth-handoff-vt='active']::view-transition-new(root) {
 }
 
 .founder-section-vibrant {
+  isolation: isolate;
   border: 1px solid oklch(0.76 0.15 225 / 0.42);
-  background:
-    radial-gradient(circle at 12% 4%, oklch(0.92 0.2 98 / 0.72), transparent 31%),
-    radial-gradient(circle at 92% 82%, oklch(0.76 0.18 222 / 0.62), transparent 38%),
-    linear-gradient(145deg, oklch(0.98 0.025 220) 0%, oklch(0.92 0.075 218) 52%, oklch(0.98 0.045 98) 100%);
+  background: linear-gradient(145deg, oklch(0.98 0.025 220), oklch(0.92 0.075 218) 52%, oklch(0.98 0.045 98));
   box-shadow:
-    0 30px 72px -45px oklch(0.53 0.16 235 / 0.72),
-    inset 0 1px 0 oklch(1 0 0 / 0.76);
+    inset 0 1px 0 oklch(1 0 0 / 0.82),
+    0 28px 66px -46px oklch(0.42 0.1 235 / 0.42);
+}
+
+.founder-section-vibrant::before {
+  content: '';
+  position: absolute;
+  inset: -115%;
+  z-index: -1;
+  pointer-events: none;
+  background: conic-gradient(
+    from 20deg,
+    oklch(0.76 0.18 222) 0deg,
+    oklch(0.94 0.17 96) 74deg,
+    oklch(0.98 0.025 220) 134deg,
+    oklch(0.7 0.2 238) 212deg,
+    oklch(0.91 0.18 96) 282deg,
+    oklch(0.76 0.18 222) 360deg
+  );
+  opacity: 0.56;
+
+  animation: founder-section-spin 22s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  will-change: transform;
+}
+
+.founder-section-vibrant::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 12% 4%, oklch(0.98 0.02 98 / 0.72), transparent 31%),
+    radial-gradient(circle at 92% 82%, oklch(0.76 0.18 222 / 0.3), transparent 38%),
+    linear-gradient(145deg, oklch(0.98 0.025 220 / 0.34), oklch(0.92 0.075 218 / 0.48) 52%, oklch(0.98 0.045 98 / 0.42));
 }
 
 .founder-section-badge {
   border: 1px solid oklch(0.79 0.17 92 / 0.62);
   background: oklch(0.94 0.17 96 / 0.94);
   color: oklch(0.35 0.11 240);
-  box-shadow: 0 10px 24px -16px oklch(0.62 0.17 92 / 0.9);
+  box-shadow:
+    inset 0 1px 0 oklch(1 0 0 / 0.76),
+    0 10px 22px -17px oklch(0.48 0.12 92 / 0.42);
 }
 
-@keyframes founder-aurora-spin {
+@keyframes founder-section-spin {
   to {
     transform: rotate(360deg);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .founder-card-aurora::before {
+  .founder-section-vibrant::before {
     animation: none;
     transform: rotate(24deg);
   }

@@ -97,8 +97,10 @@ describe("NGOProfile cause-led architecture", () => {
       }),
     ).not.toBeNull();
     expect(dialog.textContent).toContain("Sua doação para Abraço Sereno");
-    expect(dialog.textContent).toContain("Serviço TranquiliCare (5%)");
-    expect(dialog.textContent).toContain("A sua intenção chega inteira.");
+    expect(dialog.textContent).toContain("TranquiliCare · 5%");
+    expect(dialog.textContent).toContain(
+      "Escolha um valor para ver como sua doação chega à organização.",
+    );
     expect(dialog.querySelector(".donation-checkout-glow")).toBeNull();
     expect(
       dialog.parentElement?.classList.contains("donation-intelligence-frame"),

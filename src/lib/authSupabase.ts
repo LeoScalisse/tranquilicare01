@@ -14,6 +14,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { isCompleteEmailCode, normalizeEmailCode } from './emailVerification';
 import { normalizeCnpj, normalizePhone } from './organizationProfile';
+import { mergeNgoProfileSources } from './ngoProfileHydration';
 import type {
   AccountType,
   AppUser,
@@ -29,7 +30,7 @@ import type {
 const PENDING_ROLE_KEY = 'tc-pending-account-type';
 
 const PROFILE_SELECT = 'id,email,name,avatar_url,credits,account_type,ngo_profile';
-const NGO_PROFILE_SELECT = 'description,category,goal,objectives,youtube_url,cover_image_url,instagram,phone,cnpj,address,latitude,longitude,geocoded_address,status';
+const NGO_PROFILE_SELECT = 'description,category,goal,objectives,youtube_url,cover_image_url,instagram,phone,cnpj,address,latitude,longitude,geocoded_address,status,is_founder';
 const DONOR_PROFILE_SELECT = 'credits,bio,location,instagram,phone,cover_image_url,interests';
 const OPTIONAL_SCHEMA_CODES = new Set(['42P01', '42703', 'PGRST202', 'PGRST205']);
 const warnedOptionalSchema = new Set<string>();
@@ -59,6 +60,7 @@ type NgoProfileRow = {
   longitude: number | null;
   geocoded_address: string | null;
   status: string | null;
+  is_founder: boolean | null;
 };
 
 type DonorProfileRow = {
@@ -122,6 +124,7 @@ const safeNgoProfile = (value: unknown): NgoProfileDetails | null => {
     status: ['pending', 'approved', 'rejected'].includes(safeText(profile.status))
       ? safeText(profile.status) as 'pending' | 'approved' | 'rejected'
       : 'pending',
+    isFounder: profile.isFounder === true || profile.is_founder === true,
   };
   return [...Object.values(details).flat()].some(Boolean) ? details : null;
 };
@@ -220,11 +223,7 @@ const loadAppUser = async (user: User): Promise<AppUser> => {
     } else if (ngoProfile) {
       const storedProfile = safeNgoProfile(ngoProfile);
       appUser.ngoProfile = storedProfile
-        ? {
-            ...appUser.ngoProfile,
-            ...storedProfile,
-            publicEmail: appUser.ngoProfile?.publicEmail || appUser.email,
-          }
+        ? mergeNgoProfileSources(appUser.ngoProfile, storedProfile, appUser.email)
         : appUser.ngoProfile;
     }
   } else {
@@ -476,6 +475,61 @@ export const updateUser = async (patch: EditableUserProfile): Promise<AppUser | 
   }
   if (Object.keys(metadata).length === 0) return cached;
 
+  if (patch.ngoProfile) {
+    const { data: identity, error: identityError } = await client().auth.getUser();
+    if (identityError) throw identityError;
+    if (!identity.user) throw new Error('no-user');
+
+    const normalizedProfile = metadata.ngo_profile as NgoProfileDetails;
+    const nextName = patch.name?.trim() ?? cached?.name ?? safeText(identity.user.user_metadata?.name).trim();
+    const nextAvatar = patch.avatar !== undefined
+      ? patch.avatar
+      : cached?.avatar ?? (safeText(identity.user.user_metadata?.avatar) || null);
+
+    const { data: savedProfile, error: saveError } = await client().rpc('save_own_ngo_profile', {
+      profile_name: nextName,
+      profile_avatar_url: nextAvatar ?? '',
+      profile_payload: normalizedProfile,
+      profile_public_email: normalizedProfile.publicEmail,
+      profile_description: normalizedProfile.description,
+      profile_category: normalizedProfile.category,
+      profile_goal: normalizedProfile.goal,
+      profile_objectives: normalizedProfile.objectives,
+      profile_youtube_url: normalizedProfile.youtubeUrl,
+      profile_cover_image_url: normalizedProfile.coverImage,
+      profile_instagram: normalizedProfile.instagram,
+      profile_phone: normalizedProfile.phone,
+      profile_cnpj: normalizedProfile.cnpj,
+      profile_address: normalizedProfile.address,
+      profile_latitude: normalizedProfile.latitude,
+      profile_longitude: normalizedProfile.longitude,
+      profile_geocoded_address: normalizedProfile.geocodedAddress,
+      founder_invitation_code: patch.founderCode?.trim().toUpperCase() ?? '',
+    });
+
+    if (saveError) throw saveError;
+    const savedRecord = Array.isArray(savedProfile) ? savedProfile[0] : savedProfile;
+    if (!savedRecord || typeof savedRecord !== 'object' || !('user_id' in savedRecord)) {
+      throw new Error('organization-profile-not-persisted');
+    }
+    const isFounder = savedRecord.is_founder === true;
+
+    // Metadata is only a compatibility cache. The transactional database
+    // write above is the source of truth and must finish before this request.
+    const { data: authResult, error: metadataError } = await client().auth.updateUser({ data: metadata });
+    if (metadataError) {
+      console.warn('Could not refresh organization metadata cache:', metadataError);
+      const user = await loadAppUser(identity.user);
+      publish(user);
+      return user;
+    }
+
+    const user = authResult.user ? fromMetadata(authResult.user) : await loadAppUser(identity.user);
+    if (user?.ngoProfile) user.ngoProfile = { ...user.ngoProfile, isFounder };
+    publish(user);
+    return user;
+  }
+
   const { data: result, error } = await client().auth.updateUser({ data: metadata });
   if (error) throw error;
   if (!result.user) return null;
@@ -496,50 +550,6 @@ export const updateUser = async (patch: EditableUserProfile): Promise<AppUser | 
       if (isOptionalSchemaIssue(profileError)) logOptionalSchemaIssue('profile-update', profileError);
       throw profileError;
     }
-  }
-
-  if (patch.ngoProfile) {
-    const { data: savedNgoProfile, error: ngoProfileError } = await client()
-      .from('ngo_profiles')
-      .upsert({
-        user_id: userId,
-        description: patch.ngoProfile.description.trim(),
-        category: patch.ngoProfile.category.trim(),
-        goal: patch.ngoProfile.goal.trim(),
-        objectives: safeStringArray(patch.ngoProfile.objectives),
-        youtube_url: patch.ngoProfile.youtubeUrl.trim() || null,
-        cover_image_url: patch.ngoProfile.coverImage.trim() || null,
-        instagram: patch.ngoProfile.instagram.trim() || null,
-        phone: normalizePhone(patch.ngoProfile.phone) || null,
-        cnpj: normalizeCnpj(patch.ngoProfile.cnpj),
-        address: patch.ngoProfile.address.trim().replace(/\s+/g, ' '),
-        latitude: patch.ngoProfile.latitude ?? null,
-        longitude: patch.ngoProfile.longitude ?? null,
-        geocoded_address: patch.ngoProfile.geocodedAddress?.trim() || null,
-      }, { onConflict: 'user_id' })
-      .select('user_id')
-      .maybeSingle<{ user_id: string }>();
-
-    if (ngoProfileError) {
-      if (isOptionalSchemaIssue(ngoProfileError)) logOptionalSchemaIssue('ngo-profile-update', ngoProfileError);
-      throw ngoProfileError;
-    }
-    if (!savedNgoProfile) throw new Error('organization-profile-not-persisted');
-
-    const { data: savedOrganization, error: organizationError } = await client()
-      .from('organizations')
-      .update({
-        public_email: patch.ngoProfile.publicEmail.trim().toLowerCase() || null,
-      })
-      .eq('id', userId)
-      .select('id')
-      .maybeSingle<{ id: string }>();
-
-    if (organizationError) {
-      if (isOptionalSchemaIssue(organizationError)) logOptionalSchemaIssue('organization-public-email-update', organizationError);
-      throw organizationError;
-    }
-    if (!savedOrganization) throw new Error('organization-not-persisted');
   }
 
   if (patch.donorProfile) {

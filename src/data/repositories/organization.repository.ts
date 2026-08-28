@@ -18,6 +18,7 @@ export interface PublicOrganizationRecord {
   longitude: number | null;
   geocodedAddress: string;
   verified: boolean;
+  isFounder: boolean;
 }
 
 export interface OrganizationRepository {

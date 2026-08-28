@@ -1,4 +1,4 @@
-export const DONATION_SUCCESS_AUDIO_DELAY_MS = 1_000;
+export const DONATION_SUCCESS_AUDIO_DELAY_MS = 1_500;
 export const DONATION_SUCCESS_AUDIO_VOLUME = 0.26;
 
 export const scheduleDonationSuccessAudio = (

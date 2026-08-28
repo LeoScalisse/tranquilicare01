@@ -2,6 +2,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const supabaseMocks = vi.hoisted(() => ({
   authUpdateUser: vi.fn(),
+  authGetUser: vi.fn(),
+  saveNgoProfileResult: vi.fn(),
   profileUpdateResult: vi.fn(),
   ngoUpdateResult: vi.fn(),
   ngoUpsertResult: vi.fn(),
@@ -23,7 +25,14 @@ vi.mock('@/lib/supabase', () => ({
       getSession: vi.fn().mockResolvedValue({ data: { session: null }, error: null }),
       onAuthStateChange: vi.fn(),
       updateUser: supabaseMocks.authUpdateUser,
+      getUser: supabaseMocks.authGetUser,
     },
+    rpc: vi.fn((name: string) => {
+      if (name === 'save_own_ngo_profile') {
+        return Promise.resolve(supabaseMocks.saveNgoProfileResult());
+      }
+      throw new Error(`unexpected-rpc:${name}`);
+    }),
     from: vi.fn((table: string) => ({
       update: vi.fn(() => {
         if (table === 'profiles') {
@@ -95,6 +104,14 @@ describe('Supabase organization profile persistence', () => {
       data: { user: authUser },
       error: null,
     });
+    supabaseMocks.authGetUser.mockReset().mockResolvedValue({
+      data: { user: authUser },
+      error: null,
+    });
+    supabaseMocks.saveNgoProfileResult.mockReset().mockReturnValue({
+      data: { user_id: 'ngo-1' },
+      error: null,
+    });
     supabaseMocks.profileUpdateResult.mockReset().mockReturnValue({ data: profileRow, error: null });
     supabaseMocks.ngoUpdateResult.mockReset().mockReturnValue({
       data: null,
@@ -108,14 +125,19 @@ describe('Supabase organization profile persistence', () => {
   });
 
   it('rejects the save when the organization row was not persisted', async () => {
+    supabaseMocks.saveNgoProfileResult.mockReturnValue({
+      data: null,
+      error: { code: '42501', message: 'new row violates row-level security policy' },
+    });
+
     await expect(updateUser({ name: 'Instituto Horizonte', ngoProfile })).rejects.toMatchObject({
       code: '42501',
     });
+    expect(supabaseMocks.authUpdateUser).not.toHaveBeenCalled();
   });
 
   it('rejects a silent update that matched no organization row', async () => {
-    supabaseMocks.ngoUpdateResult.mockReturnValue({ data: null, error: null });
-    supabaseMocks.ngoUpsertResult.mockReturnValue({ data: null, error: null });
+    supabaseMocks.saveNgoProfileResult.mockReturnValue({ data: null, error: null });
 
     await expect(updateUser({ name: 'Instituto Horizonte', ngoProfile })).rejects.toThrow(
       'organization-profile-not-persisted',
@@ -123,9 +145,6 @@ describe('Supabase organization profile persistence', () => {
   });
 
   it('creates the organization profile row when an older account does not have one', async () => {
-    supabaseMocks.ngoUpsertResult.mockReturnValue({ data: { user_id: 'ngo-1' }, error: null });
-    supabaseMocks.organizationUpdateResult.mockReturnValue({ data: { id: 'ngo-1' }, error: null });
-
     await expect(updateUser({ name: 'Instituto Horizonte', ngoProfile })).resolves.toMatchObject({
       id: 'ngo-1',
       accountType: 'ngo',
@@ -133,21 +152,21 @@ describe('Supabase organization profile persistence', () => {
   });
 
   it('rejects the save when the canonical organization was not created', async () => {
-    supabaseMocks.ngoUpsertResult.mockReturnValue({ data: { user_id: 'ngo-1' }, error: null });
-    supabaseMocks.organizationUpdateResult.mockReturnValue({ data: null, error: null });
+    supabaseMocks.saveNgoProfileResult.mockReturnValue({
+      data: null,
+      error: { code: 'P0002', message: 'organization-not-persisted' },
+    });
 
-    await expect(updateUser({ name: 'Instituto Horizonte', ngoProfile })).rejects.toThrow(
-      'organization-not-persisted',
-    );
+    await expect(updateUser({ name: 'Instituto Horizonte', ngoProfile })).rejects.toMatchObject({
+      code: 'P0002',
+    });
   });
 
   it('rejects the save when the account profile fields were not persisted', async () => {
-    supabaseMocks.profileUpdateResult.mockReturnValue({
+    supabaseMocks.saveNgoProfileResult.mockReturnValue({
       data: null,
       error: { code: '42501', message: 'permission denied for table profiles' },
     });
-    supabaseMocks.ngoUpsertResult.mockReturnValue({ data: { user_id: 'ngo-1' }, error: null });
-    supabaseMocks.organizationUpdateResult.mockReturnValue({ data: { id: 'ngo-1' }, error: null });
 
     await expect(updateUser({ name: 'Instituto Horizonte', ngoProfile })).rejects.toMatchObject({
       code: '42501',

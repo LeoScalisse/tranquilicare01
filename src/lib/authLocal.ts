@@ -100,7 +100,8 @@ export const signOut = async (): Promise<void> => write(null);
 export const updateUser = async (patch: EditableUserProfile): Promise<AppUser | null> => {
   const current = read();
   if (!current) return null;
-  const next: AppUser = { ...current, ...patch };
+  const { founderCode: _founderCode, ...profilePatch } = patch;
+  const next: AppUser = { ...current, ...profilePatch };
   write(next);
   return next;
 };

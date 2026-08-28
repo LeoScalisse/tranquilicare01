@@ -47,6 +47,7 @@ import {
   normalizePhone,
 } from '@/lib/organizationProfile';
 import { geocodeAddress } from '@/lib/geocoding';
+import { organizationProfileSaveError } from '@/lib/organizationProfileSaveError';
 
 const EMPTY_DETAILS: NgoProfileDetails = {
   publicEmail: '',
@@ -379,6 +380,7 @@ const NGOAccountProfile: React.FC = () => {
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState<string | null>(null);
   const [details, setDetails] = useState<NgoProfileDetails>(EMPTY_DETAILS);
+  const [founderCode, setFounderCode] = useState('');
   const [fieldErrors, setFieldErrors] = useState<ProfileFieldErrors>({});
 
   useEffect(() => {
@@ -532,6 +534,7 @@ const NGOAccountProfile: React.FC = () => {
         name: name.trim(),
         avatar,
         ngoProfile: normalizedDetails,
+        ...(founderCode.trim() ? { founderCode: founderCode.trim().toUpperCase() } : {}),
       });
       if (!updated) throw new Error('organization-profile-not-persisted');
       setUser(updated);
@@ -549,8 +552,8 @@ const NGOAccountProfile: React.FC = () => {
         setSearchParams(nextSearchParams, { replace: true });
       }
       toast.success('Perfil atualizado.');
-    } catch {
-      toast.error('Não foi possível salvar o perfil.');
+    } catch (error) {
+      toast.error(organizationProfileSaveError(error));
     } finally {
       setSaving(false);
     }
@@ -606,6 +609,24 @@ const NGOAccountProfile: React.FC = () => {
                 <p className='mt-2 text-xs text-muted-foreground'>Opcional. JPG ou PNG em formato quadrado.</p>
               </div>
             </div>
+
+            <section className='mb-8 rounded-2xl border border-brand-yellow/45 bg-brand-yellow/10 p-5'>
+              <label className={labelClass} htmlFor='setup-ngo-founder-code'>
+                Código de ONG fundadora
+                <SmoothInput
+                  id='setup-ngo-founder-code'
+                  value={founderCode}
+                  onChange={(event) => setFounderCode(event.target.value.toUpperCase())}
+                  autoComplete='off'
+                  spellCheck={false}
+                  className={`${inputClass} font-mono tracking-[0.12em]`}
+                  placeholder='TC-XXXX-XXXX'
+                />
+              </label>
+              <p className='mt-2 text-xs leading-5 text-muted-foreground'>
+                Se sua organização recebeu um convite, informe o código aqui. Ele é validado com segurança e libera o selo e os benefícios de ONG fundadora após a aprovação da organização.
+              </p>
+            </section>
 
             <ProfileFields name={name} onNameChange={setName} details={details} onDetailsChange={updateDetails} idPrefix='setup-ngo' errors={fieldErrors} onClearError={clearFieldError} />
 

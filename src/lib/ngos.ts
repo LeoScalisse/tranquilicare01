@@ -1,15 +1,13 @@
 import { demoNgos } from '@/data/demoNgos';
 import {
-  isTranquiliCarePrototypeAccount,
-  isTranquiliCarePrototypeOrganization,
   TRANQUILICARE_FOUNDER_NGO,
-  TRANQUILICARE_PROTOTYPE_STORIES,
 } from '@/data/tranquilicarePrototype';
 import type { PublicOrganizationRecord } from '@/data/repositories/organization.repository';
 import { SupabaseOrganizationRepository } from '@/data/supabase/supabase-organization.repository';
 import type { AppUser } from '@/lib/authTypes';
 import { supabase } from '@/lib/supabase';
 import type { NGO } from '@/types';
+import { demoDataEnabled } from '@/lib/demoData';
 
 const stringArray = (value: unknown): string[] => Array.isArray(value)
   ? value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean)
@@ -35,9 +33,8 @@ const rowToNgo = (row: PublicOrganizationRecord): NGO => ({
   geocodedAddress: row.geocodedAddress || undefined,
   verified: row.verified,
   status: 'approved',
-  posts: isTranquiliCarePrototypeOrganization({ name: row.name, email: row.publicEmail })
-    ? TRANQUILICARE_PROTOTYPE_STORIES
-    : [],
+  isFounder: row.isFounder,
+  posts: [],
 });
 
 export const ngoFromUser = (user: AppUser): NGO | null => {
@@ -64,17 +61,19 @@ export const ngoFromUser = (user: AppUser): NGO | null => {
     geocodedAddress: details.geocodedAddress?.trim() || undefined,
     verified: status === 'approved',
     status,
-    posts: isTranquiliCarePrototypeAccount(details.publicEmail) || isTranquiliCarePrototypeAccount(user.email)
-      ? TRANQUILICARE_PROTOTYPE_STORIES
-      : [],
+    isFounder: details.isFounder === true,
+    posts: [],
   };
 };
 
 export const loadMarketplaceNgos = async (viewer?: AppUser | null): Promise<NGO[]> => {
   const ownerNgo = viewer ? ngoFromUser(viewer) : null;
-  if (!supabase) return ownerNgo
-    ? [ownerNgo, ...demoNgos.filter((ngo) => ngo.id !== ownerNgo.id)]
-    : demoNgos;
+  if (!supabase) {
+    const fixtures = demoDataEnabled ? demoNgos : [];
+    return ownerNgo
+      ? [ownerNgo, ...fixtures.filter((ngo) => ngo.id !== ownerNgo.id)]
+      : fixtures;
+  }
 
   let publicNgos: NGO[];
   try {
@@ -82,22 +81,26 @@ export const loadMarketplaceNgos = async (viewer?: AppUser | null): Promise<NGO[
     publicNgos = (await repository.listPublic()).map(rowToNgo);
   } catch (error) {
     console.error('Could not load public organizations:', error);
+    const fixtures = demoDataEnabled ? demoNgos : [];
     return ownerNgo
-      ? [ownerNgo, ...demoNgos.filter((ngo) => ngo.id !== ownerNgo.id)]
-      : demoNgos;
+      ? [ownerNgo, ...fixtures.filter((ngo) => ngo.id !== ownerNgo.id)]
+      : fixtures;
   }
 
   const merged = ownerNgo
     ? [ownerNgo, ...publicNgos.filter((ngo) => ngo.id !== ownerNgo.id)]
     : publicNgos;
+  if (!demoDataEnabled) return merged;
   const knownIds = new Set(merged.map((ngo) => ngo.id));
   return [...merged, ...demoNgos.filter((ngo) => !knownIds.has(ngo.id))];
 };
 
 export const loadNgoById = async (ngoId: string, viewer?: AppUser | null): Promise<NGO | null> => {
-  if (ngoId === TRANQUILICARE_FOUNDER_NGO.id) return TRANQUILICARE_FOUNDER_NGO;
-  const demo = demoNgos.find((ngo) => ngo.id === ngoId);
-  if (demo) return demo;
+  if (demoDataEnabled && ngoId === TRANQUILICARE_FOUNDER_NGO.id) return TRANQUILICARE_FOUNDER_NGO;
+  if (demoDataEnabled) {
+    const demo = demoNgos.find((ngo) => ngo.id === ngoId);
+    if (demo) return demo;
+  }
   const owner = viewer ? ngoFromUser(viewer) : null;
   if (owner?.id === ngoId) return owner;
   const ngos = await loadMarketplaceNgos(viewer);

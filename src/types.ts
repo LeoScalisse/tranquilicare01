@@ -68,6 +68,7 @@ export interface NGO {
   geocodedAddress?: string;
   verified: boolean;
   status?: 'pending' | 'approved' | 'rejected';
+  isFounder?: boolean;
   posts: NGOPost[];
   impactMetrics?: ImpactMetric[];
 }

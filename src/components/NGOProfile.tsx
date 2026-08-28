@@ -20,6 +20,10 @@ import {
 import { toast } from "sonner";
 import { NGO, NGOPost } from "../types";
 import {
+  confirmPrototypePixDonation,
+  type PixPaymentAction,
+  type PrototypePixPaymentAction,
+  startPrototypePixDonation,
   startMercadoPagoPixDonation,
   waitForDonationConfirmation,
 } from "@/lib/donations";
@@ -40,6 +44,7 @@ import ViewOnMap from "@/components/ui/view-on-map";
 import EmbeddedVideo from "@/components/ui/embedded-video";
 import donationCelebrationSound from "@/assets/audio/0807.MP3";
 import checkoutStageSound from "@/assets/audio/apple-intelligence-enter.mp3";
+import founderSeal from "@/assets/founder-ngo-seal.png";
 import { scheduleDonationSuccessAudio } from "@/lib/donationCelebrationAudio";
 import { playCheckoutStageAudio } from "@/lib/checkoutStageAudio";
 import {
@@ -52,6 +57,7 @@ import { canRenderAfterDonationTab } from "@/lib/afterDonation";
 import {
   getTranquiliCarePrototypeRelationships,
   isTranquiliCarePrototypeAccount,
+  isTranquiliCarePrototypeOrganization,
 } from "@/data/tranquilicarePrototype";
 
 type ProfileTab = "causa" | "historias" | "impacto" | "after_donation";
@@ -70,6 +76,11 @@ type DonationViewTransition = {
 type DonationViewTransitionDocument = Document & {
   startViewTransition?: (update: () => void) => DonationViewTransition;
 };
+
+const isPrototypePixPayment = (
+  payment: PixPaymentAction | PrototypePixPaymentAction,
+): payment is PrototypePixPaymentAction =>
+  "isPrototype" in payment && payment.isPrototype === true;
 
 interface NGOProfileProps {
   ngo: NGO;
@@ -90,12 +101,12 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showDonationModal, setShowDonationModal] = useState(false);
   const [donationAmount, setDonationAmount] = useState<number | null>(null);
-  const [payerEmail, setPayerEmail] = useState(() => getUser()?.email ?? "");
+  const payerEmail = getUser()?.email ?? "";
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [zoomedPost, setZoomedPost] = useState<NGOPost | null>(null);
-  const [pixPayment, setPixPayment] = useState<Awaited<
-    ReturnType<typeof startMercadoPagoPixDonation>
-  > | null>(null);
+  const [pixPayment, setPixPayment] = useState<
+    PixPaymentAction | PrototypePixPaymentAction | null
+  >(null);
   const [donationCheckoutStage, setDonationCheckoutStage] =
     useState<DonationCheckoutStage>("amount");
   const [isPixExpanded, setIsPixExpanded] = useState(false);
@@ -110,7 +121,8 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   const sealTriggerId = `ngo-verification-seal-${ngo.id}`;
   const currentDonor = getUser();
   const isTranquiliCarePrototype =
-    ownerMode && isTranquiliCarePrototypeAccount(ngo.email);
+    ownerMode && isTranquiliCarePrototypeAccount(currentDonor?.email);
+  const isPrototypeDonationTarget = isTranquiliCarePrototypeOrganization(ngo);
   const canSeeAfterDonation = canRenderAfterDonationTab({
     ownerMode,
     accountType: currentDonor?.accountType ?? null,
@@ -152,9 +164,6 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   );
   const isDonationAmountValid = amountCents >= 51 && amountCents <= 10_000_000;
   const normalizedPayerEmail = payerEmail.trim().toLowerCase();
-  const isPayerEmailValid =
-    normalizedPayerEmail.length <= 254 &&
-    /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(normalizedPayerEmail);
   const platformFeeCents = Math.round(amountCents * 0.05);
   const totalCents = amountCents + platformFeeCents;
   const donationGlowStage: 0 | 1 | 2 | 3 | 4 = !showDonationModal
@@ -199,7 +208,6 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
     setPixPayment(null);
     setIsPixExpanded(false);
     setDonationCheckoutStage("amount");
-    setPayerEmail(getUser()?.email ?? "");
     setShowDonationModal(true);
   };
 
@@ -219,19 +227,20 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
       return;
     }
 
-    if (!isPayerEmailValid) {
-      toast("Informe um e-mail válido para gerar o PIX.");
-      return;
-    }
-
     setIsStartingCheckout(true);
     setDonationCheckoutStage("creating");
     try {
-      const payment = await startMercadoPagoPixDonation({
-        organizationId: ngo.id,
-        amountCents,
-        payerEmail: normalizedPayerEmail,
-      });
+      const payment = isPrototypeDonationTarget
+        ? startPrototypePixDonation({
+            organizationId: ngo.id,
+            amountCents,
+            payerEmail: normalizedPayerEmail || undefined,
+          })
+        : await startMercadoPagoPixDonation({
+            organizationId: ngo.id,
+            amountCents,
+            payerEmail: normalizedPayerEmail || undefined,
+          });
       setPixPayment(payment);
       setIsPixExpanded(false);
       setDonationCheckoutStage("pix");
@@ -255,11 +264,14 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
 
     setDonationCheckoutStage("confirming");
     try {
-      const donation = await waitForDonationConfirmation(
-        pixPayment.actionId,
-        normalizedPayerEmail || getUser()?.email || null,
-        pixPayment.confirmationToken ?? null,
-      );
+      const donorEmail = normalizedPayerEmail || getUser()?.email || null;
+      const donation = isPrototypePixPayment(pixPayment)
+        ? confirmPrototypePixDonation(pixPayment, donorEmail)
+        : await waitForDonationConfirmation(
+            pixPayment.actionId,
+            donorEmail,
+            pixPayment.confirmationToken ?? null,
+          );
       setConfirmedDonation(donation);
       setDonationCheckoutStage("confirmed");
     } catch (error) {
@@ -536,12 +548,8 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                     <Loader2 className="animate-spin" size={26} aria-hidden="true" />
                   </span>
                   <h2 className="mt-5 font-display text-2xl font-semibold leading-tight text-brand-ink">
-                    Confirmando seu pagamento...
+                    Só um instante. Estamos confirmando seu PIX.
                   </h2>
-                  <p className="mx-auto mt-3 max-w-sm text-sm leading-6 text-muted-foreground">
-                    Assim que o PIX for identificado, sua doação será confirmada
-                    automaticamente.
-                  </p>
                 </motion.section>
               ) : donationCheckoutStage === "pix" && pixPayment ? (
                 <motion.section
@@ -562,30 +570,43 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                     ease: [0.22, 1, 0.36, 1],
                   }}
                 >
-                  <h2 className="pr-10 font-display text-2xl font-semibold leading-tight text-brand-ink">
-                    {isPixExpanded
-                      ? "Pague pelo app do seu banco"
-                      : "Seu PIX está pronto."}
-                  </h2>
-                  <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                    {isPixExpanded
-                      ? "Escaneie o QR Code ou copie o código PIX."
-                      : "Abra o QR Code ou copie o código para concluir o pagamento pelo seu banco."}
-                  </p>
+                  {!isPixExpanded && (
+                    <>
+                      <h2 className="pr-10 font-display text-2xl font-semibold leading-tight text-brand-ink">
+                        PIX PRONTO
+                      </h2>
+                      <p className="mt-3 text-sm leading-6 text-muted-foreground">
+                        Tudo pronto para concluir sua doação.
+                      </p>
+                      <p className="mt-1 text-sm leading-6 text-muted-foreground">
+                        Abra o QR Code ou copie o código PIX para pagar pelo app do seu banco.
+                      </p>
+                    </>
+                  )}
+                  {isPrototypePixPayment(pixPayment) && (
+                    <div className="mt-4 rounded-xl border border-brand-yellow/50 bg-brand-yellow/10 px-4 py-3 text-sm text-brand-ink">
+                      <strong className="block font-bold">PIX de demonstração</strong>
+                      <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                        Nenhuma cobrança será realizada.
+                      </span>
+                    </div>
+                  )}
                   <PixQrDisclosure
                     className="mt-4"
                     value={pixPayment.qrCodeText}
                     qrCodeImage={pixPayment.qrCode}
-                    buttonLabel="Abrir QR"
+                    buttonLabel="Ver PIX"
                     onExpandedChange={setIsPixExpanded}
                     onCopy={() => toast("Código PIX copiado.")}
                     onCopyError={() =>
                       toast("Não foi possível copiar o código PIX.")
                     }
                   />
-                  <p className="mt-4 text-center text-xs font-semibold leading-5 text-muted-foreground">
-                    A doação será confirmada assim que o pagamento for identificado.
-                  </p>
+                  {isPixExpanded && (
+                    <p className="mt-4 text-center text-xs font-semibold leading-5 text-muted-foreground">
+                      Sua doação será confirmada automaticamente assim que o pagamento for identificado.
+                    </p>
+                  )}
                   <AnimatePresence initial={false}>
                     {isPixExpanded && (
                       <motion.button
@@ -648,7 +669,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                     </div>
                     <div className="mt-3">
                       <span className="block font-semibold text-muted-foreground">
-                        Serviço TranquiliCare (5%)
+                        TranquiliCare · 5%
                       </span>
                       <strong className="mt-0.5 block text-base text-brand-ink">
                         {donationAmount === null
@@ -665,37 +686,17 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                       </strong>
                     </div>
                   </div>
-                  <div className="mt-4">
-                    <label
-                      htmlFor={`donation-payer-email-${ngo.id}`}
-                      className="mb-2 block text-sm font-semibold text-brand-ink"
-                    >
-                      Seu e-mail para o pagamento
-                    </label>
-                    <input
-                      id={`donation-payer-email-${ngo.id}`}
-                      type="email"
-                      inputMode="email"
-                      autoComplete="email"
-                      required
-                      value={payerEmail}
-                      onChange={(event) => setPayerEmail(event.target.value)}
-                      aria-invalid={payerEmail.length > 0 && !isPayerEmailValid}
-                      className="h-12 w-full rounded-xl border border-brand-ink/10 bg-background px-4 text-base text-brand-ink outline-none transition focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10"
-                      placeholder="voce@exemplo.com"
-                    />
-                    <p className="mt-2 text-xs leading-5 text-muted-foreground">
-                      O Mercado Pago usa este e-mail para gerar o PIX. Isso não cria uma conta.
-                    </p>
-                  </div>
-                  <p className="mt-4 text-sm font-medium text-muted-foreground">
-                    A sua intenção chega inteira.
+                  <p className="mt-4 text-sm font-medium leading-6 text-muted-foreground">
+                    {donationAmount === null ? (
+                      "Escolha um valor para ver como sua doação chega à organização."
+                    ) : (
+                      <>Os <strong className="font-bold text-brand-ink">{formatBRL(amountCents)}</strong> que você escolheu chegam à organização. O valor do TranquiliCare é adicionado separadamente.</>
+                    )}
                   </p>
                   <button
                     disabled={
                       isStartingCheckout ||
-                      !isDonationAmountValid ||
-                      !isPayerEmailValid
+                      !isDonationAmountValid
                     }
                     onClick={() => void startPixDonation()}
                     className="tc-button-3d mt-5 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold text-white disabled:opacity-60"
@@ -730,10 +731,8 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
           donorUsername={donorUsername}
           donorAvatar={currentDonor?.avatar ?? null}
           donorId={currentDonor?.id ?? null}
-          ngoVideo={ngo.causeVideo}
-          ngoVideoPoster={ngo.image}
           friendCode={friendCode}
-          isLoggedIn={Boolean(currentDonor)}
+          hasDonorAccount={Boolean(confirmedDonation.donor_id)}
           onCreateAccount={createAccountAfterDonation}
           onTransferComplete={finishDonationCelebration}
         />
@@ -784,6 +783,12 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
             >
               {ngo.category}
             </p>
+            {ngo.isFounder && (
+              <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-brand-yellow/25 px-2.5 py-1 text-xs font-black uppercase tracking-[0.1em] text-brand-ink">
+                <img src={founderSeal} alt="" className="h-4 w-4 object-contain" />
+                ONG fundadora
+              </span>
+            )}
             <h1 className="mt-3 font-display text-4xl font-semibold leading-tight md:text-5xl">
               {ngo.name}
             </h1>

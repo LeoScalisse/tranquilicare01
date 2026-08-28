@@ -9,7 +9,7 @@ import {
 describe("scheduleDonationSuccessAudio", () => {
   afterEach(() => vi.useRealTimers());
 
-  it("toca somente o áudio final, um segundo depois e em volume contido", () => {
+  it("toca somente o áudio final, um segundo e meio depois e em volume contido", () => {
     vi.useFakeTimers();
     const audio = {
       currentTime: 4,
@@ -20,11 +20,11 @@ describe("scheduleDonationSuccessAudio", () => {
 
     const cancel = scheduleDonationSuccessAudio(audio);
 
-    expect(DONATION_SUCCESS_AUDIO_DELAY_MS).toBe(1_000);
+    expect(DONATION_SUCCESS_AUDIO_DELAY_MS).toBe(1_500);
     expect(DONATION_SUCCESS_AUDIO_VOLUME).toBeLessThan(0.5);
     expect(audio.play).not.toHaveBeenCalled();
 
-    vi.advanceTimersByTime(999);
+    vi.advanceTimersByTime(1_499);
     expect(audio.play).not.toHaveBeenCalled();
 
     vi.advanceTimersByTime(1);
