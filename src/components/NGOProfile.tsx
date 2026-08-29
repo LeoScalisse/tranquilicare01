@@ -96,7 +96,15 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   const navigate = useNavigate();
   const location = useLocation();
   const reduceMotion = useReducedMotion();
-  const [activeTab, setActiveTab] = useState<ProfileTab>("causa");
+  const currentDonor = getUser();
+  const isPrototypeDonationTarget = isTranquiliCarePrototypeOrganization(ngo);
+  const isTranquiliCarePrototype =
+    ownerMode && isTranquiliCarePrototypeAccount(currentDonor?.email);
+  const isPublicPrototypeDemo =
+    isPrototypeDonationTarget && !isTranquiliCarePrototype;
+  const [activeTab, setActiveTab] = useState<ProfileTab>(
+    isPublicPrototypeDemo ? "after_donation" : "causa",
+  );
   const [showContactModal, setShowContactModal] = useState(false);
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showDonationModal, setShowDonationModal] = useState(false);
@@ -119,16 +127,12 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   const categoryDefinition = getNgoCategory(ngo.category);
   const categoryTheme = getNgoCategoryTheme(ngo.category);
   const sealTriggerId = `ngo-verification-seal-${ngo.id}`;
-  const currentDonor = getUser();
-  const isTranquiliCarePrototype =
-    ownerMode && isTranquiliCarePrototypeAccount(currentDonor?.email);
-  const isPrototypeDonationTarget = isTranquiliCarePrototypeOrganization(ngo);
   const canSeeAfterDonation = canRenderAfterDonationTab({
     ownerMode,
     accountType: currentDonor?.accountType ?? null,
     currentUserId: currentDonor?.id ?? null,
     organizationId: ngo.id,
-  });
+  }) || isPrototypeDonationTarget;
   const donorName = currentDonor?.name?.trim() || "Apoiador TranquiliCare";
   const donorUsername =
     currentDonor?.donorProfile?.instagram?.trim() ||
@@ -328,12 +332,16 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   const instagramUrl = ngo.instagram
     ? `https://www.instagram.com/${ngo.instagram.replace(/^@/, "")}`
     : null;
+  const hasPublicContact = Boolean(instagramUrl || ngo.email || ngo.phone);
   const tabs: Array<{ id: ProfileTab; label: string }> = [
     { id: "causa", label: "A Causa" },
     { id: "historias", label: "Histórias" },
     { id: "impacto", label: "Impacto" },
     ...(canSeeAfterDonation
-      ? [{ id: "after_donation" as const, label: "Depois da doação" }]
+      ? [{
+        id: "after_donation" as const,
+        label: isPublicPrototypeDemo ? "Painel demonstrativo" : "Depois da doação",
+      }]
       : []),
   ];
 
@@ -472,14 +480,16 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                 <ExternalLink size={15} className="text-muted-foreground" />
               </a>
             )}
-            <a
-              href={`mailto:${ngo.email}`}
-              className="flex items-center gap-3 rounded-lg border border-border p-3 font-semibold transition-colors hover:border-brand-blue"
-            >
-              <Mail size={19} className="text-brand-blue" />
-              <span className="min-w-0 flex-1 truncate">{ngo.email}</span>
-              <ExternalLink size={15} className="text-muted-foreground" />
-            </a>
+            {ngo.email && (
+              <a
+                href={`mailto:${ngo.email}`}
+                className="flex items-center gap-3 rounded-lg border border-border p-3 font-semibold transition-colors hover:border-brand-blue"
+              >
+                <Mail size={19} className="text-brand-blue" />
+                <span className="min-w-0 flex-1 truncate">{ngo.email}</span>
+                <ExternalLink size={15} className="text-muted-foreground" />
+              </a>
+            )}
             {ngo.phone && (
               <button
                 onClick={() => copyPhone(ngo.phone!)}
@@ -813,13 +823,15 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                   Apoiar esta causa
                 </button>
               )}
-              <button
+              {hasPublicContact && (
+                <button
                 onClick={() => setShowContactModal(true)}
                 className="tc-button-neumorph inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-5 py-2.5 text-sm font-bold transition-colors hover:border-brand-blue hover:text-brand-blue sm:w-auto"
               >
                 <MessageCircle size={17} />
                 Falar com a organização
-              </button>
+                </button>
+              )}
               {ngo.address && (
                 <ViewOnMap
                   locationName={ngo.name}
@@ -895,10 +907,11 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
             <AfterDonationWorkspace
               organizationId={ngo.id}
               initialRelationships={
-                isTranquiliCarePrototype
+                isPrototypeDonationTarget
                   ? getTranquiliCarePrototypeRelationships(ngo.id)
                   : undefined
               }
+              demoMode={isPublicPrototypeDemo}
             />
           )}
         </motion.div>

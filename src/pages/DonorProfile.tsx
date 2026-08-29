@@ -34,9 +34,9 @@ import { SmoothInput } from '@/components/ui/smooth-input';
 import ImpactStatCarousel from '@/components/ui/impact-stat-carousel';
 import { NGO_CATEGORY_ORDER } from '@/data/ngoCategories';
 import { formatPhone, isValidInstagram, isValidOptionalUrl, isValidPhone, normalizePhone } from '@/lib/organizationProfile';
+import { profileImageErrorMessage, uploadProfileAvatar } from '@/lib/profileMedia';
 
 const DAY_MS = 86_400_000;
-const AVATAR_MAX_CHARS = 4000;
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 const EMPTY_DONOR_DETAILS: DonorProfileDetails = {
   bio: '',
@@ -46,41 +46,6 @@ const EMPTY_DONOR_DETAILS: DonorProfileDetails = {
   coverImage: '',
   interests: [],
 };
-
-const resizeToDataUrl = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const encode = (size: number, quality: number): string | null => {
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        const context = canvas.getContext('2d');
-        if (!context) return null;
-        const scale = Math.max(size / img.width, size / img.height);
-        const width = img.width * scale;
-        const height = img.height * scale;
-        context.drawImage(img, (size - width) / 2, (size - height) / 2, width, height);
-        return canvas.toDataURL('image/jpeg', quality);
-      };
-
-      URL.revokeObjectURL(url);
-      for (const [size, quality] of [[128, 0.72], [128, 0.55], [96, 0.6], [96, 0.45], [72, 0.5]] as Array<[number, number]>) {
-        const output = encode(size, quality);
-        if (output && output.length <= AVATAR_MAX_CHARS) {
-          resolve(output);
-          return;
-        }
-      }
-      reject(new Error('too-large'));
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('read-failed'));
-    };
-    img.src = url;
-  });
 
 const DonorProfile: React.FC = () => {
   const navigate = useNavigate();
@@ -94,6 +59,7 @@ const DonorProfile: React.FC = () => {
   const [credits, setCredits] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [editingProfile, setEditingProfile] = useState(isSetup);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -170,18 +136,17 @@ const DonorProfile: React.FC = () => {
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error('Escolha um arquivo de imagem.');
-      return;
-    }
+    if (!user) return;
+    setUploadingAvatar(true);
     try {
-      setAvatarUrl(await resizeToDataUrl(file));
+      setAvatarUrl(await uploadProfileAvatar(file, user.id));
       setDirty(true);
+      toast.success('Imagem preparada. Salve o perfil para publicar a alteração.');
     } catch (error) {
-      toast.error(error instanceof Error && error.message === 'too-large'
-        ? 'Imagem muito pesada. Tente uma foto mais simples.'
-        : 'Não foi possível processar a imagem.');
+      toast.error(profileImageErrorMessage(error));
     } finally {
+      setUploadingAvatar(false);
+      event.currentTarget.value = '';
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -292,13 +257,13 @@ const DonorProfile: React.FC = () => {
               <div className='h-36 w-36 overflow-hidden rounded-full border-[5px] border-brand-blue bg-secondary shadow-sm md:h-40 md:w-40'>
                 {avatarUrl ? <img src={avatarUrl} alt={name || 'Avatar'} className='h-full w-full object-cover' /> : <div className='grid h-full w-full place-items-center bg-brand-blue/10'><UserIcon size={54} className='text-brand-blue' /></div>}
               </div>
-              <button onClick={() => fileInputRef.current?.click()} className='absolute right-1 top-2 flex h-10 w-10 items-center justify-center rounded-full border-4 border-white bg-brand-blue text-white shadow-md' aria-label='Trocar foto'>
-                <Camera size={17} />
+              <button disabled={uploadingAvatar} onClick={() => fileInputRef.current?.click()} className='absolute right-1 top-2 flex h-10 w-10 items-center justify-center rounded-full border-4 border-white bg-brand-blue text-white shadow-md disabled:opacity-60' aria-label='Trocar foto'>
+                {uploadingAvatar ? <Loader2 size={17} className='animate-spin' /> : <Camera size={17} />}
               </button>
               <span className='absolute bottom-1 right-0 flex h-11 w-11 items-center justify-center rounded-full border-4 border-white bg-brand-ink text-white' title={`${completeness}% completo`}>
                 <ShieldCheck size={18} />
               </span>
-              <input ref={fileInputRef} type='file' accept='image/*' className='hidden' onChange={handleFileSelect} />
+              <input ref={fileInputRef} type='file' accept='image/jpeg,image/png,image/webp,image/heic,image/heif' disabled={uploadingAvatar} className='hidden' onChange={handleFileSelect} />
             </div>
 
             <div className='min-w-0 flex-1'>
@@ -343,9 +308,9 @@ const DonorProfile: React.FC = () => {
                   </div>
                 </fieldset>
                 <div className='flex justify-end md:col-span-2'>
-                <button onClick={handleSave} disabled={saving || !dirty} className='tc-button-3d inline-flex h-12 items-center justify-center gap-2 rounded-xl px-5 font-bold text-white disabled:opacity-45'>
-                  {saving ? <Loader2 size={18} className='animate-spin' /> : <Save size={18} />}
-                  {dirty ? 'Salvar' : 'Salvo'}
+                <button onClick={handleSave} disabled={saving || uploadingAvatar || !dirty} className='tc-button-3d inline-flex h-12 items-center justify-center gap-2 rounded-xl px-5 font-bold text-white disabled:opacity-45'>
+                  {saving || uploadingAvatar ? <Loader2 size={18} className='animate-spin' /> : <Save size={18} />}
+                  {uploadingAvatar ? 'Preparando imagem...' : dirty ? 'Salvar' : 'Salvo'}
                 </button>
                 </div>
               </div>

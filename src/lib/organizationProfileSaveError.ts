@@ -17,5 +17,9 @@ export const organizationProfileSaveError = (error: unknown): string => {
     return 'Este código de ONG fundadora é inválido, expirou ou já foi utilizado.';
   }
 
+  if (context.includes('save_own_ngo_profile') || context.includes('organization-not-persisted')) {
+    return 'O cadastro da organização precisa de uma atualização no banco. Tente novamente em alguns instantes.';
+  }
+
   return 'Não foi possível salvar o perfil. Tente novamente.';
 };

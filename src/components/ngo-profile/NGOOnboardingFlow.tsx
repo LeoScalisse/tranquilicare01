@@ -3,6 +3,7 @@ import { Building2, Camera, CheckCircle2, CircleDollarSign, Loader2, ShieldCheck
 
 import { CategoryDisclosure, type CategoryDisclosureItem } from '@/components/ui/category-disclosure';
 import { SmoothInput } from '@/components/ui/smooth-input';
+import { BRAZILIAN_STATES } from '@/lib/organizationProfile';
 import { gsap, useGSAP } from '@/lib/gsap';
 import type { NgoProfileDetails } from '@/lib/authTypes';
 
@@ -14,6 +15,7 @@ type Props = {
   details: NgoProfileDetails;
   categories: CategoryDisclosureItem[];
   saving: boolean;
+  imageUploading?: boolean;
   onDetailsChange: (patch: Partial<NgoProfileDetails>) => void;
   onChooseImage: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onCauseSubmit: () => void;
@@ -30,6 +32,7 @@ export const NGOOnboardingFlow = ({
   details,
   categories,
   saving,
+  imageUploading = false,
   onDetailsChange,
   onChooseImage,
   onCauseSubmit,
@@ -86,10 +89,19 @@ export const NGOOnboardingFlow = ({
             <textarea id='setup-cause-goal' value={details.goal} onChange={(event) => onDetailsChange({ goal: event.target.value })} placeholder='Conte qual é a prioridade mais importante da organização neste momento.' rows={4} maxLength={400} className={`${fieldClass} resize-y leading-6`} />
           </label>
 
-          <label className={labelClass} htmlFor='setup-cause-location'>
-            Onde vocês atuam?
-            <SmoothInput id='setup-cause-location' value={details.address} onChange={(event) => onDetailsChange({ address: event.target.value })} placeholder='Cidade, estado' className={fieldClass} />
-          </label>
+          <div className='grid gap-4 sm:grid-cols-[1fr_9rem]'>
+            <label className={labelClass} htmlFor='setup-cause-city'>
+              Onde vocês atuam?
+              <SmoothInput id='setup-cause-city' value={details.city ?? ''} onChange={(event) => onDetailsChange({ city: event.target.value })} placeholder='Cidade' className={fieldClass} />
+            </label>
+            <label className={labelClass} htmlFor='setup-cause-state'>
+              Estado
+              <select id='setup-cause-state' value={details.state ?? ''} onChange={(event) => onDetailsChange({ state: event.target.value })} className={fieldClass}>
+                <option value=''>UF</option>
+                {BRAZILIAN_STATES.map((state) => <option key={state} value={state}>{state}</option>)}
+              </select>
+            </label>
+          </div>
 
           <div className='border-t border-brand-ink/10 pt-7'>
             <div className='flex items-center gap-4'>
@@ -97,9 +109,9 @@ export const NGOOnboardingFlow = ({
                 {avatar ? <img src={avatar} alt='' className='size-full object-cover' /> : <Building2 className='text-brand-blue/55' size={25} />}
               </div>
               <div>
-                <label className='inline-flex cursor-pointer items-center gap-2 rounded-xl border border-brand-ink/15 px-4 py-2.5 text-sm font-bold text-brand-ink transition-colors hover:border-brand-blue hover:text-brand-blue'>
-                  <Camera size={17} />Adicionar imagem
-                  <input type='file' accept='image/*' className='sr-only' onChange={onChooseImage} />
+                <label className={`inline-flex items-center gap-2 rounded-xl border border-brand-ink/15 px-4 py-2.5 text-sm font-bold text-brand-ink transition-colors ${imageUploading ? 'cursor-wait opacity-60' : 'cursor-pointer hover:border-brand-blue hover:text-brand-blue'}`}>
+                  {imageUploading ? <Loader2 size={17} className='animate-spin' /> : <Camera size={17} />}{imageUploading ? 'Preparando imagem...' : 'Adicionar imagem'}
+                  <input type='file' accept='image/jpeg,image/png,image/webp,image/heic,image/heif' disabled={imageUploading} className='sr-only' onChange={onChooseImage} />
                 </label>
                 <p className='mt-2 text-xs text-muted-foreground'>Opcional. Você poderá trocar depois.</p>
               </div>

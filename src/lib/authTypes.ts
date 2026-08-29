@@ -12,6 +12,8 @@ export interface NgoProfileDetails {
   phone: string;
   cnpj: string;
   address: string;
+  city?: string;
+  state?: string;
   latitude?: number | null;
   longitude?: number | null;
   geocodedAddress?: string;

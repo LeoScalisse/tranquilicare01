@@ -52,6 +52,15 @@ export const isValidAddress = (value: string): boolean => {
   return address.length >= 10 && /[A-Za-zÀ-ÿ]/.test(address);
 };
 
+export const BRAZILIAN_STATES = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS',
+  'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC',
+  'SP', 'SE', 'TO',
+] as const;
+
+export const isValidLocation = (city: string | undefined, state: string | undefined): boolean =>
+  Boolean(city?.trim() && state && BRAZILIAN_STATES.includes(state.trim().toUpperCase() as typeof BRAZILIAN_STATES[number]));
+
 export const isValidInstagram = (value: string): boolean => {
   const instagram = value.trim();
   if (!instagram) return true;

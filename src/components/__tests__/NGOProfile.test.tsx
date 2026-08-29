@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import NGOProfile from "@/components/NGOProfile";
 import { demoNgos } from "@/data/demoNgos";
+import { TRANQUILICARE_FOUNDER_NGO } from "@/data/tranquilicarePrototype";
 
 const renderProfile = (ngo = demoNgos[0], ownerMode = false) =>
   render(
@@ -44,6 +45,17 @@ describe("NGOProfile cause-led architecture", () => {
     expect(screen.queryByText("Meta atual")).toBeNull();
     expect(screen.queryByText("Transparência")).toBeNull();
     expect(screen.queryByText("impactos publicados")).toBeNull();
+  });
+
+  it("opens the TranquiliCare founder profile with a read-only relationship demo", () => {
+    renderProfile(TRANQUILICARE_FOUNDER_NGO);
+
+    expect(screen.getByRole("tab", { name: "Painel demonstrativo" })).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "Radar de relacionamento" })).not.toBeNull();
+    expect(screen.getByText("Demonstração visual")).not.toBeNull();
+    expect(screen.getByRole("table", { name: "Resumo demonstrativo de doadores" })).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Abrir calendário de contatos" })).not.toBeNull();
+    expect(screen.getByRole("button", { name: "Abrir relacionamento com Ana Clara" })).toBeDisabled();
   });
 
   it("opens the objective modal with the category color", () => {

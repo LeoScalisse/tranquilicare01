@@ -39,6 +39,7 @@ import {
   formatCnpj,
   formatPhone,
   isValidAddress,
+  isValidLocation,
   isValidCnpj,
   isValidInstagram,
   isValidPhone,
@@ -49,6 +50,7 @@ import {
 import { geocodeAddress } from '@/lib/geocoding';
 import { organizationProfileSaveError } from '@/lib/organizationProfileSaveError';
 import NGOOnboardingFlow from '@/components/ngo-profile/NGOOnboardingFlow';
+import { profileImageErrorMessage, uploadProfileAvatar } from '@/lib/profileMedia';
 
 const EMPTY_DETAILS: NgoProfileDetails = {
   publicEmail: '',
@@ -62,6 +64,8 @@ const EMPTY_DETAILS: NgoProfileDetails = {
   phone: '',
   cnpj: '',
   address: '',
+  city: '',
+  state: '',
   latitude: null,
   longitude: null,
   geocodedAddress: '',
@@ -77,7 +81,7 @@ const hasCauseDetails = (details: NgoProfileDetails) => Boolean(
   && details.category.trim()
   && details.objectives[0]?.trim()
   && details.goal.trim()
-  && isValidAddress(details.address),
+  && isValidLocation(details.city, details.state),
 );
 
 const CATEGORY_ITEMS: CategoryDisclosureItem[] = NGO_CATEGORY_ORDER.map((category) => ({
@@ -88,33 +92,6 @@ const CATEGORY_ITEMS: CategoryDisclosureItem[] = NGO_CATEGORY_ORDER.map((categor
 
 type ProfileField = keyof NgoProfileDetails | 'name';
 type ProfileFieldErrors = Partial<Record<ProfileField, string>>;
-
-const resizeAvatar = (file: File): Promise<string> => new Promise((resolve, reject) => {
-  const objectUrl = URL.createObjectURL(file);
-  const image = new Image();
-  image.onload = () => {
-    const canvas = document.createElement('canvas');
-    const size = 160;
-    canvas.width = size;
-    canvas.height = size;
-    const context = canvas.getContext('2d');
-    if (!context) {
-      reject(new Error('canvas-unavailable'));
-      return;
-    }
-    const scale = Math.max(size / image.width, size / image.height);
-    const width = image.width * scale;
-    const height = image.height * scale;
-    context.drawImage(image, (size - width) / 2, (size - height) / 2, width, height);
-    URL.revokeObjectURL(objectUrl);
-    resolve(canvas.toDataURL('image/jpeg', 0.62));
-  };
-  image.onerror = () => {
-    URL.revokeObjectURL(objectUrl);
-    reject(new Error('invalid-image'));
-  };
-  image.src = objectUrl;
-});
 
 type ProfileFieldsProps = {
   name: string;
@@ -380,6 +357,7 @@ const NGOAccountProfile: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [profileSaved, setProfileSaved] = useState(false);
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState<string | null>(null);
@@ -460,15 +438,16 @@ const NGOAccountProfile: React.FC = () => {
   const chooseImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error('Escolha um arquivo de imagem.');
-      return;
-    }
+    if (!user) return;
+    setUploadingAvatar(true);
     try {
-      setAvatar(await resizeAvatar(file));
-    } catch {
-      toast.error('Não foi possível processar essa imagem.');
+      setAvatar(await uploadProfileAvatar(file, user.id));
+      toast.success('Imagem preparada. Salve o perfil para publicar a alteração.');
+    } catch (error) {
+      toast.error(profileImageErrorMessage(error));
     } finally {
+      setUploadingAvatar(false);
+      event.currentTarget.value = '';
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -487,6 +466,8 @@ const NGOAccountProfile: React.FC = () => {
     phone: normalizePhone(details.phone),
     cnpj: normalizeCnpj(details.cnpj),
     address: details.address.trim().replace(/\s+/g, ' '),
+    city: details.city?.trim().replace(/\s+/g, ' ') ?? '',
+    state: details.state?.trim().toUpperCase() ?? '',
     geocodedAddress: details.geocodedAddress?.trim() || '',
   });
 
@@ -508,7 +489,7 @@ const NGOAccountProfile: React.FC = () => {
       toast.error('Escolha a principal causa da organização.');
       return;
     }
-    if (!details.description.trim() || !details.objectives[0]?.trim() || !details.goal.trim() || !isValidAddress(details.address)) {
+    if (!details.description.trim() || !details.objectives[0]?.trim() || !details.goal.trim() || !isValidLocation(details.city, details.state)) {
       toast.error('Preencha a apresentação da causa, a atuação, o foco atual e a localização.');
       return;
     }
@@ -529,7 +510,7 @@ const NGOAccountProfile: React.FC = () => {
   };
 
   const finishPreparation = async () => {
-    if (!isValidCnpj(details.cnpj) || !isValidAddress(details.address)) {
+    if (!isValidCnpj(details.cnpj) || !isValidAddress(details.address) || !isValidLocation(details.city, details.state)) {
       toast.error('Informe um CNPJ válido e o endereço oficial da organização.');
       return;
     }
@@ -586,13 +567,16 @@ const NGOAccountProfile: React.FC = () => {
     setSaving(true);
     try {
       const normalizedAddress = details.address.trim().replace(/\s+/g, ' ');
+      const normalizedCity = details.city?.trim().replace(/\s+/g, ' ') ?? '';
+      const normalizedState = details.state?.trim().toUpperCase() ?? '';
+      const mapAddress = [normalizedAddress, normalizedCity, normalizedState].filter(Boolean).join(', ');
       let latitude = details.latitude ?? null;
       let longitude = details.longitude ?? null;
       let geocodedAddress = details.geocodedAddress?.trim() || '';
       const addressChanged = normalizedAddress !== user?.ngoProfile?.address.trim();
 
       if (addressChanged || latitude === null || longitude === null) {
-        const location = await geocodeAddress(normalizedAddress);
+        const location = await geocodeAddress(mapAddress);
         if (!location) {
           setFieldErrors((current) => ({
             ...current,
@@ -618,6 +602,8 @@ const NGOAccountProfile: React.FC = () => {
         phone: normalizePhone(details.phone),
         cnpj: normalizeCnpj(details.cnpj),
         address: normalizedAddress,
+        city: normalizedCity,
+        state: normalizedState,
         latitude,
         longitude,
         geocodedAddress,
@@ -687,7 +673,8 @@ const NGOAccountProfile: React.FC = () => {
           avatar={avatar}
           details={details}
           categories={CATEGORY_ITEMS}
-          saving={saving}
+          saving={saving || uploadingAvatar}
+          imageUploading={uploadingAvatar}
           onDetailsChange={updateDetails}
           onChooseImage={chooseImage}
           onCauseSubmit={() => void continueCauseSetup()}
@@ -712,9 +699,9 @@ const NGOAccountProfile: React.FC = () => {
             <motion.form onSubmit={saveProfile} initial={{ opacity: 0, y: 18, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 10, scale: 0.98 }} className='max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-background shadow-2xl' noValidate>
               <div className='sticky top-0 z-10 flex items-center justify-between bg-brand-ink px-5 py-4 text-white'><h2 className='font-display text-xl font-semibold'>Editar perfil</h2><button type='button' onClick={() => setEditing(false)} className='grid h-9 w-9 place-items-center rounded-full bg-background text-brand-blue' aria-label='Fechar'><X size={19} /></button></div>
               <div className='p-5 md:p-6'>
-                <div className='mb-7 flex items-center gap-4'><div className='grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-brand-blue bg-brand-blue/5'>{avatar ? <img src={avatar} className='h-full w-full object-cover' alt='' /> : <Building2 className='text-brand-blue' size={28} />}</div><div><button type='button' onClick={() => fileInputRef.current?.click()} className='inline-flex items-center gap-2 rounded-lg border-2 border-border px-3 py-2 text-sm font-bold hover:border-brand-blue hover:text-brand-blue'><Camera size={17} />Trocar imagem</button><input ref={fileInputRef} type='file' accept='image/*' className='hidden' onChange={chooseImage} /></div></div>
+                <div className='mb-7 flex items-center gap-4'><div className='grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-full border-2 border-brand-blue bg-brand-blue/5'>{avatar ? <img src={avatar} className='h-full w-full object-cover' alt='' /> : <Building2 className='text-brand-blue' size={28} />}</div><div><button type='button' disabled={uploadingAvatar} onClick={() => fileInputRef.current?.click()} className='inline-flex items-center gap-2 rounded-lg border-2 border-border px-3 py-2 text-sm font-bold hover:border-brand-blue hover:text-brand-blue disabled:opacity-60'>{uploadingAvatar ? <Loader2 size={17} className='animate-spin' /> : <Camera size={17} />}{uploadingAvatar ? 'Preparando imagem...' : 'Trocar imagem'}</button><input ref={fileInputRef} type='file' accept='image/jpeg,image/png,image/webp,image/heic,image/heif' disabled={uploadingAvatar} className='hidden' onChange={chooseImage} /></div></div>
                 <ProfileFields name={name} onNameChange={setName} details={details} onDetailsChange={updateDetails} idPrefix='edit-ngo' errors={fieldErrors} onClearError={clearFieldError} />
-                <button type='submit' disabled={saving} className='tc-button-3d mt-7 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold text-white disabled:opacity-60'>{saving ? <Loader2 size={18} className='animate-spin' /> : <Save size={18} />}{saving ? 'Salvando...' : 'Salvar alterações'}</button>
+                <button type='submit' disabled={saving || uploadingAvatar} className='tc-button-3d mt-7 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold text-white disabled:opacity-60'>{saving || uploadingAvatar ? <Loader2 size={18} className='animate-spin' /> : <Save size={18} />}{saving ? 'Salvando...' : uploadingAvatar ? 'Preparando imagem...' : 'Salvar alterações'}</button>
               </div>
             </motion.form>
           </motion.div>

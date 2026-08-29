@@ -50,6 +50,8 @@ interface SendMessageInput {
 interface AfterDonationWorkspaceProps {
   organizationId: string;
   initialRelationships?: DonorRelationship[];
+  /** Public-only fixture mode: shows the workspace without changing data. */
+  demoMode?: boolean;
   onSendMessage?: (
     input: SendMessageInput,
   ) =>
@@ -75,19 +77,27 @@ const RelationshipCard = ({
   relationship,
   onOpen,
   onDragStart,
+  readOnly = false,
 }: {
   relationship: DonorRelationship;
   onOpen: () => void;
   onDragStart: (event: DragEvent<HTMLButtonElement>) => void;
+  readOnly?: boolean;
 }) => (
   <motion.button
     layout
     type="button"
-    draggable
+    draggable={!readOnly}
+    disabled={readOnly}
     onDragStart={onDragStart}
     onClick={onOpen}
     aria-label={`Abrir relacionamento com ${relationship.donorName}`}
-    className="group w-full cursor-grab rounded-[20px] border border-slate-200/90 bg-white p-4 text-left shadow-[0_10px_28px_-20px_rgba(15,23,42,0.45)] transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-[0_16px_36px_-22px_rgba(14,165,233,0.55)] active:cursor-grabbing focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2"
+    className={cn(
+      "group w-full rounded-[20px] border border-slate-200/90 bg-white p-4 text-left shadow-[0_10px_28px_-20px_rgba(15,23,42,0.45)] transition-[border-color,box-shadow,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2",
+      readOnly
+        ? "cursor-default opacity-90"
+        : "cursor-grab hover:-translate-y-0.5 hover:border-sky-300 hover:shadow-[0_16px_36px_-22px_rgba(14,165,233,0.55)] active:cursor-grabbing",
+    )}
   >
     <div className="flex items-start gap-3">
       <Avatar className="h-10 w-10 border border-sky-100">
@@ -132,6 +142,7 @@ const RelationshipCard = ({
 export const AfterDonationWorkspace = ({
   organizationId,
   initialRelationships,
+  demoMode = false,
   onSendMessage,
 }: AfterDonationWorkspaceProps) => {
   const isLocalPrototype = initialRelationships !== undefined;
@@ -260,14 +271,15 @@ export const AfterDonationWorkspace = ({
         <div>
           <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-sky-700 shadow-sm ring-1 ring-sky-100">
             <Sparkles className="h-3.5 w-3.5" />
-            Depois da doação
+            {demoMode ? "Demonstração visual" : "Depois da doação"}
           </div>
           <h2 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl">
             Radar de relacionamento
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
-            Acompanhe cada apoio com cuidado, compartilhe impacto e mantenha a
-            história viva por 30 dias.
+            {demoMode
+              ? "Uma prévia visual de como a organização acompanha apoios, contatos e próximos passos."
+              : "Acompanhe cada apoio com cuidado, compartilhe impacto e mantenha a história viva por 30 dias."}
           </p>
         </div>
         <Button
@@ -311,6 +323,37 @@ export const AfterDonationWorkspace = ({
         ))}
       </div>
 
+      {demoMode && (
+        <div className="border-b border-sky-100 bg-white px-5 py-6 sm:px-7">
+          <div className="mb-4 flex items-baseline justify-between gap-4">
+            <h3 className="text-base font-black text-slate-900">Visão dos doadores</h3>
+            <span className="text-xs text-slate-500">Dados demonstrativos</span>
+          </div>
+          <div className="overflow-x-auto rounded-xl border border-slate-100">
+            <table className="min-w-full text-left text-sm" aria-label="Resumo demonstrativo de doadores">
+              <thead className="bg-slate-50 text-xs uppercase tracking-[0.08em] text-slate-500">
+                <tr>
+                  <th className="px-4 py-3 font-bold">Pessoa</th>
+                  <th className="px-4 py-3 font-bold">Apoio</th>
+                  <th className="px-4 py-3 font-bold">Último contato</th>
+                  <th className="px-4 py-3 font-bold">Próximo passo</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 text-slate-700">
+                {relationships.slice(0, 5).map((relationship) => (
+                  <tr key={`demo-table-${relationship.id}`}>
+                    <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900">{relationship.donorName}</td>
+                    <td className="whitespace-nowrap px-4 py-3">{money.format(relationship.amountCents / 100)}</td>
+                    <td className="whitespace-nowrap px-4 py-3">{relationship.lastContactAt ? format(new Date(relationship.lastContactAt), "d MMM", { locale: ptBR }) : "Ainda sem contato"}</td>
+                    <td className="whitespace-nowrap px-4 py-3">{relationship.nextContactAt ? format(new Date(relationship.nextContactAt), "d MMM", { locale: ptBR }) : "Ciclo concluído"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex min-h-72 items-center justify-center gap-2 text-sm text-slate-500">
           <Loader2 className="h-4 w-4 animate-spin text-sky-500" />
@@ -346,8 +389,9 @@ export const AfterDonationWorkspace = ({
                 <div
                   key={stage.id}
                   className="w-[272px] shrink-0 rounded-[24px] border border-white/90 bg-white/60 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]"
-                  onDragOver={(event) => event.preventDefault()}
+                  onDragOver={demoMode ? undefined : (event) => event.preventDefault()}
                   onDrop={(event) => {
+                    if (demoMode) return;
                     event.preventDefault();
                     const relationshipId = event.dataTransfer.getData(
                       "text/relationship-id",
@@ -383,12 +427,14 @@ export const AfterDonationWorkspace = ({
                             setSelectedRelationshipId(relationship.id)
                           }
                           onDragStart={(event) => {
+                            if (demoMode) return;
                             event.dataTransfer.effectAllowed = "move";
                             event.dataTransfer.setData(
                               "text/relationship-id",
                               relationship.id,
                             );
                           }}
+                          readOnly={demoMode}
                         />
                       ))}
                     </AnimatePresence>
