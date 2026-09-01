@@ -13,6 +13,7 @@ import {
 } from 'react-router-dom';
 import Index from './pages/Index';
 import { matchesDiscoveryOrigin, readDiscoveryOrigin } from '@/lib/discoveryNavigation';
+import ClickSpark from '@/components/ui/click-spark';
 
 const NGOAuth = lazy(() => import('./pages/NGOAuth'));
 const DonorAuth = lazy(() => import('./pages/DonorAuth'));
@@ -115,11 +116,13 @@ const AppRoutes = () => {
 
 const App = () => (
   <TooltipProvider>
-    <Toaster />
-    <Sonner />
-    <BrowserRouter>
-      <AppRoutes />
-    </BrowserRouter>
+    <ClickSpark sparkColors={['#38b6ff', '#ffd957', '#ffffff']}>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </ClickSpark>
   </TooltipProvider>
 );
 

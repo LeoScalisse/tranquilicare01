@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -41,11 +41,11 @@ const selectCategory = async (user: ReturnType<typeof userEvent.setup>) => {
 
 const fillCause = async (user: ReturnType<typeof userEvent.setup>) => {
   await selectCategory(user);
-  await user.type(screen.getByLabelText('Por que essa causa existe?'), 'Acreditamos que toda criança merece aprender com segurança.');
-  await user.type(screen.getByLabelText('O que vocês fazem?'), 'Oferecemos reforço escolar e acompanhamento para famílias.');
-  await user.type(screen.getByLabelText('O que vocês querem tornar possível agora?'), 'Abrir uma nova turma comunitária.');
-  await user.type(screen.getByLabelText('Onde vocês atuam?'), 'São Paulo');
-  await user.selectOptions(screen.getByLabelText('Estado'), 'SP');
+  fireEvent.change(screen.getByLabelText('Por que essa causa existe?'), { target: { value: 'Acreditamos que toda criança merece aprender com segurança.' } });
+  fireEvent.change(screen.getByLabelText('O que vocês fazem?'), { target: { value: 'Oferecemos reforço escolar e acompanhamento para famílias.' } });
+  fireEvent.change(screen.getByLabelText('O que vocês querem tornar possível agora?'), { target: { value: 'Abrir uma nova turma comunitária.' } });
+  fireEvent.change(screen.getByLabelText('Onde vocês atuam?'), { target: { value: 'São Paulo' } });
+  fireEvent.change(screen.getByLabelText('Estado'), { target: { value: 'SP' } });
 };
 
 describe('NGOAccountProfile', () => {
@@ -144,6 +144,7 @@ describe('NGOAccountProfile', () => {
     await screen.findByRole('heading', { name: 'Apresente sua causa.' });
     await fillCause(user);
     await user.click(screen.getByRole('button', { name: 'Continuar' }));
+    await waitFor(() => expect(authMocks.updateUser).toHaveBeenCalledOnce());
     await screen.findByRole('heading', { name: 'Dê um rosto à sua causa.' });
     await user.click(screen.getByRole('button', { name: 'Continuar' }));
     await screen.findByRole('heading', { name: 'Prepare sua organização para receber apoio.' });

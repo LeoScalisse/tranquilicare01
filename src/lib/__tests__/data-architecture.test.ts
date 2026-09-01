@@ -66,6 +66,14 @@ describe('data architecture boundaries', () => {
     expect(migration).not.toContain('payer_email');
     expect(migration).not.toContain('ip_address');
   });
+  it('hardens legacy SECURITY DEFINER functions with an empty search path', () => {
+    const hardening = read('supabase/migrations/20260831235900_harden_function_search_paths.sql');
+
+    expect(hardening).toContain('alter function public.consume_payment_rate_limit');
+    expect(hardening).toContain('alter function public.cleanup_payment_rate_limits');
+    expect(hardening).toContain('alter function public.update_platform_impact_stats');
+    expect(hardening.match(/set search_path = ''/g)).toHaveLength(3);
+  });
   it('keeps Mercado Pago OAuth credentials private and encrypted', () => {
     const migration = read('supabase/migrations/20260824000200_mercado_pago_marketplace_oauth.sql');
     expect(migration).toContain('create table if not exists public.payment_recipient_credentials');

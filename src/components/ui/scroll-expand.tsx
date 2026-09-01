@@ -209,7 +209,7 @@ const ScrollExpand = ({
 
     if (overlayRef.current) {
       const entrance = smoothstep(0.58, 0.95, progress);
-      const interactive = progress >= 0.94;
+      const interactive = progress >= (config.contentPreview ? 0.58 : 0.94);
       if (config.contentPreview) {
         const restingScale = restingWidth / 100;
         const scale = restingScale + (1 - restingScale) * eased;

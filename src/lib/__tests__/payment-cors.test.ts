@@ -19,4 +19,26 @@ describe("payment Edge Function CORS", () => {
 
     expect(headers["Access-Control-Allow-Headers"]).toContain("x-retry-count");
   });
+
+  it("does not trust a Vercel hostname only because it starts with the project name", () => {
+    const headers = corsHeaders(
+      "https://tranquilicare01.vercel.app",
+      "https://tranquilicare01-malicious.vercel.app",
+    );
+
+    expect(headers["Access-Control-Allow-Origin"]).toBe(
+      "https://tranquilicare01.vercel.app",
+    );
+  });
+
+  it("accepts only preview origins that were explicitly configured", () => {
+    const preview = "https://tranquilicare01-git-main-team.vercel.app";
+    const headers = corsHeaders(
+      "https://tranquilicare01.vercel.app",
+      preview,
+      [preview],
+    );
+
+    expect(headers["Access-Control-Allow-Origin"]).toBe(preview);
+  });
 });

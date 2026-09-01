@@ -245,7 +245,7 @@ const LottieCheck: React.FC = () => {
 
     Promise.all([
       fetch('/check-recolored.json').then((response) => response.json()),
-      import('lottie-web'),
+      import('lottie-web/build/player/lottie_light'),
     ])
       .then(([data, lottieModule]) => {
         if (cancelled || !hostRef.current) return;

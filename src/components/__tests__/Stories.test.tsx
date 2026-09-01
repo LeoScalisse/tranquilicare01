@@ -65,6 +65,8 @@ describe('Stories', () => {
     expect(screen.queryByRole('button', { name: 'Comentar', hidden: true })).toBeNull();
     expect(screen.queryByText('SIMULAÇÃO')).toBeNull();
     expect(screen.queryByText('Momentos e vozes das causas', { exact: true })).toBeNull();
+    expect(screen.queryByRole('tab', { name: 'Seguindo', hidden: true })).toBeNull();
+    expect(screen.getAllByRole('tab', { hidden: true })).toHaveLength(2);
   });
 
   it('keeps the circular feed preview and loads another demo batch near the end', async () => {

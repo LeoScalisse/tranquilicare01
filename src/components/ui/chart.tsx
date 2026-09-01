@@ -6,6 +6,15 @@ import { cn } from "@/lib/utils";
 // Format: { THEME_NAME: CSS_SELECTOR }
 const THEMES = { light: "", dark: ".dark" } as const;
 
+const safeCssIdentifier = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+const safeCssColor = (value: string | undefined) => {
+  if (!value || value.length > 128) return null;
+  if (/[<>{};"'\\]/.test(value)) return null;
+  if (/(?:url\s*\(|expression\s*\(|@import)/i.test(value)) return null;
+  return value;
+};
+
 export type ChartConfig = {
   [k in string]: {
     label?: React.ReactNode;
@@ -37,7 +46,7 @@ const ChartContainer = React.forwardRef<
   }
 >(({ id, className, children, config, ...props }, ref) => {
   const uniqueId = React.useId();
-  const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`;
+  const chartId = safeCssIdentifier(`chart-${id || uniqueId.replace(/:/g, "")}`);
 
   return (
     <ChartContext.Provider value={{ config }}>
@@ -60,31 +69,30 @@ ChartContainer.displayName = "Chart";
 
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(([_, config]) => config.theme || config.color);
+  const safeId = safeCssIdentifier(id);
 
   if (!colorConfig.length) {
     return null;
   }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
+  const css = Object.entries(THEMES)
+    .map(
+      ([theme, prefix]) => `
+${prefix} [data-chart="${safeId}"] {
 ${colorConfig
   .map(([key, itemConfig]) => {
-    const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
+    const color = safeCssColor(itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color);
+    return color ? `  --color-${safeCssIdentifier(key)}: ${color};` : null;
   })
   .join("\n")}
 }
 `,
-          )
-          .join("\n"),
-      }}
-    />
-  );
+    )
+    .join("\n");
+
+  // A text child is escaped by React. Identifiers and values are also kept to
+  // a conservative CSS subset so malformed configuration cannot inject rules.
+  return <style>{css}</style>;
 };
 
 const ChartTooltip = RechartsPrimitive.Tooltip;

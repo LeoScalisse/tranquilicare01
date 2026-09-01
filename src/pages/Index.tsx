@@ -12,6 +12,7 @@ import {
   TRANQUILICARE_FOUNDER_NGO,
 } from '@/data/tranquilicarePrototype';
 import logo from '@/assets/logo.png';
+import { demoNgos } from '@/data/demoNgos';
 import { toast } from 'sonner';
 import { waitForDonationConfirmation } from '@/lib/donations';
 import type { DonationRow } from '@/lib/impact';
@@ -223,8 +224,12 @@ const TranquiliCareApp: React.FC = () => {
       || (isTranquiliCarePrototypeAccount(user?.email) && ngo.id === user?.id)
     )) ?? TRANQUILICARE_FOUNDER_NGO;
     const redeemedFounders = ngos.filter((ngo) => ngo.isFounder && ngo.id !== prototypeFounder.id);
+    const previewFounders = demoNgos
+      .slice(1, 3)
+      .filter((ngo) => ngo.id !== prototypeFounder.id && !redeemedFounders.some((founder) => founder.id === ngo.id))
+      .map((ngo) => ({ ...ngo, isFounder: true }));
 
-    return [prototypeFounder, ...redeemedFounders];
+    return [prototypeFounder, ...redeemedFounders, ...previewFounders];
   }, [ngos, user?.email, user?.id]);
   const marketplaceNgos = useMemo(
     () => {

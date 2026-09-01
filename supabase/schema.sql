@@ -51,7 +51,7 @@ create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   metadata_account_type public.account_type;
@@ -105,7 +105,7 @@ create or replace function public.set_initial_account_type(next_account_type pub
 returns public.profiles
 language plpgsql
 security definer
-set search_path = public
+set search_path = ''
 as $$
 declare
   profile public.profiles;

@@ -40,11 +40,10 @@ interface StoryItem {
   persisted?: boolean;
 }
 
-type DiscoveryLane = 'for-you' | 'following' | 'saved';
+type DiscoveryLane = 'for-you' | 'saved';
 
 const DISCOVERY_LANES: Array<{ id: DiscoveryLane; label: string }> = [
   { id: 'for-you', label: 'Para você' },
-  { id: 'following', label: 'Seguindo' },
   { id: 'saved', label: 'Salvas' },
 ];
 
@@ -165,7 +164,7 @@ const StoryFeed: React.FC<StoryFeedProps> = ({
               )}
             </button>
 
-            <footer className='ml-14 mt-3 flex min-w-0 items-center justify-end gap-1 text-muted-foreground sm:gap-2'>
+            <footer className='ml-14 mt-3 flex min-w-0 items-center justify-center gap-5 text-muted-foreground'>
               <StoryShareSheet storyId={story.id} storyTitle={story.caption || `História de ${story.ngoName}`} />
               <button type='button' onClick={() => onToggleSaved(story)} aria-pressed={saved} className={`grid h-10 w-10 shrink-0 place-items-center rounded-[14px] transition-colors hover:bg-brand-yellow/25 ${saved ? 'text-brand-blue' : ''}`} aria-label={saved ? 'Remover dos salvos' : 'Salvar história'}>
                 <Bookmark size={19} className={saved ? 'fill-current' : ''} />
@@ -183,7 +182,6 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
-  const [followedOrganizationIds, setFollowedOrganizationIds] = useState<Set<string>>(new Set());
   const [realStories, setRealStories] = useState<PublishedStory[]>([]);
   const [loadingRealStories, setLoadingRealStories] = useState(true);
   const [demoBatches, setDemoBatches] = useState(INITIAL_DEMO_BATCHES);
@@ -206,7 +204,6 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
         setRealStories(stories);
         setSavedIds(viewer.savedStoryIds);
         setReportedIds(viewer.reportedStoryIds);
-        setFollowedOrganizationIds(viewer.followedOrganizationIds);
       })
       .catch(() => {
         if (active) toast.error('Não foi possível carregar as histórias reais agora.');
@@ -242,14 +239,9 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
   const availableStories = useMemo(() => feedStories.filter((story) => !reportedIds.has(story.id)), [feedStories, reportedIds]);
   const activeStory = activeIndex === null ? null : availableStories[activeIndex];
   const visibleStories = useMemo(() => {
-    if (discoveryLane === 'following') {
-      return usingDemoFallback
-        ? availableStories.filter((_, index) => index % 2 === 0)
-        : availableStories.filter((story) => Boolean(story.ngoId) && followedOrganizationIds.has(story.ngoId!));
-    }
     if (discoveryLane === 'saved') return availableStories.filter((story) => savedIds.has(story.id));
     return availableStories;
-  }, [availableStories, discoveryLane, followedOrganizationIds, savedIds, usingDemoFallback]);
+  }, [availableStories, discoveryLane, savedIds]);
 
   const openStory = (story: StoryItem) => setActiveIndex(availableStories.findIndex((item) => item.id === story.id));
   const move = (direction: -1 | 1) => {
@@ -316,9 +308,9 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
 
       <ScrollExpand contentPreview restingOverlay={<ScrollIdleCue active={expandProgress < 0.08} />} onProgressChange={setExpandProgress} startWidth={48} startHeight={48} startShape='circle' scrollDistance={0.68} holdDistance={0} smoothing={0.055} overlayScrim={0} useWindowScroll surround={<CircularStoryGallery items={availableStories} />}>
         <div ref={feedScrollerRef} className='h-full w-full overflow-y-hidden bg-background text-brand-ink'>
-          <main className='mx-auto w-full max-w-2xl px-3 pb-28 pt-5 sm:px-5'>
+          <main className='mx-auto w-full max-w-2xl px-3 pb-28 pt-8 sm:px-5 sm:pt-10'>
             <div className='border-b border-brand-ink/10' role='tablist' aria-label='Formas de navegar pelas histórias'>
-              <div className='grid grid-cols-3'>
+              <div className='grid grid-cols-2'>
                 {DISCOVERY_LANES.map((lane) => {
                   const active = discoveryLane === lane.id;
                   return (
@@ -335,7 +327,7 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
               {loadingRealStories ? (
                 <div className='grid min-h-52 place-items-center text-brand-blue' role='status' aria-label='Carregando histórias'><LoaderCircle size={22} className='animate-spin' /></div>
               ) : (
-                <StoryFeed stories={visibleStories} savedIds={savedIds} canInteract={canTellStory} onOpenStory={openStory} onOpenNGO={onOpenNGO} onToggleSaved={handleToggleSaved} onReport={handleReport} onRequireAuth={requireAuth} emptyText={discoveryLane === 'saved' ? 'As histórias que você salvar aparecerão aqui.' : discoveryLane === 'following' ? 'As novas histórias das causas que você acompanha aparecerão aqui.' : 'Novas histórias estão a caminho.'} />
+                <StoryFeed stories={visibleStories} savedIds={savedIds} canInteract={canTellStory} onOpenStory={openStory} onOpenNGO={onOpenNGO} onToggleSaved={handleToggleSaved} onReport={handleReport} onRequireAuth={requireAuth} emptyText={discoveryLane === 'saved' ? 'As histórias que você salvar aparecerão aqui.' : 'Novas histórias estão a caminho.'} />
               )}
               {usingDemoFallback && discoveryLane !== 'saved' && <div ref={loadMoreRef} className='grid min-h-24 place-items-center text-brand-blue' role='status' aria-label='Carregando mais histórias'><LoaderCircle size={22} className='animate-spin' aria-hidden='true' /></div>}
             </section>

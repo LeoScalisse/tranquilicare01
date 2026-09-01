@@ -20,7 +20,7 @@ const ScrollIdleCue: React.FC<ScrollIdleCueProps> = ({ active, delayMs = 3000 })
     if (import.meta.env.MODE === 'test') return undefined;
     let cancelled = false;
     const container = containerRef.current;
-    void import('lottie-web').then(({ default: lottie }) => {
+    void import('lottie-web/build/player/lottie_light').then(({ default: lottie }) => {
       if (cancelled) return;
       animationRef.current = lottie.loadAnimation({
         container,

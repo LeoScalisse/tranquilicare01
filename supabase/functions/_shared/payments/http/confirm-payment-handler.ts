@@ -20,8 +20,8 @@ const publicStatus = (status: PaymentStatus) => {
 };
 
 export const confirmPaymentHandler = (options: ConfirmPaymentHandlerOptions = {}) => async (request: Request) => {
-  const { appOrigin } = paymentHttpConfig();
-  const headers = corsHeaders(appOrigin, request.headers.get('Origin'));
+  const { appOrigin, allowedOrigins } = paymentHttpConfig();
+  const headers = corsHeaders(appOrigin, request.headers.get('Origin'), allowedOrigins);
   if (request.method === 'OPTIONS') return new Response('ok', { headers });
   if (request.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, 405, headers);
 

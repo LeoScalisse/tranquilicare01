@@ -37,7 +37,7 @@ const SearchLottie: React.FC<SearchLottieProps> = ({ className = '' }) => {
     let animation: AnimationItem | undefined;
     let cancelled = false;
 
-    import('lottie-web')
+    import('lottie-web/build/player/lottie_light')
       .then((lottieModule) => {
         if (cancelled || !hostRef.current) return;
         animation = lottieModule.default.loadAnimation({

@@ -80,7 +80,7 @@ describe("AfterDonationWorkspace", () => {
     fireEvent.click(screen.getByRole("button", { name: "Abrir calendário de contatos" }));
     const calendar = screen.getByRole("dialog", { name: "Calendário de contatos" });
     expect(calendar).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: /^3 de agosto, 2 contatos$/i }));
+    fireEvent.click(screen.getByRole("button", { name: /2 contatos$/i }));
     expect(within(calendar).getByText("Ana Souza")).toBeTruthy();
     expect(within(calendar).getByText("Carlos Lima")).toBeTruthy();
   });

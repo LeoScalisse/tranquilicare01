@@ -11,7 +11,11 @@ Deno.serve(async (request) => {
   const appOrigin = Deno.env.get('APP_ORIGIN')
     ?? Deno.env.get('APP_URL')
     ?? 'http://localhost:8080';
-  const headers = visualMediaCorsHeaders(appOrigin, request.headers.get('Origin'));
+  const allowedOrigins = (Deno.env.get('APP_ALLOWED_ORIGINS') ?? '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  const headers = visualMediaCorsHeaders(appOrigin, request.headers.get('Origin'), allowedOrigins);
   if (request.method === 'OPTIONS') return new Response('ok', { headers });
   if (request.method !== 'POST') {
     return visualMediaJsonResponse({ error: 'Método não permitido.' }, 405, headers);

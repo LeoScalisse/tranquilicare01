@@ -19,15 +19,13 @@ const FounderOrganizationsSection = memo(function FounderOrganizationsSection({
   const reduceMotion = useReducedMotion();
   const sectionRef = useRef<HTMLElement>(null);
   const titleRef = useRef<HTMLHeadingElement>(null);
-  const accentPathRef = useRef<SVGPathElement>(null);
 
   useGSAP(
     () => {
       if (reduceMotion || import.meta.env.MODE === 'test') return;
 
       const title = titleRef.current;
-      const accentPath = accentPathRef.current;
-      if (!title || !accentPath) return;
+      if (!title) return;
 
       const split = new SplitText(title, { type: 'words' });
       gsap.set(split.words, { autoAlpha: 0, y: 14 });
@@ -40,25 +38,13 @@ const FounderOrganizationsSection = memo(function FounderOrganizationsSection({
         },
       });
 
-      timeline
-        .to(split.words, {
-          autoAlpha: 1,
-          y: 0,
-          duration: 0.45,
-          ease: 'power3.out',
-          stagger: 0.05,
-        })
-        .fromTo(
-          accentPath,
-          { drawSVG: 0, autoAlpha: 0 },
-          {
-            drawSVG: '100%',
-            autoAlpha: 0.76,
-            duration: 0.9,
-            ease: 'power2.out',
-          },
-          0.08,
-        );
+      timeline.to(split.words, {
+        autoAlpha: 1,
+        y: 0,
+        duration: 0.45,
+        ease: 'power3.out',
+        stagger: 0.05,
+      });
 
       return () => split.revert();
     },
@@ -153,22 +139,6 @@ const FounderOrganizationsSection = memo(function FounderOrganizationsSection({
       style={{ contentVisibility: 'auto', containIntrinsicSize: '560px' }}
     >
       <div className='founder-section-vibrant relative overflow-hidden rounded-[30px] px-3 py-7 sm:px-6 md:rounded-[38px] md:py-9'>
-        <svg
-          className='pointer-events-none absolute right-0 top-0 h-32 w-72 text-brand-blue/50 sm:h-40 sm:w-96'
-          viewBox='0 0 384 160'
-          fill='none'
-          aria-hidden='true'
-        >
-          <path
-            ref={accentPathRef}
-            d='M18 123C80 80 119 151 178 106C229 67 258 20 366 42'
-            stroke='currentColor'
-            strokeWidth='2'
-            strokeLinecap='round'
-          />
-          <circle cx='367' cy='42' r='4' fill='currentColor' />
-        </svg>
-
         <div className='relative z-10 px-2 sm:px-4'>
           <div className='founder-section-badge inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em]'>
             <img src={founderSeal} alt='' className='h-5 w-5 object-contain' />

@@ -8,8 +8,8 @@ import { corsHeaders, jsonResponse, paymentHttpConfig } from "./http.ts";
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export const mercadoPagoConnectHandler = () => async (request: Request) => {
-  const { appOrigin } = paymentHttpConfig();
-  const headers = corsHeaders(appOrigin, request.headers.get("Origin"));
+  const { appOrigin, allowedOrigins } = paymentHttpConfig();
+  const headers = corsHeaders(appOrigin, request.headers.get("Origin"), allowedOrigins);
   if (request.method === "OPTIONS") return new Response("ok", { headers });
   if (request.method !== "POST") {
     return jsonResponse({ error: "Method not allowed" }, 405, headers);

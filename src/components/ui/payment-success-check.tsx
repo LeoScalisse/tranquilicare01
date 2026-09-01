@@ -63,7 +63,7 @@ export const PaymentSuccessCheck = ({ onComplete, className }: PaymentSuccessChe
 
     fallbackTimer = window.setTimeout(finish, ANIMATION_FALLBACK_MS);
     void Promise.all([
-      import("lottie-web"),
+      import("lottie-web/build/player/lottie_light"),
       import("@/assets/lottie/check-pay/success circle check.json"),
     ])
       .then(([{ default: lottie }, { default: animationData }]) => {

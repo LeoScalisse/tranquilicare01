@@ -26,8 +26,8 @@ const parseProvider = (value: unknown): PaymentProviderName | undefined => {
 };
 
 export const createPaymentHandler = (options: CreatePaymentHandlerOptions = {}) => async (request: Request) => {
-  const { appUrl, appOrigin } = paymentHttpConfig();
-  const headers = corsHeaders(appOrigin, request.headers.get('Origin'));
+  const { appUrl, appOrigin, allowedOrigins } = paymentHttpConfig();
+  const headers = corsHeaders(appOrigin, request.headers.get('Origin'), allowedOrigins);
   if (request.method === 'OPTIONS') return new Response('ok', { headers });
   if (request.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, 405, headers);
 
