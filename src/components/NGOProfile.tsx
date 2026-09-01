@@ -755,36 +755,31 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
               className="h-36 w-36 rounded-full border-[5px] border-white object-cover shadow-[0_0_0_3px_hsl(var(--brand-blue))] md:h-40 md:w-40"
               alt={ngo.name}
             />
-            {categoryDefinition &&
-              (ngo.verified ? (
-                <button
-                  id={sealTriggerId}
-                  type="button"
-                  onClick={openVerificationDiscovery}
-                  className="absolute -bottom-1 -right-4 grid h-14 w-14 place-items-center rounded-full transition-transform duration-200 hover:-translate-y-0.5 hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-brand-blue md:-right-5 md:h-16 md:w-16"
-                  aria-label={`Conhecer a verificação da categoria ${categoryDefinition.label}`}
-                  title={`Selo verificado de ${categoryDefinition.label}`}
-                >
-                  <img
-                    src={categoryDefinition.sealSrc}
-                    alt=""
-                    className="h-full w-full object-contain drop-shadow-[0_6px_12px_rgba(15,36,60,0.2)]"
-                  />
-                </button>
-              ) : (
-                <span
-                  className="absolute -bottom-1 -right-4 grid h-14 w-14 place-items-center rounded-full md:-right-5 md:h-16 md:w-16"
-                  role="img"
-                  aria-label={`Selo da categoria ${categoryDefinition.label}`}
-                  title={`Categoria ${categoryDefinition.label}`}
-                >
-                  <img
-                    src={categoryDefinition.sealSrc}
-                    alt=""
-                    className="h-full w-full object-contain drop-shadow-[0_6px_12px_rgba(15,36,60,0.2)]"
-                  />
-                </span>
-              ))}
+            {(categoryDefinition || ngo.isFounder) && (
+              <div className="absolute -bottom-1 -right-4 flex items-center gap-1 md:-right-12">
+                {categoryDefinition && (ngo.verified ? (
+                  <button
+                    id={sealTriggerId}
+                    type="button"
+                    onClick={openVerificationDiscovery}
+                    className="grid h-14 w-14 place-items-center rounded-full transition-transform duration-200 hover:-translate-y-0.5 hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-brand-blue md:h-16 md:w-16"
+                    aria-label={`Conhecer a verificação da categoria ${categoryDefinition.label}`}
+                    title={`Selo verificado de ${categoryDefinition.label}`}
+                  >
+                    <img src={categoryDefinition.sealSrc} alt="" className="h-full w-full object-contain drop-shadow-[0_6px_12px_rgba(15,36,60,0.2)]" />
+                  </button>
+                ) : (
+                  <span className="grid h-14 w-14 place-items-center rounded-full md:h-16 md:w-16" role="img" aria-label={`Selo da categoria ${categoryDefinition.label}`} title={`Categoria ${categoryDefinition.label}`}>
+                    <img src={categoryDefinition.sealSrc} alt="" className="h-full w-full object-contain drop-shadow-[0_6px_12px_rgba(15,36,60,0.2)]" />
+                  </span>
+                ))}
+                {ngo.isFounder && (
+                  <span className="grid h-12 w-12 place-items-center rounded-full bg-background/90 p-1 shadow-[0_8px_22px_-10px_rgba(15,36,60,0.38)] backdrop-blur md:h-14 md:w-14" role="img" aria-label="Selo de ONG fundadora" title="ONG fundadora">
+                    <img src={founderSeal} alt="" className="h-full w-full object-contain" />
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="min-w-0 flex-1">
@@ -793,12 +788,6 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
             >
               {ngo.category}
             </p>
-            {ngo.isFounder && (
-              <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-brand-yellow/25 px-2.5 py-1 text-xs font-black uppercase tracking-[0.1em] text-brand-ink">
-                <img src={founderSeal} alt="" className="h-4 w-4 object-contain" />
-                ONG fundadora
-              </span>
-            )}
             <h1 className="mt-3 font-display text-4xl font-semibold leading-tight md:text-5xl">
               {ngo.name}
             </h1>

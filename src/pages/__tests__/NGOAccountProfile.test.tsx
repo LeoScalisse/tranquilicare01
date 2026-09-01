@@ -9,7 +9,12 @@ const ngoUser = {
   id: 'ngo-new', email: 'contato@horizonte.org', name: 'Instituto Horizonte',
   avatar: null, credits: 0, accountType: 'ngo' as const, ngoProfile: null,
 };
-const authMocks = vi.hoisted(() => ({ updateUser: vi.fn(), geocodeAddress: vi.fn() }));
+const authMocks = vi.hoisted(() => ({
+  updateUser: vi.fn(),
+  geocodeAddress: vi.fn(),
+  prepareOrganizationVisualMedia: vi.fn(),
+  markOrganizationVisualSetupReady: vi.fn(),
+}));
 
 vi.mock('@/lib/auth', () => ({
   authReady: Promise.resolve(), getUser: () => ngoUser, onAuthChange: () => () => undefined,
@@ -17,6 +22,12 @@ vi.mock('@/lib/auth', () => ({
 }));
 vi.mock('@/components/AppBottomNav', () => ({ default: () => null }));
 vi.mock('@/lib/geocoding', () => ({ geocodeAddress: authMocks.geocodeAddress }));
+vi.mock('@/lib/organizationVisualMedia', () => ({
+  analyzeMarketplacePhotoFiles: vi.fn().mockResolvedValue(0),
+  prepareOrganizationVisualMedia: authMocks.prepareOrganizationVisualMedia,
+  markOrganizationVisualSetupReady: authMocks.markOrganizationVisualSetupReady,
+  visualMediaErrorMessage: () => 'Não foi possível salvar todas as imagens. Tente novamente.',
+}));
 
 const LocationProbe = () => {
   const location = useLocation();
@@ -33,7 +44,8 @@ const fillCause = async (user: ReturnType<typeof userEvent.setup>) => {
   await user.type(screen.getByLabelText('Por que essa causa existe?'), 'Acreditamos que toda criança merece aprender com segurança.');
   await user.type(screen.getByLabelText('O que vocês fazem?'), 'Oferecemos reforço escolar e acompanhamento para famílias.');
   await user.type(screen.getByLabelText('O que vocês querem tornar possível agora?'), 'Abrir uma nova turma comunitária.');
-  await user.type(screen.getByLabelText('Onde vocês atuam?'), 'São Paulo, SP');
+  await user.type(screen.getByLabelText('Onde vocês atuam?'), 'São Paulo');
+  await user.selectOptions(screen.getByLabelText('Estado'), 'SP');
 };
 
 describe('NGOAccountProfile', () => {
@@ -41,7 +53,17 @@ describe('NGOAccountProfile', () => {
   beforeEach(() => {
     authMocks.updateUser.mockReset();
     authMocks.geocodeAddress.mockReset();
+    authMocks.prepareOrganizationVisualMedia.mockReset();
+    authMocks.markOrganizationVisualSetupReady.mockReset();
     authMocks.updateUser.mockImplementation(async (patch) => ({ ...ngoUser, ...patch }));
+    authMocks.prepareOrganizationVisualMedia.mockResolvedValue({
+      profileLogoUrl: '/logo-original-com-fundo.jpg',
+      marketplaceLogoUrl: '/logo-processada-sem-fundo.png',
+      coverUrl: null,
+      selectedPhotoIndex: 0,
+      logoProcessingFallback: false,
+    });
+    authMocks.markOrganizationVisualSetupReady.mockResolvedValue(undefined);
   });
 
   it('apresenta a causa antes de pedir dados de verificação ou recebimentos', async () => {
@@ -65,7 +87,7 @@ describe('NGOAccountProfile', () => {
     expect(authMocks.updateUser).not.toHaveBeenCalled();
   });
 
-  it('saves the cause and advances to the optional preparation step', async () => {
+  it('saves the cause and advances to the visual debut step before preparation', async () => {
     const user = userEvent.setup();
     render(<MemoryRouter initialEntries={['/ngo/profile?setup=1']}><NGOAccountProfile /><LocationProbe /></MemoryRouter>);
     await screen.findByRole('heading', { name: 'Apresente sua causa.' });
@@ -73,12 +95,47 @@ describe('NGOAccountProfile', () => {
     await user.click(screen.getByRole('button', { name: 'Continuar' }));
 
     await waitFor(() => expect(authMocks.updateUser).toHaveBeenCalledOnce());
-    expect(await screen.findByRole('heading', { name: 'Prepare sua organização para receber apoio.' })).toBeTruthy();
-    expect(screen.getByTestId('location').textContent).toBe('/ngo/profile?setup=4');
+    expect(await screen.findByRole('heading', { name: 'Dê um rosto à sua causa.' })).toBeTruthy();
+    expect(screen.getByTestId('location').textContent).toBe('/ngo/profile?setup=visual');
     expect(authMocks.updateUser.mock.calls[0][0].ngoProfile).toMatchObject({
       category: 'Educação', profileStatus: 'ready', verificationStatus: 'pending',
       payoutStatus: 'not_configured', paymentStatus: 'disabled',
     });
+  });
+
+  it('shows logo, three cause photos and the real marketplace preview in step 3B', async () => {
+    render(<MemoryRouter initialEntries={['/ngo/profile?setup=visual']}><NGOAccountProfile /></MemoryRouter>);
+
+    expect(await screen.findByRole('heading', { name: 'Dê um rosto à sua causa.' })).toBeTruthy();
+    expect(screen.getByLabelText('Logo da organização')).toBeTruthy();
+    expect(screen.getAllByLabelText(/Foto da causa/)).toHaveLength(3);
+    expect(screen.getByText('Veja como sua causa vai aparecer')).toBeTruthy();
+    expect(screen.getByTestId('marketplace-card-preview')).toBeTruthy();
+  });
+
+  it('keeps the uploaded original as the profile image and reserves the transparent logo for marketplace cards', async () => {
+    const OriginalURL = URL;
+    vi.stubGlobal('URL', class extends OriginalURL {
+      static createObjectURL = vi.fn(() => 'blob:logo-original');
+      static revokeObjectURL = vi.fn();
+    });
+    const user = userEvent.setup();
+    render(<MemoryRouter initialEntries={['/ngo/profile?setup=visual']}><NGOAccountProfile /></MemoryRouter>);
+    await screen.findByRole('heading', { name: 'Dê um rosto à sua causa.' });
+    await user.upload(
+      screen.getByLabelText('Logo da organização'),
+      new File(['original'], 'logo-com-fundo.jpg', { type: 'image/jpeg' }),
+    );
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'Continuar' }));
+
+    await waitFor(() => expect(authMocks.updateUser).toHaveBeenCalled());
+    expect(authMocks.updateUser).toHaveBeenCalledWith(expect.objectContaining({
+      avatar: '/logo-original-com-fundo.jpg',
+    }));
+    expect(authMocks.updateUser).not.toHaveBeenCalledWith(expect.objectContaining({
+      avatar: '/logo-processada-sem-fundo.png',
+    }));
   });
 
   it('lets the organization do the preparation later and enter its private area', async () => {
@@ -86,6 +143,8 @@ describe('NGOAccountProfile', () => {
     render(<MemoryRouter initialEntries={['/ngo/profile?setup=1']}><NGOAccountProfile /><LocationProbe /></MemoryRouter>);
     await screen.findByRole('heading', { name: 'Apresente sua causa.' });
     await fillCause(user);
+    await user.click(screen.getByRole('button', { name: 'Continuar' }));
+    await screen.findByRole('heading', { name: 'Dê um rosto à sua causa.' });
     await user.click(screen.getByRole('button', { name: 'Continuar' }));
     await screen.findByRole('heading', { name: 'Prepare sua organização para receber apoio.' });
     await user.click(screen.getByRole('button', { name: 'Fazer depois' }));

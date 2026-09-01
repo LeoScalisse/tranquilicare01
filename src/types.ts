@@ -55,7 +55,10 @@ export interface NGO {
   category: string;
   goal: string;
   image: string;
+  /** Transparent/processed variant used only over marketplace photography. */
+  marketplaceLogo?: string;
   coverImage?: string;
+  coverFocalPoint?: { x: number; y: number };
   causeVideo?: string;
   objectives?: string[];
   email: string;

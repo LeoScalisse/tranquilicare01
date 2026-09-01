@@ -49,6 +49,7 @@ export const TRANQUILICARE_FOUNDER_NGO: NGO = {
   instagram: "@tranquilimaiscare",
   verified: true,
   status: "approved",
+  isFounder: true,
   posts: TRANQUILICARE_PROTOTYPE_STORIES,
 };
 

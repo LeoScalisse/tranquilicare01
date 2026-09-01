@@ -50,7 +50,13 @@ import {
 import { geocodeAddress } from '@/lib/geocoding';
 import { organizationProfileSaveError } from '@/lib/organizationProfileSaveError';
 import NGOOnboardingFlow from '@/components/ngo-profile/NGOOnboardingFlow';
+import type { NGOVisualSetupInput } from '@/components/ngo-profile/NGOVisualOnboardingStep';
 import { profileImageErrorMessage, uploadProfileAvatar } from '@/lib/profileMedia';
+import {
+  markOrganizationVisualSetupReady,
+  prepareOrganizationVisualMedia,
+  visualMediaErrorMessage,
+} from '@/lib/organizationVisualMedia';
 
 const EMPTY_DETAILS: NgoProfileDetails = {
   publicEmail: '',
@@ -350,8 +356,9 @@ const ProfileFields: React.FC<ProfileFieldsProps> = ({
 const NGOAccountProfile: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const setupStage = searchParams.get('setup') === '4' ? 4 : 3;
-  const isSetup = searchParams.get('setup') === '1' || searchParams.get('setup') === '4';
+  const setupValue = searchParams.get('setup');
+  const setupStage = setupValue === '4' ? 4 : setupValue === 'visual' ? 'visual' : 3;
+  const isSetup = setupValue === '1' || setupValue === 'visual' || setupValue === '4';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -452,34 +459,37 @@ const NGOAccountProfile: React.FC = () => {
     }
   };
 
-  const normalizeOnboardingDetails = (patch: Partial<NgoProfileDetails> = {}): NgoProfileDetails => ({
-    ...details,
-    ...patch,
-    publicEmail: (details.publicEmail || user?.email || '').trim().toLowerCase(),
-    description: details.description.trim(),
-    category: details.category.trim(),
-    goal: details.goal.trim(),
-    objectives: details.objectives.map((objective) => objective.trim()).filter(Boolean),
-    youtubeUrl: details.youtubeUrl.trim(),
-    coverImage: details.coverImage.trim(),
-    instagram: details.instagram.trim(),
-    phone: normalizePhone(details.phone),
-    cnpj: normalizeCnpj(details.cnpj),
-    address: details.address.trim().replace(/\s+/g, ' '),
-    city: details.city?.trim().replace(/\s+/g, ' ') ?? '',
-    state: details.state?.trim().toUpperCase() ?? '',
-    geocodedAddress: details.geocodedAddress?.trim() || '',
-  });
+  const normalizeOnboardingDetails = (patch: Partial<NgoProfileDetails> = {}): NgoProfileDetails => {
+    const source = { ...details, ...patch };
+    return {
+      ...source,
+      publicEmail: (source.publicEmail || user?.email || '').trim().toLowerCase(),
+      description: source.description.trim(),
+      category: source.category.trim(),
+      goal: source.goal.trim(),
+      objectives: source.objectives.map((objective) => objective.trim()).filter(Boolean),
+      youtubeUrl: source.youtubeUrl.trim(),
+      coverImage: source.coverImage.trim(),
+      instagram: source.instagram.trim(),
+      phone: normalizePhone(source.phone),
+      cnpj: normalizeCnpj(source.cnpj),
+      address: source.address.trim().replace(/\s+/g, ' '),
+      city: source.city?.trim().replace(/\s+/g, ' ') ?? '',
+      state: source.state?.trim().toUpperCase() ?? '',
+      geocodedAddress: source.geocodedAddress?.trim() || '',
+    };
+  };
 
-  const saveOnboardingDetails = async (patch: Partial<NgoProfileDetails> = {}) => {
+  const saveOnboardingDetails = async (patch: Partial<NgoProfileDetails> = {}, avatarOverride: string | null = avatar) => {
     const normalized = normalizeOnboardingDetails(patch);
     const updated = await updateUser({
       name: name.trim(),
-      avatar,
+      avatar: avatarOverride,
       ngoProfile: normalized,
     });
     if (!updated) throw new Error('organization-profile-not-persisted');
     setUser(updated);
+    setAvatar(updated.avatar);
     setDetails({ ...normalized, cnpj: formatCnpj(normalized.cnpj), phone: formatPhone(normalized.phone) });
     setProfileSaved(hasCauseDetails(normalized));
   };
@@ -501,9 +511,38 @@ const NGOAccountProfile: React.FC = () => {
         payoutStatus: details.payoutStatus ?? 'not_configured',
         paymentStatus: 'disabled',
       });
-      setSearchParams({ setup: '4' }, { replace: true });
+      setSearchParams({ setup: 'visual' }, { replace: true });
     } catch (error) {
       toast.error(organizationProfileSaveError(error));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const continueVisualSetup = async (input: NGOVisualSetupInput) => {
+    if (!user) return;
+    setSaving(true);
+    try {
+      const hasMedia = Boolean(input.logoFile || input.photoFiles.length);
+      if (hasMedia) {
+        const visual = await prepareOrganizationVisualMedia({
+          userId: user.id,
+          logoFile: input.logoFile,
+          photoFiles: input.photoFiles,
+          selectedPhotoIndex: input.selectedPhotoIndex,
+        });
+        await saveOnboardingDetails(
+          { coverImage: visual.coverUrl ?? details.coverImage },
+          visual.profileLogoUrl ?? avatar,
+        );
+        if (visual.logoProcessingFallback) {
+          toast.info('Usamos a logo original. Você poderá tentar o tratamento novamente depois.');
+        }
+      }
+      await markOrganizationVisualSetupReady(user.id, input.authorized);
+      setSearchParams({ setup: '4' }, { replace: true });
+    } catch (error) {
+      toast.error(visualMediaErrorMessage(error));
     } finally {
       setSaving(false);
     }
@@ -670,14 +709,14 @@ const NGOAccountProfile: React.FC = () => {
       {(isSetup || !profileSaved) ? (
         <NGOOnboardingFlow
           stage={isSetup ? setupStage : 3}
+          organizationName={name}
           avatar={avatar}
           details={details}
           categories={CATEGORY_ITEMS}
           saving={saving || uploadingAvatar}
-          imageUploading={uploadingAvatar}
           onDetailsChange={updateDetails}
-          onChooseImage={chooseImage}
           onCauseSubmit={() => void continueCauseSetup()}
+          onVisualSubmit={(input) => void continueVisualSetup(input)}
           onPreparationSubmit={() => void finishPreparation()}
           onDoLater={() => void deferPreparation()}
         />

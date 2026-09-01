@@ -1,24 +1,26 @@
 import { useRef } from 'react';
-import { Building2, Camera, CheckCircle2, CircleDollarSign, Loader2, ShieldCheck } from 'lucide-react';
+import { Building2, CheckCircle2, CircleDollarSign, Loader2, ShieldCheck } from 'lucide-react';
 
 import { CategoryDisclosure, type CategoryDisclosureItem } from '@/components/ui/category-disclosure';
 import { SmoothInput } from '@/components/ui/smooth-input';
 import { BRAZILIAN_STATES } from '@/lib/organizationProfile';
 import { gsap, useGSAP } from '@/lib/gsap';
 import type { NgoProfileDetails } from '@/lib/authTypes';
+import NGOVisualOnboardingStep, { type NGOVisualSetupInput } from '@/components/ngo-profile/NGOVisualOnboardingStep';
+import type { NGO } from '@/types';
 
-type SetupStage = 3 | 4;
+export type SetupStage = 3 | 'visual' | 4;
 
 type Props = {
   stage: SetupStage;
+  organizationName: string;
   avatar: string | null;
   details: NgoProfileDetails;
   categories: CategoryDisclosureItem[];
   saving: boolean;
-  imageUploading?: boolean;
   onDetailsChange: (patch: Partial<NgoProfileDetails>) => void;
-  onChooseImage: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onCauseSubmit: () => void;
+  onVisualSubmit: (input: NGOVisualSetupInput) => void | Promise<void>;
   onPreparationSubmit: () => void;
   onDoLater: () => void;
 };
@@ -28,14 +30,14 @@ const labelClass = 'block text-sm font-bold text-brand-ink';
 
 export const NGOOnboardingFlow = ({
   stage,
+  organizationName,
   avatar,
   details,
   categories,
   saving,
-  imageUploading = false,
   onDetailsChange,
-  onChooseImage,
   onCauseSubmit,
+  onVisualSubmit,
   onPreparationSubmit,
   onDoLater,
 }: Props) => {
@@ -54,6 +56,27 @@ export const NGOOnboardingFlow = ({
       clearProps: 'transform',
     });
   }, { scope, dependencies: [stage] });
+
+  if (stage === 'visual') {
+    const organization: NGO = {
+      id: 'organization-visual-preview',
+      name: organizationName.trim() || 'Sua organização',
+      description: details.description.trim(),
+      category: details.category.trim() || 'Causa',
+      goal: details.goal.trim(),
+      objectives: details.objectives,
+      image: avatar ?? '',
+      coverImage: details.coverImage.trim() || undefined,
+      email: details.publicEmail,
+      instagram: details.instagram,
+      phone: details.phone || undefined,
+      verified: false,
+      status: details.status,
+      isFounder: details.isFounder,
+      posts: [],
+    };
+    return <div ref={scope}><NGOVisualOnboardingStep organization={organization} saving={saving} onSubmit={onVisualSubmit} /></div>;
+  }
 
   if (stage === 3) {
     return (
@@ -101,21 +124,6 @@ export const NGOOnboardingFlow = ({
                 {BRAZILIAN_STATES.map((state) => <option key={state} value={state}>{state}</option>)}
               </select>
             </label>
-          </div>
-
-          <div className='border-t border-brand-ink/10 pt-7'>
-            <div className='flex items-center gap-4'>
-              <div className='grid size-16 shrink-0 place-items-center overflow-hidden rounded-full border border-dashed border-brand-blue/40 bg-brand-blue/5'>
-                {avatar ? <img src={avatar} alt='' className='size-full object-cover' /> : <Building2 className='text-brand-blue/55' size={25} />}
-              </div>
-              <div>
-                <label className={`inline-flex items-center gap-2 rounded-xl border border-brand-ink/15 px-4 py-2.5 text-sm font-bold text-brand-ink transition-colors ${imageUploading ? 'cursor-wait opacity-60' : 'cursor-pointer hover:border-brand-blue hover:text-brand-blue'}`}>
-                  {imageUploading ? <Loader2 size={17} className='animate-spin' /> : <Camera size={17} />}{imageUploading ? 'Preparando imagem...' : 'Adicionar imagem'}
-                  <input type='file' accept='image/jpeg,image/png,image/webp,image/heic,image/heif' disabled={imageUploading} className='sr-only' onChange={onChooseImage} />
-                </label>
-                <p className='mt-2 text-xs text-muted-foreground'>Opcional. Você poderá trocar depois.</p>
-              </div>
-            </div>
           </div>
 
           <button type='submit' disabled={saving} className='tc-button-3d flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-5 font-bold text-white disabled:opacity-60'>

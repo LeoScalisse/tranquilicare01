@@ -1,5 +1,9 @@
 project_id = "tranquilicare01"
 
+# Only authenticated organization managers may spend background-removal calls.
+[functions.process-organization-logo]
+verify_jwt = true
+
 # Donations can be started without an account. The function validates every
 # amount and destination server-side and only trusts a user identity after
 # verifying an optional Supabase access token inside the handler.

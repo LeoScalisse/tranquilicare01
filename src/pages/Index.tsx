@@ -272,7 +272,6 @@ const TranquiliCareApp: React.FC = () => {
           <Stories
             onOpenNGO={(ngoId) => navigate(`/ong/${ngoId}`)}
             canTellStory={Boolean(user)}
-            storytellerType={user?.accountType ?? null}
             onTellStory={() => navigate(user ? defaultDestForAccount(user.accountType) : '/donor/auth')}
           />
         );

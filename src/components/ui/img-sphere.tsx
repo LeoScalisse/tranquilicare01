@@ -1,6 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Play } from 'lucide-react';
 
+import {
+  advanceSphereRotation,
+  rotateSpherePoint,
+  type Point3D,
+} from '@/domain/animation/sphere-rotation';
+
 export interface SphereImage {
   id: string;
   src: string;
@@ -17,12 +23,6 @@ interface SphereImageGridProps {
   showHint?: boolean;
   maxSize?: number;
   className?: string;
-}
-
-interface Point3D {
-  x: number;
-  y: number;
-  z: number;
 }
 
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
@@ -44,6 +44,7 @@ const SphereImageGrid: React.FC<SphereImageGridProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState(360);
   const [rotation, setRotation] = useState({ x: -6, y: -38 });
+  const reduceMotionRef = useRef(false);
   const draggingRef = useRef(false);
   const movedRef = useRef(false);
   const pointerRef = useRef({ x: 0, y: 0 });
@@ -68,14 +69,23 @@ const SphereImageGrid: React.FC<SphereImageGridProps> = ({
   }, [maxSize]);
 
   useEffect(() => {
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updatePreference = () => { reduceMotionRef.current = media.matches; };
+    updatePreference();
+    media.addEventListener?.('change', updatePreference);
+    return () => media.removeEventListener?.('change', updatePreference);
+  }, []);
+
+  useEffect(() => {
     let frame = 0;
     const tick = () => {
       if (!draggingRef.current) {
         velocityRef.current.x *= 0.93;
         velocityRef.current.y *= 0.93;
-        setRotation((current) => ({
-          x: Math.max(-70, Math.min(70, current.x + velocityRef.current.x)),
-          y: current.y + velocityRef.current.y + (autoRotate ? autoRotateSpeed : 0),
+        const autoVelocity = autoRotate && !reduceMotionRef.current ? autoRotateSpeed : 0;
+        setRotation((current) => advanceSphereRotation(current, {
+          x: velocityRef.current.x,
+          y: velocityRef.current.y + autoVelocity,
         }));
       }
       frame = requestAnimationFrame(tick);
@@ -84,17 +94,7 @@ const SphereImageGrid: React.FC<SphereImageGridProps> = ({
     return () => cancelAnimationFrame(frame);
   }, [autoRotate, autoRotateSpeed]);
 
-  const rotatePoint = useCallback((point: Point3D): Point3D => {
-    const xRad = rotation.x * (Math.PI / 180);
-    const yRad = rotation.y * (Math.PI / 180);
-    const x1 = point.x * Math.cos(yRad) + point.z * Math.sin(yRad);
-    const z1 = -point.x * Math.sin(yRad) + point.z * Math.cos(yRad);
-    return {
-      x: x1,
-      y: point.y * Math.cos(xRad) - z1 * Math.sin(xRad),
-      z: point.y * Math.sin(xRad) + z1 * Math.cos(xRad),
-    };
-  }, [rotation]);
+  const rotatePoint = useCallback((point: Point3D): Point3D => rotateSpherePoint(point, rotation), [rotation]);
 
   const beginDrag = (event: React.PointerEvent<HTMLDivElement>) => {
     draggingRef.current = true;
@@ -111,7 +111,7 @@ const SphereImageGrid: React.FC<SphereImageGridProps> = ({
     if (Math.abs(deltaX) + Math.abs(deltaY) > 3) movedRef.current = true;
     const nextVelocity = { x: -deltaY * 0.18, y: deltaX * 0.18 };
     velocityRef.current = nextVelocity;
-    setRotation((current) => ({ x: Math.max(-70, Math.min(70, current.x + nextVelocity.x)), y: current.y + nextVelocity.y }));
+    setRotation((current) => advanceSphereRotation(current, nextVelocity));
     pointerRef.current = { x: event.clientX, y: event.clientY };
   };
 

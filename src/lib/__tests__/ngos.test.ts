@@ -52,6 +52,7 @@ describe('ngoFromUser', () => {
     expect(ngo?.id).toBe('ngo-real');
     expect(ngo?.verified).toBe(false);
     expect(ngo?.latitude).toBe(-23.55052);
+    expect(ngo?.coverImage).toBe('https://example.com/cover.webp');
   });
 
   it('marks only the approved database status as verified', () => {
@@ -65,12 +66,13 @@ describe('ngoFromUser', () => {
       name: 'Instituto Horizonte',
       publicEmail: 'contato@horizonte.org',
       avatarUrl: '/horizonte.png',
+      marketplaceLogoUrl: '/horizonte-sem-fundo.png',
       description: 'Educação para jovens.',
       primaryCategory: 'Educação',
       goal: 'Abrir uma turma.',
       objectives: [],
       youtubeUrl: '',
-      coverImageUrl: '',
+      coverImageUrl: 'https://example.com/marketplace-cover.webp',
       instagram: '',
       phone: '',
       cnpj: '11222333000181',
@@ -86,6 +88,8 @@ describe('ngoFromUser', () => {
     const result = await loadMarketplaceNgos();
 
     expect(result.map((ngo) => ngo.id)).toEqual(['org-persisted']);
+    expect(result[0].coverImage).toBe('https://example.com/marketplace-cover.webp');
+    expect(result[0].marketplaceLogo).toBe('/horizonte-sem-fundo.png');
   });
 
   it('keeps a successful empty marketplace empty', async () => {

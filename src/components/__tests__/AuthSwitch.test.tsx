@@ -128,6 +128,20 @@ describe("AuthSwitch signup", () => {
     authMocks.resendSignupCode.mockResolvedValue(undefined);
   });
 
+  it('shows cause and visual debut side by side before the final preparation step', () => {
+    const { container } = render(
+      <MemoryRouter initialEntries={['/ngo/auth']}>
+        <AuthSwitch initialSide="ngo" />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText('Apresentar a causa')).toBeTruthy();
+    expect(screen.getByText('Preparar estreia')).toBeTruthy();
+    expect(screen.getByText('Preparar recebimentos')).toBeTruthy();
+    expect(container.querySelector('[data-journey-branch="cause-visual"]')).toBeTruthy();
+    expect(container.querySelector('[data-journey-final="preparation"]')).toBeTruthy();
+  });
+
   it.each(signupPaths)(
     "keeps the email-code input visible when $side advances to verification",
     async (path) => {

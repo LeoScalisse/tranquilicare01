@@ -50,12 +50,15 @@ describe("NGOProfile cause-led architecture", () => {
   it("opens the TranquiliCare founder profile with a read-only relationship demo", () => {
     renderProfile(TRANQUILICARE_FOUNDER_NGO);
 
+    expect(screen.getByRole("img", { name: "Selo de ONG fundadora" })).not.toBeNull();
     expect(screen.getByRole("tab", { name: "Painel demonstrativo" })).not.toBeNull();
     expect(screen.getByRole("heading", { name: "Radar de relacionamento" })).not.toBeNull();
     expect(screen.getByText("Demonstração visual")).not.toBeNull();
     expect(screen.getByRole("table", { name: "Resumo demonstrativo de doadores" })).not.toBeNull();
     expect(screen.getByRole("button", { name: "Abrir calendário de contatos" })).not.toBeNull();
-    expect(screen.getByRole("button", { name: "Abrir relacionamento com Ana Clara" })).toBeDisabled();
+    expect((screen.getByRole("button", {
+      name: "Abrir relacionamento com Ana Clara",
+    }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("opens the objective modal with the category color", () => {

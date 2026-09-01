@@ -4,6 +4,7 @@ export interface PublicOrganizationRecord {
   name: string;
   publicEmail: string;
   avatarUrl: string;
+  marketplaceLogoUrl: string;
   description: string;
   primaryCategory: string;
   goal: string;

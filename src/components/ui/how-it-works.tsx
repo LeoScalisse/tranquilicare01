@@ -9,6 +9,7 @@ export interface JourneyStep {
   title: string;
   description: string;
   tone?: 'blue' | 'yellow' | 'azure';
+  numberLabel?: string;
 }
 
 interface HowItWorksProps {
@@ -19,6 +20,7 @@ interface HowItWorksProps {
   expandedContent?: React.ReactNode;
   onStepSelect: (index: number) => void;
   ariaLabel: string;
+  layout?: 'staggered' | 'ngo-onboarding';
   className?: string;
 }
 
@@ -57,21 +59,81 @@ const JourneyPin = ({ active, complete }: { active: boolean; complete: boolean }
   </span>
 );
 
-const JourneyConnector = ({ connected, order }: { connected: boolean; order: number }) => (
-  <div className='pointer-events-none h-14 w-full sm:h-16' style={{ order }} aria-hidden='true'>
-    <svg viewBox='0 0 1000 100' preserveAspectRatio='none' className='size-full overflow-visible'>
-      <path
-        d={order % 4 === 1 ? 'M 260 0 C 430 18, 600 82, 760 100' : 'M 760 0 C 600 18, 430 82, 260 100'}
-        fill='none'
-        stroke={connected ? '#ffd343' : 'rgba(17,54,79,0.18)'}
-        strokeWidth={connected ? 3 : 2}
-        strokeDasharray='7 9'
-        strokeLinecap='round'
-        vectorEffect='non-scaling-stroke'
-      />
-    </svg>
-  </div>
+type ConnectorDirection = 'down-right' | 'down-left' | 'down-center';
+
+interface JourneyConnectorProps {
+  connected: boolean;
+  from: number;
+  to: number;
+  direction: ConnectorDirection;
+}
+
+const connectorPaths: Record<ConnectorDirection, string> = {
+  'down-right': 'M 250 2 C 250 44, 690 42, 750 96',
+  'down-left': 'M 750 2 C 750 44, 310 42, 250 96',
+  'down-center': 'M 750 2 C 750 48, 570 46, 500 96',
+};
+
+const JourneyPath = ({ connected, path, markerId }: { connected: boolean; path: string; markerId: string }) => (
+  <>
+    <defs>
+      <marker id={markerId} viewBox='0 0 10 10' refX='8' refY='5' markerWidth='7' markerHeight='7' orient='auto-start-reverse'>
+        <path d='M 0 1 L 9 5 L 0 9 z' fill={connected ? '#ffd343' : 'rgba(17,54,79,0.26)'} />
+      </marker>
+    </defs>
+    <path
+      d={path}
+      fill='none'
+      stroke={connected ? '#ffd343' : 'rgba(17,54,79,0.22)'}
+      strokeWidth={connected ? 3 : 2}
+      strokeDasharray='5 8'
+      strokeLinecap='round'
+      vectorEffect='non-scaling-stroke'
+      markerEnd={`url(#${markerId})`}
+    />
+  </>
 );
+
+const JourneyConnector = ({ connected, from, to, direction }: JourneyConnectorProps) => {
+  const markerId = React.useId().replace(/:/g, '');
+  return (
+    <div
+      data-journey-connection={`${from}-${to}`}
+      className='pointer-events-none h-16 w-full sm:h-20'
+      aria-hidden='true'
+    >
+      <svg viewBox='0 0 1000 100' preserveAspectRatio='none' className='size-full overflow-visible'>
+        <JourneyPath connected={connected} path={connectorPaths[direction]} markerId={`journey-arrow-${markerId}`} />
+      </svg>
+    </div>
+  );
+};
+
+const InlineJourneyConnector = ({ connected, from, to }: Omit<JourneyConnectorProps, 'direction'>) => {
+  const markerId = React.useId().replace(/:/g, '');
+  return (
+    <div
+      data-journey-connection={`${from}-${to}`}
+      className='pointer-events-none grid h-14 w-full place-items-center sm:h-full sm:w-14'
+      aria-hidden='true'
+    >
+      <svg viewBox='0 0 100 100' preserveAspectRatio='none' className='h-full w-10 overflow-visible sm:hidden'>
+        <JourneyPath
+          connected={connected}
+          path='M 50 4 L 50 94'
+          markerId={`journey-mobile-arrow-${markerId}`}
+        />
+      </svg>
+      <svg viewBox='0 0 100 100' preserveAspectRatio='none' className='hidden h-10 w-full overflow-visible sm:block'>
+        <JourneyPath
+          connected={connected}
+          path='M 4 50 L 94 50'
+          markerId={`journey-desktop-arrow-${markerId}`}
+        />
+      </svg>
+    </div>
+  );
+};
 
 interface JourneyCardProps {
   step: JourneyStep;
@@ -82,7 +144,7 @@ interface JourneyCardProps {
   available: boolean;
   content?: React.ReactNode;
   onToggle: () => void;
-  order: number;
+  compact?: boolean;
 }
 
 const JourneyCard = ({
@@ -94,7 +156,7 @@ const JourneyCard = ({
   available,
   content,
   onToggle,
-  order,
+  compact = false,
 }: JourneyCardProps) => {
   const reducedMotion = useReducedMotion();
   const [measureRef, bounds] = useMeasure({ offsetSize: true });
@@ -102,15 +164,18 @@ const JourneyCard = ({
 
   return (
     <motion.div
+      data-journey-step={index}
       layout='position'
-      className={cn('relative z-10 max-w-full', expanded ? 'self-center' : alignments[index % alignments.length])}
-      style={{ order }}
+      className={cn(
+        'relative z-10 max-w-full',
+        compact ? 'w-full' : expanded ? 'self-center' : alignments[index % alignments.length],
+      )}
       transition={reducedMotion ? { duration: 0.01 } : { layout: DETAILS_SPRING }}
     >
       <motion.article
         initial={false}
         animate={{
-          width: expanded ? 680 : 360,
+          width: expanded ? (compact ? '100%' : 680) : compact ? '100%' : 360,
           height: bounds.height > 0 ? bounds.height : 82,
           borderRadius: expanded ? 20 : 24,
         }}
@@ -146,7 +211,7 @@ const JourneyCard = ({
 
             <span className='min-w-0 flex-1'>
               <span className='flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-brand-ink/45'>
-                <span className={cn('rounded-full px-2 py-0.5', toneClasses[step.tone ?? 'blue'])}>0{index + 1}</span>
+                <span className={cn('rounded-full px-2 py-0.5', toneClasses[step.tone ?? 'blue'])}>{step.numberLabel ?? `0${index + 1}`}</span>
                 <span className={cn(active && 'text-brand-blue', complete && 'text-brand-ink/60')}>{status}</span>
               </span>
               <strong className='mt-1 block truncate text-base font-semibold leading-tight text-brand-ink sm:text-lg'>
@@ -201,41 +266,95 @@ const HowItWorks: React.FC<HowItWorksProps> = ({
   expandedContent,
   onStepSelect,
   ariaLabel,
+  layout = 'staggered',
   className,
-}) => (
-  <nav aria-label={ariaLabel} className={cn('relative mx-auto w-full max-w-5xl', className)}>
-    <div className='relative flex flex-col py-6'>
-      {features.map((step, index) => {
+}) => {
+  const card = (step: JourneyStep, index: number, compact = false) => {
         const active = activeIndex === index;
         const complete = completedSteps.includes(index);
         const available = active || complete;
         const expanded = expandedIndex === index;
 
         return (
-          <React.Fragment key={step.title}>
-            <JourneyCard
-              step={step}
-              index={index}
-              active={active}
-              complete={complete}
-              expanded={expanded}
-              available={available}
-              content={expanded ? expandedContent : undefined}
-              onToggle={() => available && onStepSelect(index)}
-              order={index * 2}
-            />
+          <JourneyCard
+            key={step.title}
+            step={step}
+            index={index}
+            active={active}
+            complete={complete}
+            expanded={expanded}
+            available={available}
+            content={expanded ? expandedContent : undefined}
+            onToggle={() => available && onStepSelect(index)}
+            compact={compact}
+          />
+        );
+  };
 
+  if (layout === 'ngo-onboarding' && features.length >= 5) {
+    return (
+      <nav aria-label={ariaLabel} className={cn('relative mx-auto w-full max-w-5xl', className)}>
+        <div className='relative flex flex-col py-6'>
+          {card(features[0], 0)}
+          <JourneyConnector
+            connected={completedSteps.includes(0) || activeIndex > 0}
+            from={0}
+            to={1}
+            direction='down-right'
+          />
+          {card(features[1], 1)}
+
+          <JourneyConnector
+            connected={completedSteps.includes(1) || activeIndex > 1}
+            from={1}
+            to={2}
+            direction='down-left'
+          />
+
+          <div data-journey-branch='cause-visual' className='grid grid-cols-1 items-stretch sm:grid-cols-[minmax(0,1fr)_3.5rem_minmax(0,1fr)]'>
+            {card(features[2], 2, true)}
+            <InlineJourneyConnector
+              connected={completedSteps.includes(2) || activeIndex > 2}
+              from={2}
+              to={3}
+            />
+            {card(features[3], 3, true)}
+          </div>
+
+          <JourneyConnector
+            connected={completedSteps.includes(3) || activeIndex > 3}
+            from={3}
+            to={4}
+            direction='down-center'
+          />
+
+          <div data-journey-final='preparation' className='flex justify-center [&>[data-journey-step]]:!mr-0'>
+            {card(features[4], 4)}
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
+  return (
+    <nav aria-label={ariaLabel} className={cn('relative mx-auto w-full max-w-5xl', className)}>
+      <div className='relative flex flex-col py-6'>
+        {features.map((step, index) => (
+          <React.Fragment key={step.title}>
+            {card(step, index)}
             {index < features.length - 1 && (
               <JourneyConnector
                 connected={completedSteps.includes(index) || activeIndex > index}
-                order={index * 2 + 1}
+                from={index}
+                to={index + 1}
+                direction={index % 2 === 0 ? 'down-right' : 'down-left'}
               />
             )}
           </React.Fragment>
-        );
-      })}
-    </div>
-  </nav>
-);
+        ))}
+      </div>
+    </nav>
+  );
+};
 
 export default HowItWorks;

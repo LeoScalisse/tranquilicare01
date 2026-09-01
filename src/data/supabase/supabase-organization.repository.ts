@@ -11,6 +11,7 @@ type PublicOrganizationRow = {
   name: string | null;
   public_email: string | null;
   avatar_url: string | null;
+  marketplace_logo_url: string | null;
   description: string | null;
   primary_category: string | null;
   goal: string | null;
@@ -34,6 +35,7 @@ const PUBLIC_ORGANIZATION_COLUMNS = [
   'name',
   'public_email',
   'avatar_url',
+  'marketplace_logo_url',
   'description',
   'primary_category',
   'goal',
@@ -59,6 +61,7 @@ const toDomain = (row: PublicOrganizationRow): PublicOrganizationRecord => ({
   name: text(row.name),
   publicEmail: text(row.public_email),
   avatarUrl: text(row.avatar_url),
+  marketplaceLogoUrl: text(row.marketplace_logo_url),
   description: text(row.description),
   primaryCategory: text(row.primary_category),
   goal: text(row.goal),

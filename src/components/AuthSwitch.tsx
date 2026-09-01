@@ -133,21 +133,31 @@ const JOURNEY_STEPS: Record<Side, JourneyStep[]> = {
       title: 'Criar acesso',
       description: 'Crie o acesso da sua organização para começar.',
       tone: 'yellow',
+      numberLabel: '01',
     },
     {
       title: 'Confirmar e-mail',
       description: 'Confirme seu e-mail para proteger o acesso.',
       tone: 'azure',
+      numberLabel: '02',
     },
     {
       title: 'Apresentar a causa',
       description: 'Dê forma à causa que as pessoas vão conhecer.',
       tone: 'blue',
+      numberLabel: '03A',
+    },
+    {
+      title: 'Preparar estreia',
+      description: 'Envie a identidade e os registros que vão apresentar sua causa.',
+      tone: 'yellow',
+      numberLabel: '03B',
     },
     {
       title: 'Preparar recebimentos',
       description: 'Configure a verificação e os recebimentos quando estiver pronto.',
       tone: 'azure',
+      numberLabel: '04',
     },
   ],
 };
@@ -1203,6 +1213,7 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
             )}
             onStepSelect={openStep}
             ariaLabel={`Etapas do caminho de ${isDonor ? 'doador' : 'organização'}`}
+            layout={side === 'ngo' ? 'ngo-onboarding' : 'staggered'}
           />
         </motion.div>
       </div>
