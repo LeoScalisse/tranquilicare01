@@ -636,7 +636,7 @@ const NGOAccountProfile: React.FC = () => {
         goal: details.goal.trim(),
         objectives: details.objectives.map((objective) => objective.trim()).filter(Boolean),
         youtubeUrl: details.youtubeUrl.trim(),
-        coverImage: '',
+        coverImage: details.coverImage.trim(),
         instagram: details.instagram.trim(),
         phone: normalizePhone(details.phone),
         cnpj: normalizeCnpj(details.cnpj),

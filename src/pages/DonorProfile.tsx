@@ -3,7 +3,6 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowLeft,
-  Award,
   Camera,
   Check,
   ChevronRight,
@@ -17,7 +16,6 @@ import {
   Mail,
   Pencil,
   Save,
-  ShieldCheck,
   Sparkles,
   Target,
   Phone,
@@ -37,7 +35,6 @@ import { formatPhone, isValidInstagram, isValidOptionalUrl, isValidPhone, normal
 import { profileImageErrorMessage, uploadProfileAvatar } from '@/lib/profileMedia';
 
 const DAY_MS = 86_400_000;
-const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 const EMPTY_DONOR_DETAILS: DonorProfileDetails = {
   bio: '',
   location: '',
@@ -91,11 +88,6 @@ const DonorProfile: React.FC = () => {
   }, [mine]);
 
   const recentDonations = useMemo(() => [...mine].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5), [mine]);
-  const completeness = useMemo(() => {
-    const checks = [Boolean(name.trim()), Boolean(avatarUrl), Boolean(details.bio.trim()), Boolean(details.interests.length)];
-    return Math.round((checks.filter(Boolean).length / checks.length) * 100);
-  }, [name, avatarUrl, details.bio, details.interests.length]);
-
   useEffect(() => {
     let alive = true;
     authReady.then(() => {
@@ -192,7 +184,25 @@ const DonorProfile: React.FC = () => {
       toast.success('Perfil atualizado!');
     } catch (error) {
       console.error('Error updating donor profile:', error);
-      toast.error('Erro ao atualizar perfil.');
+      const errorRecord = error && typeof error === 'object'
+        ? error as { code?: string; message?: string; details?: string; hint?: string }
+        : null;
+      const errorCode = errorRecord?.code?.trim();
+      const technicalMessage = errorRecord?.message?.trim() ?? (error instanceof Error ? error.message : '');
+      const message = technicalMessage === 'donor-profile-not-persisted'
+        ? 'O banco precisa concluir a preparação do seu perfil. Aplique a atualização SQL e tente novamente.'
+        : errorCode === 'PGRST202'
+          ? 'O banco precisa receber a atualização do perfil antes de salvar.'
+          : technicalMessage.includes('donor-account-not-found')
+            ? 'Esta conta ainda não está identificada como doadora no banco. Entre novamente e tente salvar.'
+            : errorCode === '23503'
+              ? 'O banco encontrou uma relação antiga do perfil que precisa ser corrigida antes de salvar.'
+            : errorCode === '42702'
+              ? 'O banco encontrou um nome de campo ambíguo na atualização do perfil.'
+            : errorCode
+              ? `Não foi possível salvar as alterações. Código do banco: ${errorCode}.`
+              : 'Não foi possível salvar as alterações. Tente novamente.';
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -208,12 +218,6 @@ const DonorProfile: React.FC = () => {
   }
 
   const firstName = name.trim().split(' ')[0] || 'você';
-  const achievementRows = [
-    { title: 'Primeiro impacto', detail: 'Faça sua primeira doação', current: Math.min(stats.count, 1), target: 1, icon: Heart, color: 'bg-rose-100 text-rose-500' },
-    { title: 'Chama solidária', detail: 'Doe em 3 dias consecutivos', current: Math.min(stats.streak, 3), target: 3, icon: Flame, color: 'bg-orange-100 text-orange-500' },
-    { title: 'Apoiador constante', detail: 'Complete 10 doações', current: Math.min(stats.count, 10), target: 10, icon: Award, color: 'bg-brand-yellow/25 text-brand-ink' },
-  ];
-
   return (
     <div className='min-h-screen bg-background pb-24 text-brand-ink md:pb-12'>
       <AppBottomNav activeKey='perfil' user={user} />
@@ -257,12 +261,9 @@ const DonorProfile: React.FC = () => {
               <div className='h-36 w-36 overflow-hidden rounded-full border-[5px] border-brand-blue bg-secondary shadow-sm md:h-40 md:w-40'>
                 {avatarUrl ? <img src={avatarUrl} alt={name || 'Avatar'} className='h-full w-full object-cover' /> : <div className='grid h-full w-full place-items-center bg-brand-blue/10'><UserIcon size={54} className='text-brand-blue' /></div>}
               </div>
-              <button disabled={uploadingAvatar} onClick={() => fileInputRef.current?.click()} className='absolute right-1 top-2 flex h-10 w-10 items-center justify-center rounded-full border-4 border-white bg-brand-blue text-white shadow-md disabled:opacity-60' aria-label='Trocar foto'>
+              {editingProfile && <button disabled={uploadingAvatar} onClick={() => fileInputRef.current?.click()} className='absolute right-1 top-2 flex h-10 w-10 items-center justify-center rounded-full border-4 border-white bg-brand-blue text-white shadow-md disabled:opacity-60' aria-label='Trocar foto'>
                 {uploadingAvatar ? <Loader2 size={17} className='animate-spin' /> : <Camera size={17} />}
-              </button>
-              <span className='absolute bottom-1 right-0 flex h-11 w-11 items-center justify-center rounded-full border-4 border-white bg-brand-ink text-white' title={`${completeness}% completo`}>
-                <ShieldCheck size={18} />
-              </span>
+              </button>}
               <input ref={fileInputRef} type='file' accept='image/jpeg,image/png,image/webp,image/heic,image/heif' disabled={uploadingAvatar} className='hidden' onChange={handleFileSelect} />
             </div>
 
@@ -328,24 +329,6 @@ const DonorProfile: React.FC = () => {
                 { id: 'streak', title: 'Sequência', value: `${stats.streak} ${stats.streak === 1 ? 'dia' : 'dias'}`, description: 'Dias consecutivos em que sua intenção se transformou em apoio.', icon: Flame, color: 'bg-[#ef8c2f]' },
                 { id: 'credits', title: 'Créditos', value: String(credits), description: 'Créditos disponíveis na sua carteira TranquiliCare.', icon: Sparkles, color: 'bg-brand-ink' },
               ]} />
-            </section>
-
-            <section>
-              <h2 className='mb-4 font-display text-2xl font-semibold'>Conquistas</h2>
-              <div className='overflow-hidden rounded-lg border-2 border-border'>
-                {achievementRows.map((achievement, index) => {
-                  const progress = (achievement.current / achievement.target) * 100;
-                  return (
-                    <div key={achievement.title} className={`flex gap-4 p-4 md:p-5 ${index ? 'border-t border-border' : ''}`}>
-                      <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-lg ${achievement.color}`}><achievement.icon size={25} /></div>
-                      <div className='min-w-0 flex-1'>
-                        <div className='flex items-center justify-between gap-3'><div><p className='font-bold'>{achievement.title}</p><p className='text-sm text-muted-foreground'>{achievement.detail}</p></div><span className='shrink-0 text-xs font-bold text-muted-foreground'>{achievement.current}/{achievement.target}</span></div>
-                        <div className='mt-3 h-2 overflow-hidden rounded-full bg-secondary'><motion.div className='h-full rounded-full bg-brand-yellow' initial={{ width: 0 }} animate={{ width: `${progress}%` }} transition={{ duration: 0.8, ease: EASE_OUT }} /></div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
             </section>
 
             <section>

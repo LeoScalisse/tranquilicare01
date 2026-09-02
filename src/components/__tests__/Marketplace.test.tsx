@@ -20,7 +20,7 @@ describe('Marketplace editorial sections', () => {
     );
 
     [
-      'Quem acreditou nessa história desde o começo',
+      'Quem acredita nessa história desde o começo',
       'Novas histórias por aqui',
       'Onde o futuro começa',
       'Cuidado que chega a quem precisa',
@@ -55,7 +55,7 @@ describe('Marketplace editorial sections', () => {
     expect(screen.getByRole('button', { name: 'Educação' }).className).toContain('order-3');
     const cowFilter = screen.getByRole('button', { name: 'Vaquinhas' });
     const initialCowSection = container.querySelector('[data-cow-campaign-section]');
-    const founderHeading = screen.getByText('Quem acreditou nessa história desde o começo');
+    const founderHeading = screen.getByText('Quem acredita nessa história desde o começo');
     expect(initialCowSection?.compareDocumentPosition(founderHeading)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(cowFilter.querySelector('[data-cow-head]')).not.toBeNull();
     fireEvent.click(cowFilter);
@@ -66,7 +66,7 @@ describe('Marketplace editorial sections', () => {
     expect(cowSection?.querySelectorAll('[data-cow-spot]').length).toBeGreaterThanOrEqual(8);
     fireEvent.click(cowFilter);
     expect(cowFilter.getAttribute('aria-pressed')).toBe('false');
-    expect(screen.getByText('Quem acreditou nessa história desde o começo')).toBeTruthy();
+    expect(screen.getByText('Quem acredita nessa história desde o começo')).toBeTruthy();
   });
 
   it('shows interactive seal cards for categories with no registered organizations', async () => {
@@ -82,12 +82,10 @@ describe('Marketplace editorial sections', () => {
     expect(screen.getByRole('heading', { name: 'Para quem alegra nossos dias' })).not.toBeNull();
     expect(screen.getByAltText('Selo de Pets')).not.toBeNull();
 
-    const petsCard = screen.getByRole('button', { name: 'Ver novidades de Pets' });
-    expect(petsCard.getAttribute('aria-expanded')).toBe('false');
-    fireEvent.click(petsCard);
-
-    expect(petsCard.getAttribute('aria-expanded')).toBe('true');
-    await waitFor(() => expect(screen.getByText('Ainda estamos buscando causas e histórias para Para quem alegra nossos dias.')).not.toBeNull());
+    expect(screen.queryByRole('button', { name: 'Ver novidades de Pets' })).toBeNull();
+    expect(screen.getByText('Ainda estamos buscando causas e histórias para Para quem alegra nossos dias.')).not.toBeNull();
+    expect(screen.queryByText('Uma nova causa pode nascer aqui.')).toBeNull();
+    expect(screen.queryByText('Voltaremos com novidades em breve.')).toBeNull();
   });
   it('keeps every cause category filter available before organizations are registered', () => {
     render(

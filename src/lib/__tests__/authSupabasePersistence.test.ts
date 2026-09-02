@@ -4,6 +4,8 @@ const supabaseMocks = vi.hoisted(() => ({
   authUpdateUser: vi.fn(),
   authGetUser: vi.fn(),
   saveNgoProfileResult: vi.fn(),
+  saveDonorProfileResult: vi.fn(),
+  rpc: vi.fn(),
   profileUpdateResult: vi.fn(),
   ngoUpdateResult: vi.fn(),
   ngoUpsertResult: vi.fn(),
@@ -27,12 +29,7 @@ vi.mock('@/lib/supabase', () => ({
       updateUser: supabaseMocks.authUpdateUser,
       getUser: supabaseMocks.authGetUser,
     },
-    rpc: vi.fn((name: string) => {
-      if (name === 'save_own_ngo_profile') {
-        return Promise.resolve(supabaseMocks.saveNgoProfileResult());
-      }
-      throw new Error(`unexpected-rpc:${name}`);
-    }),
+    rpc: supabaseMocks.rpc,
     from: vi.fn((table: string) => ({
       update: vi.fn(() => {
         if (table === 'profiles') {
@@ -98,8 +95,26 @@ const ngoProfile = {
   status: 'pending' as const,
 };
 
+const donorProfile = {
+  bio: 'Gosto de acompanhar causas locais.',
+  location: 'São Paulo, SP',
+  instagram: '@ana',
+  phone: '11999998888',
+  coverImage: 'https://example.org/cover.webp',
+  interests: ['Educação'],
+};
+
 describe('Supabase organization profile persistence', () => {
   beforeEach(() => {
+    supabaseMocks.rpc.mockReset().mockImplementation((name: string) => {
+      if (name === 'save_own_ngo_profile') {
+        return Promise.resolve(supabaseMocks.saveNgoProfileResult());
+      }
+      if (name === 'save_own_donor_profile') {
+        return Promise.resolve(supabaseMocks.saveDonorProfileResult());
+      }
+      throw new Error(`unexpected-rpc:${name}`);
+    });
     supabaseMocks.authUpdateUser.mockReset().mockResolvedValue({
       data: { user: authUser },
       error: null,
@@ -110,6 +125,10 @@ describe('Supabase organization profile persistence', () => {
     });
     supabaseMocks.saveNgoProfileResult.mockReset().mockReturnValue({
       data: { user_id: 'ngo-1' },
+      error: null,
+    });
+    supabaseMocks.saveDonorProfileResult.mockReset().mockReturnValue({
+      data: { user_id: 'donor-1' },
       error: null,
     });
     supabaseMocks.profileUpdateResult.mockReset().mockReturnValue({ data: profileRow, error: null });
@@ -171,5 +190,42 @@ describe('Supabase organization profile persistence', () => {
     await expect(updateUser({ name: 'Instituto Horizonte', ngoProfile })).rejects.toMatchObject({
       code: '42501',
     });
+  });
+
+  it('saves donor identity and details through one database transaction before metadata', async () => {
+    const donorAuthUser = {
+      id: 'donor-1',
+      email: 'ana@example.org',
+      user_metadata: { account_type: 'donor', name: 'Ana', donor_profile: donorProfile },
+    };
+    supabaseMocks.authGetUser.mockResolvedValueOnce({ data: { user: donorAuthUser }, error: null });
+    supabaseMocks.authUpdateUser.mockResolvedValueOnce({ data: { user: donorAuthUser }, error: null });
+
+    await expect(updateUser({ name: 'Ana', avatar: null, donorProfile })).resolves.toMatchObject({
+      id: 'donor-1',
+      accountType: 'donor',
+    });
+
+    expect(supabaseMocks.rpc).toHaveBeenCalledWith('save_own_donor_profile', expect.objectContaining({
+      profile_name: 'Ana',
+      profile_bio: donorProfile.bio,
+      profile_interests: ['Educação'],
+    }));
+    expect(supabaseMocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(
+      supabaseMocks.authUpdateUser.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('does not report success when the donor database transaction matched no profile', async () => {
+    const donorAuthUser = {
+      id: 'donor-1',
+      email: 'ana@example.org',
+      user_metadata: { account_type: 'donor' },
+    };
+    supabaseMocks.authGetUser.mockResolvedValueOnce({ data: { user: donorAuthUser }, error: null });
+    supabaseMocks.saveDonorProfileResult.mockReturnValueOnce({ data: null, error: null });
+
+    await expect(updateUser({ name: 'Ana', donorProfile })).rejects.toThrow('donor-profile-not-persisted');
+    expect(supabaseMocks.authUpdateUser).not.toHaveBeenCalled();
   });
 });

@@ -558,6 +558,72 @@ export const updateUser = async (patch: EditableUserProfile): Promise<AppUser | 
     return user;
   }
 
+  if (patch.donorProfile) {
+    const { data: identity, error: identityError } = await client().auth.getUser();
+    if (identityError) throw identityError;
+    if (!identity.user) throw new Error('no-user');
+
+    const nextName = patch.name?.trim() ?? cached?.name ?? safeText(identity.user.user_metadata?.name).trim();
+    const nextAvatar = patch.avatar !== undefined
+      ? patch.avatar
+      : cached?.avatar ?? (safeText(identity.user.user_metadata?.avatar) || null);
+    let { data: savedProfile, error: saveError } = await client().rpc('save_own_donor_profile', {
+      profile_name: nextName,
+      profile_avatar_url: nextAvatar ?? '',
+      profile_bio: patch.donorProfile.bio.trim(),
+      profile_location: patch.donorProfile.location.trim(),
+      profile_instagram: patch.donorProfile.instagram.trim(),
+      profile_phone: normalizePhone(patch.donorProfile.phone),
+      profile_cover_image_url: patch.donorProfile.coverImage.trim(),
+      profile_interests: safeStringArray(patch.donorProfile.interests),
+    });
+    if (saveError && isOptionalSchemaIssue(saveError)) {
+      // Short-lived compatibility path while the isolated RPC migration is
+      // being applied. It never reports success when UPDATE matched zero rows.
+      const { data: legacyProfile, error: legacyProfileError } = await client()
+        .from('profiles')
+        .update({ name: nextName, avatar_url: nextAvatar })
+        .eq('id', identity.user.id)
+        .select('id')
+        .maybeSingle();
+      if (legacyProfileError) throw legacyProfileError;
+      const { data: legacyDonor, error: legacyDonorError } = await client()
+        .from('donor_profiles')
+        .update({
+          bio: patch.donorProfile.bio.trim(),
+          location: patch.donorProfile.location.trim(),
+          instagram: patch.donorProfile.instagram.trim() || null,
+          phone: normalizePhone(patch.donorProfile.phone) || null,
+          cover_image_url: patch.donorProfile.coverImage.trim() || null,
+          interests: safeStringArray(patch.donorProfile.interests),
+        })
+        .eq('user_id', identity.user.id)
+        .select('user_id')
+        .maybeSingle();
+      if (legacyDonorError) throw legacyDonorError;
+      savedProfile = legacyProfile && legacyDonor ? { user_id: identity.user.id } : null;
+      saveError = null;
+    }
+    if (saveError) throw saveError;
+    const savedRecord = Array.isArray(savedProfile) ? savedProfile[0] : savedProfile;
+    if (!savedRecord || typeof savedRecord !== 'object' || !('user_id' in savedRecord)) {
+      throw new Error('donor-profile-not-persisted');
+    }
+
+    // Auth metadata is a compatibility cache for the current session. The RPC
+    // above is the relational source of truth and always completes first.
+    const { data: authResult, error: metadataError } = await client().auth.updateUser({ data: metadata });
+    if (metadataError) {
+      console.warn('Could not refresh donor metadata cache:', metadataError);
+      const user = await loadAppUser(identity.user);
+      publish(user);
+      return user;
+    }
+    const user = authResult.user ? fromMetadata(authResult.user) : await loadAppUser(identity.user);
+    publish(user);
+    return user;
+  }
+
   const { data: result, error } = await client().auth.updateUser({ data: metadata });
   if (error) throw error;
   if (!result.user) return null;
@@ -577,25 +643,6 @@ export const updateUser = async (patch: EditableUserProfile): Promise<AppUser | 
     if (profileError) {
       if (isOptionalSchemaIssue(profileError)) logOptionalSchemaIssue('profile-update', profileError);
       throw profileError;
-    }
-  }
-
-  if (patch.donorProfile) {
-    const { error: donorProfileError } = await client()
-      .from('donor_profiles')
-      .update({
-        bio: patch.donorProfile.bio.trim(),
-        location: patch.donorProfile.location.trim(),
-        instagram: patch.donorProfile.instagram.trim() || null,
-        phone: normalizePhone(patch.donorProfile.phone) || null,
-        cover_image_url: patch.donorProfile.coverImage.trim() || null,
-        interests: safeStringArray(patch.donorProfile.interests),
-      })
-      .eq('user_id', userId);
-
-    if (donorProfileError) {
-      if (isOptionalSchemaIssue(donorProfileError)) logOptionalSchemaIssue('donor-profile-update', donorProfileError);
-      else console.error('Could not update donor profile:', donorProfileError);
     }
   }
 

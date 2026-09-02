@@ -6,6 +6,7 @@ import {
   DONATION_DISCOVERY_TRIGGER_ID,
   VERIFICATION_DISCOVERY_TRIGGER_ID,
 } from '@/lib/discoveryNavigation';
+import { loadCommunitySphereProfiles, type CommunitySphereProfile } from '@/lib/communitySphereProfiles';
 import { formatBRL, useCountUp } from '@/lib/impact';
 import SphereImageGrid, { SphereImage } from './ui/img-sphere';
 import SealRolodex from './discovery/SealRolodex';
@@ -38,6 +39,7 @@ const LoggedOutHero: React.FC<LoggedOutHeroProps> = ({
   const reduceMotion = useReducedMotion();
   const [metricIndex, setMetricIndex] = useState(0);
   const [openingDiscovery, setOpeningDiscovery] = useState(false);
+  const [communityProfiles, setCommunityProfiles] = useState<CommunitySphereProfile[]>([]);
   const discoveryTimer = useRef<number>();
   const animatedTotal = useCountUp(communityTotal);
   const animatedCount = useCountUp(communityDonationCount, 700);
@@ -46,23 +48,37 @@ const LoggedOutHero: React.FC<LoggedOutHeroProps> = ({
     700,
   );
 
-  const sphereImages = useMemo<SphereImage[]>(
-    () => demoNgos.flatMap((ngo) => [
-      {
-        id: `profile-${ngo.id}`,
-        src: ngo.image,
-        alt: `Conhecer ${ngo.name}`,
-        type: 'image' as const,
-      },
-      ...ngo.posts.map((post) => ({
-        id: post.id,
-        src: post.url,
-        alt: post.caption || `História de ${ngo.name}`,
-        type: post.type,
-      })),
-    ]),
-    [],
-  );
+  const sphereImages = useMemo<SphereImage[]>(() => {
+    const realProfiles: SphereImage[] = communityProfiles.map((profile) => ({
+      id: profile.id,
+      src: profile.avatarUrl,
+      alt: profile.profileType === 'donor'
+        ? `Conhecer ${profile.name}, pessoa da comunidade`
+        : `Conhecer ${profile.name}, organização da comunidade`,
+      type: 'image',
+    }));
+    const fallbackProfiles: SphereImage[] = demoNgos.map((ngo) => ({
+      id: `fallback-profile-${ngo.id}`,
+      src: ngo.image,
+      alt: `Conhecer ${ngo.name}`,
+      type: 'image',
+    }));
+    const tranquilicareFallback: SphereImage[] = communityProfiles.some((profile) => (
+      profile.profileType === 'organization'
+      && profile.name.toLocaleLowerCase('pt-BR').replace(/[^a-z]/g, '').includes('tranquilicare')
+    )) ? [] : [{
+      id: 'fallback-profile-tranquilicare',
+      src: '/images/tranquilicare-heart-transparent.png',
+      alt: 'Conhecer TranquiliCare, organização da comunidade',
+      type: 'image',
+    }];
+    const seenSources = new Set<string>();
+    return [...realProfiles, ...tranquilicareFallback, ...fallbackProfiles].filter((image) => {
+      if (seenSources.has(image.src)) return false;
+      seenSources.add(image.src);
+      return true;
+    }).slice(0, 36);
+  }, [communityProfiles]);
 
   const metrics = useMemo(() => [
     {
@@ -97,6 +113,23 @@ const LoggedOutHero: React.FC<LoggedOutHeroProps> = ({
       4200,
     );
     return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const refreshProfiles = () => {
+      void loadCommunitySphereProfiles().then((profiles) => {
+        if (active) setCommunityProfiles(profiles);
+      });
+    };
+    refreshProfiles();
+    const timer = window.setInterval(refreshProfiles, 60_000);
+    window.addEventListener('focus', refreshProfiles);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+      window.removeEventListener('focus', refreshProfiles);
+    };
   }, []);
 
   useEffect(() => () => {

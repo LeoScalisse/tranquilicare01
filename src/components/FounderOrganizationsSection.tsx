@@ -149,7 +149,7 @@ const FounderOrganizationsSection = memo(function FounderOrganizationsSection({
             id='founder-organizations-title'
             className='mt-4 max-w-2xl text-balance font-display text-3xl font-semibold leading-tight text-brand-ink md:text-4xl'
           >
-            Quem acreditou nessa história desde o começo
+            Quem acredita nessa história desde o começo
           </h2>
         </div>
 

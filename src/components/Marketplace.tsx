@@ -174,14 +174,7 @@ const CowCampaignSection: React.FC<{
 };
 const EmptyCategorySection: React.FC<{
   category: NgoCategoryDefinition;
-}> = ({ category }) => {
-  const reduceMotion = useReducedMotion();
-  const [isRevealed, setIsRevealed] = useState(false);
-  const transition = reduceMotion
-    ? { duration: 0.01 }
-    : { duration: 0.46, ease: [0.22, 1, 0.36, 1] as const };
-
-  return (
+}> = ({ category }) => (
     <section
       className={`mx-auto max-w-[1400px] overflow-hidden rounded-[28px] py-9 md:rounded-[34px] ${category.theme.sectionBg}`}
       style={{ contentVisibility: "auto", containIntrinsicSize: "390px" }}
@@ -198,73 +191,25 @@ const EmptyCategorySection: React.FC<{
           </h3>
         </div>
 
-        <motion.button
-          type="button"
-          onClick={() => setIsRevealed((current) => !current)}
-          whileTap={reduceMotion ? undefined : { scale: 0.985 }}
-          transition={transition}
-          style={{ transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
-          aria-expanded={isRevealed}
-          aria-label={isRevealed
-            ? `Ocultar novidades de ${category.label}`
-            : `Ver novidades de ${category.label}`}
-          className={`group relative block w-full overflow-hidden rounded-[26px] p-1.5 text-left outline-none ring-offset-4 transition-shadow duration-500 focus-visible:ring-4 focus-visible:ring-brand-blue/45 ${category.theme.bg} shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_44px_-34px_rgba(5,54,83,0.36)]`}
+        <div
+          className={`relative w-full overflow-hidden rounded-[26px] p-1.5 ${category.theme.bg} shadow-[inset_0_1px_0_rgba(255,255,255,0.82),0_18px_44px_-34px_rgba(5,54,83,0.36)]`}
         >
           <span className="relative flex min-h-48 items-center overflow-hidden rounded-[20px] bg-white/60 px-6 py-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.96)] sm:min-h-52 sm:px-8">
-            <AnimatePresence mode="wait" initial={false}>
-              {isRevealed ? (
-                <motion.span
-                  key="message"
-                  initial={reduceMotion ? false : { opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -14 }}
-                  transition={transition}
-                  className="flex max-w-2xl items-center gap-5"
-                >
-                  <span className={`grid size-16 shrink-0 place-items-center rounded-[22px] bg-white/72 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_28px_-20px_rgba(5,54,83,0.34)] ${category.theme.border}`}>
-                    <img src={category.sealSrc} alt="" className="h-full w-full object-contain" />
-                  </span>
-                  <span>
-                    <span className={`block text-lg font-semibold leading-snug sm:text-xl ${category.theme.text}`}>
-                      Ainda estamos buscando causas e histórias para {category.sectionTitle}.
-                    </span>
-                    <span className="mt-2 block text-sm font-medium text-brand-ink/65">
-                      Voltaremos com novidades em breve.
-                    </span>
-                  </span>
-                </motion.span>
-              ) : (
-                <motion.span
-                  key="seal"
-                  initial={reduceMotion ? false : { opacity: 0, y: 14 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -14 }}
-                  transition={transition}
-                  className="flex max-w-2xl items-center gap-5"
-                >
-                  <span
-                    className="grid size-20 shrink-0 place-items-center rounded-[26px] bg-white/76 p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.98),0_14px_32px_-22px_rgba(5,54,83,0.32)] transition-transform duration-500 group-hover:scale-105"
-                    style={{ transitionTimingFunction: 'cubic-bezier(0.22, 1, 0.36, 1)' }}
-                  >
-                    <img src={category.sealSrc} alt={`Selo de ${category.label}`} className="h-full w-full object-contain" />
-                  </span>
-                  <span>
-                    <span className={`block text-lg font-semibold sm:text-xl ${category.theme.text}`}>
-                      Uma nova causa pode nascer aqui.
-                    </span>
-                    <span className="mt-2 block text-sm font-medium text-brand-ink/65">
-                      Toque para saber o que estamos preparando.
-                    </span>
-                  </span>
-                </motion.span>
-              )}
-            </AnimatePresence>
+            <span className="flex max-w-2xl items-center gap-5">
+              <span className={`grid size-16 shrink-0 place-items-center rounded-[22px] bg-white/72 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_28px_-20px_rgba(5,54,83,0.34)] ${category.theme.border}`}>
+                <img src={category.sealSrc} alt={`Selo de ${category.label}`} className="h-full w-full object-contain" />
+              </span>
+              <span>
+                <span className={`block text-lg font-semibold leading-snug sm:text-xl ${category.theme.text}`}>
+                  Ainda estamos buscando causas e histórias para {category.sectionTitle}.
+                </span>
+              </span>
+            </span>
           </span>
-        </motion.button>
+        </div>
       </div>
     </section>
-  );
-};
+);
 const Marketplace: React.FC<MarketplaceProps> = ({
   ngos,
   onSelectNGO,

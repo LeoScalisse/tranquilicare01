@@ -6,12 +6,17 @@ import {
   useReducedMotion,
   useSpring,
 } from "framer-motion";
+import { Instagram } from "lucide-react";
+
+import { normalizeCircularDragDelta } from "@/lib/circularDrag";
+import type { StoryPresentationType } from "@/types/storyPresentation";
 
 import "./circular-story-gallery.css";
 
 export interface CircularStoryMedia {
   id: string;
   url: string;
+  type?: StoryPresentationType;
   caption?: string;
   ngoName: string;
 }
@@ -23,14 +28,20 @@ interface CircularStoryGalleryProps {
 const MAX_VISIBLE_STORIES = 10;
 const AUTO_ROTATION_DEGREES_PER_MS = 0.0016;
 const AUTO_RESUME_DELAY_MS = 1_800;
+const ANGULAR_DEAD_ZONE = 0.14;
+const MAX_ANGULAR_STEP = 11;
 
 /** Interactive radial selector shown around the resting stories preview. */
 const CircularStoryGallery = ({ items }: CircularStoryGalleryProps) => {
   const reduceMotion = useReducedMotion();
   const visibleItems = items.slice(0, MAX_VISIBLE_STORIES);
   const [activeIndex, setActiveIndex] = useState(0);
+  const orbitRef = useRef<HTMLDivElement>(null);
   const lastPanAt = useRef(0);
   const autoResumeAt = useRef(0);
+  const lastPointerAngle = useRef<number | null>(null);
+  const dragDirection = useRef<-1 | 0 | 1>(0);
+  const lastAcceptedDelta = useRef(0);
   const rotation = useMotionValue(0);
   const smoothRotation = useSpring(rotation, {
     stiffness: reduceMotion ? 1000 : 210,
@@ -51,6 +62,15 @@ const CircularStoryGallery = ({ items }: CircularStoryGalleryProps) => {
     setActiveIndex(index);
   };
 
+  const angleFromPoint = (point: { x: number; y: number }) => {
+    const bounds = orbitRef.current?.getBoundingClientRect();
+    if (!bounds) return null;
+    const x = point.x - (bounds.left + bounds.width / 2);
+    const y = point.y - (bounds.top + bounds.height / 2);
+    if (Math.hypot(x, y) < Math.min(bounds.width, bounds.height) * 0.12) return null;
+    return Math.atan2(y, x) * (180 / Math.PI);
+  };
+
   return (
     <section
       data-circular-story-gallery
@@ -58,24 +78,50 @@ const CircularStoryGallery = ({ items }: CircularStoryGalleryProps) => {
       aria-label="Seletor circular de histórias"
     >
       <motion.div
+        ref={orbitRef}
         className="circular-story-gallery__orbit"
         style={{ rotate: smoothRotation }}
-        onPanStart={() => {
+        onPanStart={(_, info) => {
           autoResumeAt.current = Number.POSITIVE_INFINITY;
+          lastPointerAngle.current = angleFromPoint(info.point);
+          dragDirection.current = 0;
+          lastAcceptedDelta.current = 0;
         }}
         onPan={(_, info) => {
           lastPanAt.current = Date.now();
-          rotation.set(rotation.get() + info.delta.x * 0.45);
+          const currentAngle = angleFromPoint(info.point);
+          const previousAngle = lastPointerAngle.current;
+          lastPointerAngle.current = currentAngle;
+          if (currentAngle === null || previousAngle === null) return;
+
+          const rawDelta = normalizeCircularDragDelta(currentAngle - previousAngle);
+          if (Math.abs(rawDelta) < ANGULAR_DEAD_ZONE) return;
+          const nextDirection = Math.sign(rawDelta) as -1 | 1;
+          if (dragDirection.current === 0) dragDirection.current = nextDirection;
+          // Lock the gesture direction until pointer-up. Small diagonal wobbles
+          // can no longer reverse the orbit in the middle of the same drag.
+          if (nextDirection !== dragDirection.current) return;
+
+          const acceptedDelta = Math.max(-MAX_ANGULAR_STEP, Math.min(MAX_ANGULAR_STEP, rawDelta));
+          lastAcceptedDelta.current = acceptedDelta;
+          rotation.set(rotation.get() + acceptedDelta);
         }}
-        onPanEnd={(_, info) => {
+        onPanEnd={() => {
           lastPanAt.current = Date.now();
-          rotation.set(rotation.get() + info.velocity.x * 0.055);
+          const momentum = Math.max(-18, Math.min(18, lastAcceptedDelta.current * 3.2));
+          rotation.set(rotation.get() + momentum);
           autoResumeAt.current = Date.now() + AUTO_RESUME_DELAY_MS;
+          lastPointerAngle.current = null;
+          dragDirection.current = 0;
+          lastAcceptedDelta.current = 0;
         }}
         onPointerCancel={() => {
           autoResumeAt.current = Date.now() + AUTO_RESUME_DELAY_MS;
+          lastPointerAngle.current = null;
+          dragDirection.current = 0;
+          lastAcceptedDelta.current = 0;
         }}
-        aria-label="Arraste horizontalmente para girar as histórias"
+        aria-label="Arraste ao redor do círculo para girar as histórias"
       >
         {visibleItems.map((item, index) => {
           const angle =
@@ -106,12 +152,30 @@ const CircularStoryGallery = ({ items }: CircularStoryGalleryProps) => {
               aria-label={`Selecionar história de ${item.ngoName}`}
               aria-pressed={index === activeIndex}
             >
-              <img
-                src={item.url}
-                alt=""
-                draggable={false}
-                className="h-full w-full object-cover"
-              />
+              {item.type === "video" ? (
+                <video
+                  src={item.url}
+                  muted
+                  loop
+                  autoPlay
+                  playsInline
+                  preload="metadata"
+                  aria-hidden="true"
+                  className="h-full w-full object-cover"
+                />
+              ) : item.type === "instagram" ? (
+                <span className="circular-story-gallery__instagram" aria-hidden="true">
+                  <Instagram />
+                  <span>Instagram</span>
+                </span>
+              ) : (
+                <img
+                  src={item.url}
+                  alt=""
+                  draggable={false}
+                  className="h-full w-full object-cover"
+                />
+              )}
               <span className="circular-story-gallery__card-shade" />
             </motion.button>
           );

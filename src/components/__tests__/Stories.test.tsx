@@ -21,6 +21,10 @@ vi.mock('@/lib/stories', () => ({
   storyErrorMessage: () => 'Não foi possível publicar.',
 }));
 
+vi.mock('@/lib/publicStoryImages', () => ({
+  loadPublicStoryImages: vi.fn().mockResolvedValue([]),
+}));
+
 describe('Stories', () => {
   let intersectionCallback: IntersectionObserverCallback | null = null;
 
@@ -81,6 +85,21 @@ describe('Stories', () => {
       intersectionCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
     });
     await waitFor(() => expect(container.querySelectorAll('article')).toHaveLength(initialCount + 6));
+  });
+
+  it('shows the two local TranquiliCare videos first and incorporates Instagram posts', async () => {
+    const { container } = render(<Stories onOpenNGO={vi.fn()} />);
+    await waitFor(() => expect(container.querySelectorAll('article').length).toBeGreaterThan(4));
+
+    const articles = container.querySelectorAll('article');
+    expect(articles[0].querySelector('video')?.getAttribute('src')).toContain('tranquilicare_1786385739');
+    expect(articles[1].querySelector('video')?.getAttribute('src')).toContain('tranquilicare_1786723077');
+    expect(articles[2].querySelector('iframe')?.getAttribute('src')).toContain('/p/DcExwOAkYPS/embed/');
+    expect(articles[3].querySelector('iframe')?.getAttribute('src')).toContain('/p/DatXtL6EXc3/embed/');
+
+    const circularCards = container.querySelectorAll('[data-circular-story-card]');
+    expect(circularCards[0].querySelector('video')?.getAttribute('src')).toContain('tranquilicare_1786385739');
+    expect(circularCards[1].querySelector('video')?.getAttribute('src')).toContain('tranquilicare_1786723077');
   });
 
   it('opens the draggable publisher and publishes a real organization story', async () => {
@@ -165,5 +184,6 @@ describe('Stories', () => {
     expect(scrollExpand?.classList.contains('scroll-expand--window')).toBe(true);
     expect(feed?.classList.contains('overflow-y-auto')).toBe(false);
     expect(feed?.classList.contains('overflow-y-hidden')).toBe(true);
+    expect(screen.getByTestId('story-feed-tabs').classList.contains('sticky')).toBe(true);
   });
 });

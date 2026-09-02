@@ -88,4 +88,18 @@ describe('DonorProfile personalization', () => {
       expect(screen.getByTestId('location').textContent).toBe('/donor/profile');
     });
   });
+
+  it('only offers avatar replacement while editing and removes completion achievements', async () => {
+    const user = userEvent.setup();
+    render(<MemoryRouter initialEntries={['/donor/profile']}><DonorProfile /></MemoryRouter>);
+
+    await screen.findByRole('heading', { name: 'Ana Souza' });
+    expect(screen.queryByRole('button', { name: 'Trocar foto' })).toBeNull();
+    expect(screen.queryByTitle(/completo/i)).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Conquistas' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: /Editar perfil/i }));
+    expect(screen.getByRole('button', { name: 'Trocar foto' })).not.toBeNull();
+    expect(screen.getByRole('button', { name: 'Salvo' }).hasAttribute('disabled')).toBe(true);
+  });
 });

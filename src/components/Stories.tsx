@@ -7,10 +7,13 @@ import CircularStoryGallery from '@/components/ui/circular-story-gallery';
 import ScrollExpand from '@/components/ui/scroll-expand';
 import ScrollIdleCue from '@/components/ui/scroll-idle-cue';
 import StoryComposerFab from '@/components/ui/story-composer-fab';
+import InstagramStoryEmbed from '@/components/ui/instagram-story-embed';
 import StoryReportMenu from '@/components/ui/story-report-menu';
 import StoryShareSheet from '@/components/ui/story-share-sheet';
 import founderSeal from '@/assets/founder-ngo-seal.png';
+import { curatedStoryMedia } from '@/data/curatedStoryMedia';
 import { demoNgos } from '@/data/demoNgos';
+import { loadPublicStoryImages, type PublicStoryImage } from '@/lib/publicStoryImages';
 import {
   loadPublishedStories,
   loadStoryViewerState,
@@ -20,6 +23,7 @@ import {
   storyErrorMessage,
   type PublishedStory,
 } from '@/lib/stories';
+import type { StoryAttribution, StoryPresentationType } from '@/types/storyPresentation';
 
 interface StoriesProps {
   onOpenNGO: (ngoId: string) => void;
@@ -30,7 +34,7 @@ interface StoriesProps {
 interface StoryItem {
   id: string;
   url: string;
-  type: 'image' | 'video';
+  type: StoryPresentationType;
   caption: string;
   timestamp: number;
   ngoId: string | null;
@@ -38,6 +42,7 @@ interface StoryItem {
   ngoImage: string;
   isFounder?: boolean;
   persisted?: boolean;
+  attribution?: StoryAttribution;
 }
 
 type DiscoveryLane = 'for-you' | 'saved';
@@ -82,6 +87,19 @@ const demoStories = (): StoryItem[] => demoNgos
     persisted: false,
   })))
   .sort((a, b) => b.timestamp - a.timestamp);
+
+const publicImageStories = (images: PublicStoryImage[]): StoryItem[] => images.map((image, index) => ({
+  id: `openverse-${image.id}`,
+  url: image.imageUrl,
+  type: 'image',
+  caption: image.title,
+  timestamp: Date.now() - (index + curatedStoryMedia.length + 1) * 60_000,
+  ngoId: null,
+  ngoName: 'Acervo aberto',
+  ngoImage: '/images/tranquilicare-heart-transparent.png',
+  persisted: false,
+  attribution: image.attribution,
+}));
 
 const extendDemoStories = (base: StoryItem[], count: number): StoryItem[] => {
   if (!base.length) return [];
@@ -156,13 +174,19 @@ const StoryFeed: React.FC<StoryFeedProps> = ({
             <button type='button' onClick={() => onOpenStory(story)} className='group relative ml-14 mt-3 block w-[calc(100%_-_3.5rem)] overflow-hidden rounded-[20px] border border-brand-ink/10 bg-secondary text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20'>
               {story.type === 'image' ? (
                 <img src={story.url} alt={story.caption || `História de ${story.ngoName}`} loading='lazy' decoding='async' className='block max-h-[38rem] w-full object-cover' />
-              ) : (
+              ) : story.type === 'video' ? (
                 <div className='relative aspect-[16/10] w-full'>
                   <video src={story.url} className='h-full w-full object-cover' muted playsInline preload='metadata' />
                   <span className='absolute inset-0 grid place-items-center bg-brand-ink/15'><span className='grid h-12 w-12 place-items-center rounded-full bg-background/90 text-brand-blue shadow-lg'><Play size={21} className='ml-0.5 fill-current' /></span></span>
                 </div>
+              ) : (
+                <div className='h-[min(620px,74vh)] min-h-[28rem] w-full bg-white'>
+                  <InstagramStoryEmbed src={story.url} title={`Publicação de ${story.ngoName} no Instagram`} interactive={false} />
+                </div>
               )}
             </button>
+
+            {story.attribution && <a href={story.attribution.href} target='_blank' rel='noreferrer' className='ml-14 mt-2 block w-[calc(100%_-_3.5rem)] truncate text-xs font-semibold text-brand-blue underline-offset-4 hover:underline'>{story.attribution.label}</a>}
 
             <footer className='ml-14 mt-3 flex min-w-0 items-center justify-center gap-5 text-muted-foreground'>
               <StoryShareSheet storyId={story.id} storyTitle={story.caption || `História de ${story.ngoName}`} />
@@ -179,10 +203,11 @@ const StoryFeed: React.FC<StoryFeedProps> = ({
 
 const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTellStory }) => {
   const [discoveryLane, setDiscoveryLane] = useState<DiscoveryLane>('for-you');
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [activeStoryId, setActiveStoryId] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
   const [realStories, setRealStories] = useState<PublishedStory[]>([]);
+  const [publicImages, setPublicImages] = useState<PublicStoryImage[]>([]);
   const [loadingRealStories, setLoadingRealStories] = useState(true);
   const [demoBatches, setDemoBatches] = useState(INITIAL_DEMO_BATCHES);
   const [expandProgress, setExpandProgress] = useState(0);
@@ -214,11 +239,25 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    void loadPublicStoryImages().then((images) => {
+      if (active) setPublicImages(images);
+    });
+    return () => { active = false; };
+  }, []);
+
   const usingDemoFallback = !loadingRealStories && realStories.length === 0;
   const feedStories = useMemo<StoryItem[]>(() => {
-    if (realStories.length) return realStories;
-    return [...baseDemoStories, ...extendDemoStories(baseDemoStories, demoBatches * DEMO_BATCH_SIZE)];
-  }, [baseDemoStories, demoBatches, realStories]);
+    const databaseOrDemoStories: StoryItem[] = realStories.length
+      ? realStories
+      : [...baseDemoStories, ...extendDemoStories(baseDemoStories, demoBatches * DEMO_BATCH_SIZE)];
+    return [
+      ...curatedStoryMedia.map((story) => ({ ...story, persisted: false })),
+      ...publicImageStories(publicImages),
+      ...databaseOrDemoStories,
+    ];
+  }, [baseDemoStories, demoBatches, publicImages, realStories]);
 
   useEffect(() => {
     if (!usingDemoFallback) return undefined;
@@ -237,16 +276,17 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
   }, [discoveryLane, usingDemoFallback]);
 
   const availableStories = useMemo(() => feedStories.filter((story) => !reportedIds.has(story.id)), [feedStories, reportedIds]);
-  const activeStory = activeIndex === null ? null : availableStories[activeIndex];
+  const activeIndex = activeStoryId === null ? -1 : availableStories.findIndex((story) => story.id === activeStoryId);
+  const activeStory = activeIndex < 0 ? null : availableStories[activeIndex];
   const visibleStories = useMemo(() => {
     if (discoveryLane === 'saved') return availableStories.filter((story) => savedIds.has(story.id));
     return availableStories;
   }, [availableStories, discoveryLane, savedIds]);
 
-  const openStory = (story: StoryItem) => setActiveIndex(availableStories.findIndex((item) => item.id === story.id));
+  const openStory = (story: StoryItem) => setActiveStoryId(story.id);
   const move = (direction: -1 | 1) => {
-    if (activeIndex === null || !availableStories.length) return;
-    setActiveIndex((activeIndex + direction + availableStories.length) % availableStories.length);
+    if (activeIndex < 0 || !availableStories.length) return;
+    setActiveStoryId(availableStories[(activeIndex + direction + availableStories.length) % availableStories.length].id);
   };
 
   const requireAuth = () => {
@@ -280,7 +320,7 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
   const handleReport = async (story: StoryItem, reason: string) => {
     await reportStory(story.id, reason);
     toast.success('Recebemos sua denúncia. O time do TranquiliCare vai investigar.');
-    setActiveIndex(null);
+    setActiveStoryId(null);
     setReportedIds((current) => new Set(current).add(story.id));
   };
 
@@ -309,8 +349,9 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
       <ScrollExpand contentPreview restingOverlay={<ScrollIdleCue active={expandProgress < 0.08} />} onProgressChange={setExpandProgress} startWidth={48} startHeight={48} startShape='circle' scrollDistance={0.68} holdDistance={0} smoothing={0.055} overlayScrim={0} useWindowScroll surround={<CircularStoryGallery items={availableStories} />}>
         <div ref={feedScrollerRef} className='h-full w-full overflow-y-hidden bg-background text-brand-ink'>
           <main className='mx-auto w-full max-w-2xl px-3 pb-28 pt-8 sm:px-5 sm:pt-10'>
-            <div className='border-b border-brand-ink/10' role='tablist' aria-label='Formas de navegar pelas histórias'>
-              <div className='grid grid-cols-2'>
+            <div className='sticky top-0 z-30 -mx-3 bg-background/95 px-3 pt-4 backdrop-blur sm:-mx-5 sm:px-5' data-testid='story-feed-tabs'>
+              <div className='border-b border-brand-ink/10' role='tablist' aria-label='Formas de navegar pelas histórias'>
+                <div className='grid grid-cols-2'>
                 {DISCOVERY_LANES.map((lane) => {
                   const active = discoveryLane === lane.id;
                   return (
@@ -320,6 +361,7 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
                     </button>
                   );
                 })}
+                </div>
               </div>
             </div>
 
@@ -339,13 +381,13 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
 
       <AnimatePresence>
         {activeStory && (
-          <motion.div className='fixed inset-0 z-[130] grid place-items-center bg-brand-ink/95 p-3 backdrop-blur-md' initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setActiveIndex(null)}>
-            <div className='absolute left-4 right-4 top-4 flex gap-1'>{availableStories.map((story, index) => <span key={story.id} className={`h-1 flex-1 rounded-full ${index <= (activeIndex ?? 0) ? 'bg-background' : 'bg-background/25'}`} />)}</div>
-            <button type='button' onClick={() => setActiveIndex(null)} className='absolute right-4 top-8 grid h-10 w-10 place-items-center rounded-full bg-background text-brand-blue' aria-label='Fechar história'><X size={19} /></button>
+          <motion.div className='fixed inset-0 z-[130] grid place-items-center bg-brand-ink/95 p-3 backdrop-blur-md' initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setActiveStoryId(null)}>
+            <div className='absolute left-4 right-4 top-4 flex gap-1'>{availableStories.map((story, index) => <span key={story.id} className={`h-1 flex-1 rounded-full ${index <= activeIndex ? 'bg-background' : 'bg-background/25'}`} />)}</div>
+            <button type='button' onClick={() => setActiveStoryId(null)} className='absolute right-4 top-8 grid h-10 w-10 place-items-center rounded-full bg-background text-brand-blue' aria-label='Fechar história'><X size={19} /></button>
             {availableStories.length > 1 && <><button type='button' onClick={(event) => { event.stopPropagation(); move(-1); }} className='absolute left-3 z-10 grid h-10 w-10 place-items-center rounded-full bg-background/15 text-white backdrop-blur md:left-8' aria-label='História anterior'><ChevronLeft /></button><button type='button' onClick={(event) => { event.stopPropagation(); move(1); }} className='absolute right-3 z-10 grid h-10 w-10 place-items-center rounded-full bg-background/15 text-white backdrop-blur md:right-8' aria-label='Próxima história'><ChevronRight /></button></>}
             <motion.div key={activeStory.id} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className='relative h-[78vh] w-full max-w-md overflow-hidden rounded-[26px] bg-black shadow-2xl' onClick={(event) => event.stopPropagation()}>
-              {activeStory.type === 'image' ? <img src={activeStory.url} alt='' className='h-full w-full object-contain' /> : <video src={activeStory.url} className='h-full w-full object-contain' controls autoPlay playsInline />}
-              <div className='absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-5 pt-20 text-white'>
+              {activeStory.type === 'image' ? <img src={activeStory.url} alt='' className='h-full w-full object-contain' /> : activeStory.type === 'video' ? <video src={activeStory.url} className='h-full w-full object-contain' controls autoPlay playsInline /> : <InstagramStoryEmbed src={activeStory.url} title={`Publicação de ${activeStory.ngoName} no Instagram`} className='bg-white' />}
+              <div className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-5 pt-20 text-white ${activeStory.type === 'instagram' ? 'pointer-events-none' : ''}`}>
                 <button type='button' disabled={!activeStory.ngoId} onClick={() => activeStory.ngoId && onOpenNGO(activeStory.ngoId)} className='flex items-center gap-3 text-left disabled:cursor-default'><img src={activeStory.ngoImage} alt='' className='h-11 w-11 rounded-full border-2 border-white object-cover' /><span><span className='flex flex-wrap items-center gap-2 font-bold'>{activeStory.ngoName}{activeStory.isFounder && <img src={founderSeal} alt='ONG fundadora' className='h-5 w-5 object-contain' />}</span><span className='mt-1 block text-sm text-white/75'>{activeStory.caption}</span></span></button>
               </div>
             </motion.div>
