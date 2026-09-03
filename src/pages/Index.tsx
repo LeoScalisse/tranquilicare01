@@ -12,7 +12,6 @@ import {
   TRANQUILICARE_FOUNDER_NGO,
 } from '@/data/tranquilicarePrototype';
 import logo from '@/assets/logo.png';
-import { demoNgos } from '@/data/demoNgos';
 import { toast } from 'sonner';
 import { waitForDonationConfirmation } from '@/lib/donations';
 import type { DonationRow } from '@/lib/impact';
@@ -26,6 +25,7 @@ import {
   VERIFICATION_DISCOVERY_PATH,
   VERIFICATION_DISCOVERY_TRIGGER_ID,
 } from '@/lib/discoveryNavigation';
+import { registerCampaignCreationInterest } from '@/lib/campaignInterest';
 
 const NGOProfile = lazy(() => import('../components/NGOProfile'));
 const Stories = lazy(() => import('../components/Stories'));
@@ -115,6 +115,26 @@ const TranquiliCareApp: React.FC = () => {
       },
     });
   }, [location, navigate]);
+
+  const handleCampaignInterest = useCallback(async (): Promise<boolean> => {
+    if (!user) {
+      navigate('/ngo/auth?mode=signup');
+      return false;
+    }
+    if (user.accountType !== 'ngo') {
+      toast.error('A inscrição para criar vaquinhas é destinada a organizações.');
+      return false;
+    }
+    try {
+      await registerCampaignCreationInterest();
+      toast.success('Interesse registrado. Avisaremos quando a criação de vaquinhas estiver disponível.');
+      return true;
+    } catch (error) {
+      console.error('Could not register campaign creation interest:', error);
+      toast.error('Não foi possível registrar seu interesse. Tente novamente.');
+      return false;
+    }
+  }, [navigate, user]);
 
   useEffect(() => {
     const origin = readDiscoveryOrigin();
@@ -224,20 +244,9 @@ const TranquiliCareApp: React.FC = () => {
       || (isTranquiliCarePrototypeAccount(user?.email) && ngo.id === user?.id)
     )) ?? TRANQUILICARE_FOUNDER_NGO;
     const redeemedFounders = ngos.filter((ngo) => ngo.isFounder && ngo.id !== prototypeFounder.id);
-    const previewFounders = demoNgos
-      .slice(1, 3)
-      .filter((ngo) => ngo.id !== prototypeFounder.id && !redeemedFounders.some((founder) => founder.id === ngo.id))
-      .map((ngo) => ({ ...ngo, isFounder: true }));
-
-    return [prototypeFounder, ...redeemedFounders, ...previewFounders];
+    return [prototypeFounder, ...redeemedFounders];
   }, [ngos, user?.email, user?.id]);
-  const marketplaceNgos = useMemo(
-    () => {
-      const founderIds = new Set(founderNgos.map((ngo) => ngo.id));
-      return ngos.filter((ngo) => !founderIds.has(ngo.id) && !isTranquiliCarePrototypeAccount(ngo.email));
-    },
-    [founderNgos, ngos],
-  );
+  const marketplaceNgos = ngos;
 
   const renderHome = () => (
     <>
@@ -264,6 +273,8 @@ const TranquiliCareApp: React.FC = () => {
         founderNgos={founderNgos}
         onSelectNGO={handleSelectNGO}
         onSupportNGO={handleSelectNGO}
+        onCampaignInterest={handleCampaignInterest}
+        onCategorySealOpen={handleVerificationDiscovery}
       />
     </>
   );

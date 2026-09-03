@@ -61,5 +61,8 @@ export const mergeNgoProfileSources = (
     payoutStatus: canonical.payoutStatus,
     paymentStatus: canonical.paymentStatus,
     isFounder: canonical.isFounder === true,
+    onboardingStage: canonical.onboardingStage ?? legacy.onboardingStage,
+    visualProfileStatus: canonical.visualProfileStatus ?? legacy.visualProfileStatus,
+    onboardingCompletedAt: canonical.onboardingCompletedAt ?? legacy.onboardingCompletedAt,
   };
 };

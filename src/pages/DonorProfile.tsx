@@ -16,10 +16,9 @@ import {
   Mail,
   Pencil,
   Save,
-  Sparkles,
-  Target,
   Phone,
   User as UserIcon,
+  WalletCards,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { authReady, getUser, onAuthChange, signOut, updateUser, AppUser, DonorProfileDetails } from '@/lib/auth';
@@ -256,8 +255,7 @@ const DonorProfile: React.FC = () => {
 
       <main className='mx-auto max-w-6xl px-4 py-7 md:py-10'>
         {isSetup && (
-          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className='mb-7 flex items-start gap-3 rounded-lg border border-brand-blue/25 bg-brand-blue/5 p-4'>
-            <Sparkles className='mt-0.5 shrink-0 text-brand-blue' size={20} />
+          <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className='mb-7 rounded-lg border border-brand-blue/25 bg-brand-blue/5 p-4'>
             <div><p className='font-bold'>Sua conta está pronta, {firstName}.</p><p className='text-sm text-muted-foreground'>Personalize sua foto, apresentação e as causas que quer acompanhar.</p></div>
           </motion.div>
         )}
@@ -294,8 +292,9 @@ const DonorProfile: React.FC = () => {
               )}
               {details.interests.length > 0 && <div className='mt-3 flex flex-wrap justify-center gap-2 sm:justify-start'>{details.interests.map((interest) => <span key={interest} className='rounded-full bg-brand-blue/10 px-3 py-1 text-xs font-bold text-brand-blue'>{interest}</span>)}</div>}
               <div className='mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm text-muted-foreground sm:justify-start'>
-                <span className='flex items-center gap-1.5'><Heart size={16} className='text-brand-blue' /> {stats.count} apoios realizados</span>
-                <span className='flex items-center gap-1.5'><Target size={16} className='text-brand-blue' /> {stats.causeCount} causas apoiadas</span>
+                <span>{stats.count} apoios realizados</span>
+                <span aria-hidden='true'>·</span>
+                <span>{stats.causeCount} causas apoiadas</span>
               </div>
             </div>
           </div>
@@ -340,7 +339,7 @@ const DonorProfile: React.FC = () => {
                 { id: 'total', title: 'Total doado', value: formatBRL(animatedTotal), description: 'A soma das contribuições que você destinou às causas acompanhadas.', icon: Heart, color: 'bg-brand-blue' },
                 { id: 'donations', title: 'Doações', value: String(stats.count), description: 'Cada apoio registrado no seu histórico de impacto.', icon: Gift, color: 'bg-[#7657d6]' },
                 { id: 'streak', title: 'Sequência', value: `${stats.streak} ${stats.streak === 1 ? 'dia' : 'dias'}`, description: 'Dias consecutivos em que sua intenção se transformou em apoio.', icon: Flame, color: 'bg-[#ef8c2f]' },
-                { id: 'credits', title: 'Créditos', value: String(credits), description: 'Créditos disponíveis na sua carteira TranquiliCare.', icon: Sparkles, color: 'bg-brand-ink' },
+                { id: 'credits', title: 'Créditos', value: String(credits), description: 'Créditos disponíveis na sua carteira TranquiliCare.', icon: WalletCards, color: 'bg-brand-ink' },
               ]} />
             </section>
 

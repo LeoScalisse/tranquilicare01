@@ -37,6 +37,7 @@ import { formatBRL } from "@/lib/impact";
 import { getNgoCategory, getNgoCategoryTheme } from "@/data/ngoCategories";
 import {
   saveDiscoveryOrigin,
+  DONATION_DISCOVERY_PATH,
   VERIFICATION_DISCOVERY_PATH,
 } from "@/lib/discoveryNavigation";
 import DonationAmountWheel from "@/components/ui/donation-amount-wheel";
@@ -148,6 +149,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   const categoryDefinition = getNgoCategory(ngo.category);
   const categoryTheme = getNgoCategoryTheme(ngo.category);
   const sealTriggerId = `ngo-verification-seal-${ngo.id}`;
+  const donationIntegrityTriggerId = `ngo-donation-integrity-${ngo.id}`;
   const canSeeAfterDonation = canRenderAfterDonationTab({
     ownerMode,
     accountType: currentDonor?.accountType ?? null,
@@ -355,6 +357,16 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   const openVerificationDiscovery = () => {
     saveDiscoveryOrigin(window.location, sealTriggerId);
     navigate(VERIFICATION_DISCOVERY_PATH, {
+      state: {
+        hasDiscoveryOrigin: true,
+        backgroundLocation: location,
+      },
+    });
+  };
+
+  const openDonationIntegrityDiscovery = () => {
+    saveDiscoveryOrigin(window.location, donationIntegrityTriggerId);
+    navigate(DONATION_DISCOVERY_PATH, {
       state: {
         hasDiscoveryOrigin: true,
         backgroundLocation: location,
@@ -700,7 +712,13 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                     label={`Quanto você quer fazer chegar à ${ngo.name}?`}
                   />
                   <div className="mt-5 rounded-lg border border-brand-ink/8 bg-secondary/45 p-4 text-sm">
-                    <div>
+                    <button
+                      id={donationIntegrityTriggerId}
+                      type="button"
+                      onClick={openDonationIntegrityDiscovery}
+                      className="block w-full rounded-md text-left outline-none transition-colors hover:text-brand-blue focus-visible:ring-2 focus-visible:ring-brand-blue/40"
+                      aria-label="Entender como 100% da doação chega à organização"
+                    >
                       <span className="block font-semibold text-muted-foreground">
                         Sua doação para {ngo.name}
                       </span>
@@ -709,7 +727,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                           ? "A definir"
                           : formatBRL(amountCents)}
                       </strong>
-                    </div>
+                    </button>
                     <div className="mt-3">
                       <span className="block font-semibold text-muted-foreground">
                         TranquiliCare · 5%
@@ -780,48 +798,41 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
           onTransferComplete={finishDonationCelebration}
         />
       )}
-      <section className="border-b border-border pb-8">
+      <section className="rounded-[30px] border border-brand-ink/10 bg-white p-5 shadow-[0_24px_60px_-44px_rgba(15,54,79,0.55)] sm:p-7 md:p-8">
         <div className="flex flex-col gap-7 md:flex-row md:items-center">
           <div className="relative w-fit shrink-0">
             <img
               src={ngo.image}
-              className="h-36 w-36 rounded-full border-[5px] border-white object-cover shadow-[0_0_0_3px_hsl(var(--brand-blue))] md:h-40 md:w-40"
+              className="h-32 w-32 rounded-[28px] border border-brand-ink/10 bg-secondary object-cover p-1 shadow-[0_16px_34px_-24px_rgba(15,54,79,0.5)] md:h-40 md:w-40 md:rounded-[34px]"
               alt={ngo.name}
             />
-            {(categoryDefinition || ngo.isFounder) && (
-              <div className="absolute -bottom-1 -right-4 flex items-center gap-1 md:-right-12">
-                {categoryDefinition && (ngo.verified ? (
-                  <button
-                    id={sealTriggerId}
-                    type="button"
-                    onClick={openVerificationDiscovery}
-                    className="grid h-14 w-14 place-items-center rounded-full transition-transform duration-200 hover:-translate-y-0.5 hover:scale-105 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-brand-blue md:h-16 md:w-16"
-                    aria-label={`Conhecer a verificação da categoria ${categoryDefinition.label}`}
-                    title={`Selo verificado de ${categoryDefinition.label}`}
-                  >
-                    <img src={categoryDefinition.sealSrc} alt="" className="h-full w-full object-contain drop-shadow-[0_6px_12px_rgba(15,36,60,0.2)]" />
-                  </button>
-                ) : (
-                  <span className="grid h-14 w-14 place-items-center rounded-full md:h-16 md:w-16" role="img" aria-label={`Selo da categoria ${categoryDefinition.label}`} title={`Categoria ${categoryDefinition.label}`}>
-                    <img src={categoryDefinition.sealSrc} alt="" className="h-full w-full object-contain drop-shadow-[0_6px_12px_rgba(15,36,60,0.2)]" />
-                  </span>
-                ))}
-                {ngo.isFounder && (
-                  <span className="grid h-12 w-12 place-items-center rounded-full bg-background/90 p-1 shadow-[0_8px_22px_-10px_rgba(15,36,60,0.38)] backdrop-blur md:h-14 md:w-14" role="img" aria-label="Selo de ONG fundadora" title="ONG fundadora">
-                    <img src={founderSeal} alt="" className="h-full w-full object-contain" />
-                  </span>
-                )}
-              </div>
-            )}
           </div>
 
           <div className="min-w-0 flex-1">
-            <p
-              className={`text-xs font-bold uppercase tracking-[0.14em] ${categoryTheme.text}`}
-            >
-              {ngo.category}
-            </p>
-            <h1 className="mt-3 font-display text-4xl font-semibold leading-tight md:text-5xl">
+            <div className="flex flex-wrap items-center gap-2">
+              {categoryDefinition ? (
+                <button
+                  id={sealTriggerId}
+                  type="button"
+                  onClick={openVerificationDiscovery}
+                  className={`inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-bold transition-colors hover:bg-secondary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue ${categoryTheme.border} ${categoryTheme.text}`}
+                  aria-label={`Conhecer a verificação da categoria ${categoryDefinition.label}`}
+                  title={`Selo da categoria ${categoryDefinition.label}`}
+                >
+                  <img src={categoryDefinition.sealSrc} alt={`Selo da categoria ${categoryDefinition.label}`} className="h-7 w-7 object-contain" />
+                  {ngo.category}
+                </button>
+              ) : (
+                <span className={`text-xs font-bold uppercase tracking-[0.14em] ${categoryTheme.text}`}>{ngo.category}</span>
+              )}
+              {ngo.isFounder && (
+                <span className="inline-flex items-center gap-2 rounded-full border border-brand-yellow bg-brand-yellow/20 px-2.5 py-1 text-xs font-bold text-brand-ink" role="img" aria-label="Selo de ONG fundadora" title="ONG fundadora">
+                  <img src={founderSeal} alt="" className="h-7 w-7 object-contain" />
+                  ONG fundadora
+                </span>
+              )}
+            </div>
+            <h1 className="mt-4 font-display text-4xl font-semibold leading-tight md:text-5xl">
               {ngo.name}
             </h1>
             <p className="font-narrative mt-3 max-w-2xl text-sm leading-6 text-muted-foreground md:text-base">
@@ -868,12 +879,12 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
         </div>
       </section>
 
-      <div className="sticky top-16 z-20 -mx-4 mt-2 border-b border-border bg-background/95 px-4 backdrop-blur md:static md:mx-0 md:mt-0 md:px-0">
+      <div className="sticky top-16 z-20 -mx-4 mt-4 bg-background/95 px-4 py-2 backdrop-blur md:static md:mx-0 md:px-0">
         <div className="w-full">
           <div
             role="tablist"
             aria-label="Conteúdo do perfil da organização"
-            className="grid w-full"
+            className="grid w-full gap-1 rounded-[18px] border border-brand-ink/10 bg-secondary/60 p-1.5"
             style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
           >
             {tabs.map((tab, index) => (
@@ -887,13 +898,13 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                 tabIndex={activeTab === tab.id ? 0 : -1}
                 onClick={() => setActiveTab(tab.id)}
                 onKeyDown={(event) => moveTabFocus(event, index)}
-                className={`relative min-w-0 px-1 py-4 text-sm font-bold transition-colors sm:px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-blue ${activeTab === tab.id ? "text-brand-blue" : "text-muted-foreground hover:text-brand-ink"}`}
+                className={`relative min-w-0 rounded-[13px] px-1 py-3 text-sm font-bold transition-[color,background-color,box-shadow] sm:px-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-blue ${activeTab === tab.id ? "bg-white text-brand-blue shadow-sm" : "text-muted-foreground hover:text-brand-ink"}`}
               >
                 {tab.label}
                 {activeTab === tab.id && (
                   <motion.span
                     layoutId={`ngo-tab-${ngo.id}`}
-                    className="absolute inset-x-2 bottom-0 h-0.5 bg-brand-blue sm:inset-x-4"
+                    className="absolute inset-x-4 bottom-1 h-0.5 rounded-full bg-brand-blue"
                   />
                 )}
               </button>

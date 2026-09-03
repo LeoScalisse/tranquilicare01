@@ -1,4 +1,5 @@
 export type AccountType = 'donor' | 'ngo';
+export type NgoOnboardingStage = 'cause' | 'visual' | 'preparation' | 'complete';
 
 export interface NgoProfileDetails {
   publicEmail: string;
@@ -28,6 +29,11 @@ export interface NgoProfileDetails {
   paymentStatus?: 'disabled' | 'enabled';
   /** Granted only by the server after a valid founder invitation is redeemed. */
   isFounder?: boolean;
+  /** Server-persisted checkpoint used to resume the NGO onboarding after a new session. */
+  onboardingStage?: NgoOnboardingStage;
+  /** Completion state of the visual identity step, kept separate from profile readiness. */
+  visualProfileStatus?: 'not_started' | 'ready';
+  onboardingCompletedAt?: string | null;
 }
 
 export interface DonorProfileDetails {

@@ -714,84 +714,12 @@ html[data-tc-auth-handoff-vt='active']::view-transition-new(root) {
   }
 }
 
-.founder-card-aurora {
-  isolation: isolate;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 18% 8%, oklch(0.98 0.02 220 / 0.46), transparent 31%),
-    radial-gradient(circle at 88% 94%, oklch(0.9 0.17 96 / 0.24), transparent 38%),
-    linear-gradient(132deg, oklch(0.72 0.17 235), oklch(0.58 0.17 242));
-}
-
-.founder-card-aurora::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: conic-gradient(
-    from 35deg,
-    oklch(0.7 0.2 238) 0deg,
-    oklch(0.79 0.18 218) 74deg,
-    oklch(0.98 0.025 220) 126deg,
-    oklch(0.92 0.19 96) 178deg,
-    oklch(0.86 0.21 88) 224deg,
-    oklch(0.77 0.19 218) 288deg,
-    oklch(0.7 0.2 238) 360deg
-  );
-  opacity: 0.28;
-  transform: rotate(24deg) scale(1.45);
-}
-
-.founder-card-aurora::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 76% 12%, oklch(0.99 0.01 220 / 0.52), transparent 31%),
-    radial-gradient(circle at 20% 88%, oklch(0.91 0.18 96 / 0.42), transparent 34%),
-    linear-gradient(125deg, oklch(0.73 0.18 230 / 0.08), oklch(0.47 0.16 245 / 0.42));
-  pointer-events: none;
-}
-
 .founder-section-vibrant {
-  isolation: isolate;
   border: 1px solid oklch(0.76 0.15 225 / 0.42);
-  background: linear-gradient(145deg, oklch(0.98 0.025 220), oklch(0.92 0.075 218) 52%, oklch(0.98 0.045 98));
+  background: oklch(0.965 0.035 220);
   box-shadow:
     inset 0 1px 0 oklch(1 0 0 / 0.82),
     0 28px 66px -46px oklch(0.42 0.1 235 / 0.42);
-}
-
-.founder-section-vibrant::before {
-  content: '';
-  position: absolute;
-  inset: -115%;
-  z-index: -1;
-  pointer-events: none;
-  background: conic-gradient(
-    from 20deg,
-    oklch(0.76 0.18 222) 0deg,
-    oklch(0.94 0.17 96) 74deg,
-    oklch(0.98 0.025 220) 134deg,
-    oklch(0.7 0.2 238) 212deg,
-    oklch(0.91 0.18 96) 282deg,
-    oklch(0.76 0.18 222) 360deg
-  );
-  opacity: 0.56;
-
-  animation: founder-section-spin 22s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
-  will-change: transform;
-}
-
-.founder-section-vibrant::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 12% 4%, oklch(0.98 0.02 98 / 0.72), transparent 31%),
-    radial-gradient(circle at 92% 82%, oklch(0.76 0.18 222 / 0.3), transparent 38%),
-    linear-gradient(145deg, oklch(0.98 0.025 220 / 0.34), oklch(0.92 0.075 218 / 0.48) 52%, oklch(0.98 0.045 98 / 0.42));
 }
 
 .founder-section-badge {
@@ -801,19 +729,6 @@ html[data-tc-auth-handoff-vt='active']::view-transition-new(root) {
   box-shadow:
     inset 0 1px 0 oklch(1 0 0 / 0.76),
     0 10px 22px -17px oklch(0.48 0.12 92 / 0.42);
-}
-
-@keyframes founder-section-spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .founder-section-vibrant::before {
-    animation: none;
-    transform: rotate(24deg);
-  }
 }
 
 /* Custom scrollbar */

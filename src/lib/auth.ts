@@ -15,12 +15,13 @@ import type {
   Listener,
   DonorProfileDetails,
   NgoProfileDetails,
+  NgoOnboardingStage,
   ResendSignupCode,
   SignUpResult,
   VerifyEmailCode,
 } from './authTypes';
 
-export type { AccountType, AppUser, DonorProfileDetails, EditableUserProfile, NgoProfileDetails, ResendSignupCode, SignUpResult, VerifyEmailCode };
+export type { AccountType, AppUser, DonorProfileDetails, EditableUserProfile, NgoProfileDetails, NgoOnboardingStage, ResendSignupCode, SignUpResult, VerifyEmailCode };
 export { isSupabaseEnabled };
 
 /** True when Google sign-in is actually available (needs Supabase). */
@@ -78,6 +79,28 @@ export const updateUser = (patch: EditableUserProfile): Promise<AppUser | null> 
 export const defaultDestForAccount = (accountType: AccountType): string =>
   accountType === 'ngo' ? '/ngo/profile' : '/donor/profile';
 
+export const getNgoOnboardingStage = (user: AppUser | null): NgoOnboardingStage => {
+  if (!user || user.accountType !== 'ngo') return 'complete';
+  const persisted = user.ngoProfile?.onboardingStage;
+  if (persisted) return persisted;
+  if (user.ngoProfile?.profileStatus !== 'ready') return 'cause';
+  if (user.ngoProfile.visualProfileStatus === 'not_started') return 'visual';
+  return 'complete';
+};
+
+export const destinationForUser = (user: AppUser): string => {
+  if (user.accountType !== 'ngo') return defaultDestForAccount(user.accountType);
+  const stage = getNgoOnboardingStage(user);
+  if (stage === 'cause') return '/ngo/profile?setup=1';
+  if (stage === 'visual') return '/ngo/profile?setup=visual';
+  if (stage === 'preparation') return '/ngo/profile?setup=4';
+  return '/ngo/profile';
+};
+
 /** A brand-new account has no display name yet; used to flag the profile page
  *  into "complete your profile" mode right after signing up with Google. */
-export const needsProfileSetup = (user: AppUser | null): boolean => !user?.name.trim();
+export const needsProfileSetup = (user: AppUser | null): boolean => {
+  if (!user) return true;
+  if (user.accountType === 'ngo') return getNgoOnboardingStage(user) !== 'complete';
+  return !user.name.trim();
+};

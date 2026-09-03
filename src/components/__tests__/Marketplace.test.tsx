@@ -9,12 +9,15 @@ describe('Marketplace editorial sections', () => {
   afterEach(cleanup);
 
   it('shows editorial cause sections with category-colored bands', () => {
+    const openNgo = vi.fn();
     const { container } = render(
       <Marketplace
         ngos={demoNgos}
         founderNgo={TRANQUILICARE_FOUNDER_NGO}
-        onSelectNGO={vi.fn()}
+        onSelectNGO={openNgo}
         onSupportNGO={vi.fn()}
+        onCampaignInterest={vi.fn().mockResolvedValue(true)}
+        onCategorySealOpen={vi.fn()}
         embedded
       />,
     );
@@ -33,9 +36,9 @@ describe('Marketplace editorial sections', () => {
     });
 
     expect(screen.getByText('Busque uma causa...')).not.toBeNull();
-    expect(screen.getByText('Vaquinhas')).not.toBeNull();
+    expect(screen.getAllByText('Vaquinhas').length).toBeGreaterThan(0);
     expect(screen.getByText(
-      'Campanhas com um objetivo e um tempo para acontecer.',
+      'Campanhas feitas com propósito, em breve.',
     )).not.toBeNull();
     expect(screen.queryByRole('heading', { name: 'Saúde Mental' })).toBeNull();
     expect(screen.getByRole('heading', { name: 'Para ninguém enfrentar tudo sozinho' })).not.toBeNull();
@@ -45,6 +48,8 @@ describe('Marketplace editorial sections', () => {
     expect(screen.getByRole('region', { name: 'Carrossel de organizações fundadoras' })).not.toBeNull();
     expect(screen.getByText(TRANQUILICARE_FOUNDER_NGO.description)).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Conhecer TranquiliCare' })).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Conhecer TranquiliCare' }));
+    expect(openNgo).toHaveBeenCalledWith(TRANQUILICARE_FOUNDER_NGO);
     expect(screen.getByAltText('Selo de ONG fundadora')).not.toBeNull();
     expect(screen.queryByText(/Conheça a organização fundadora/i)).toBeNull();
     expect(screen.getAllByRole('button', { name: /Conhecer a causa/i }).length).toBeGreaterThan(0);
@@ -54,38 +59,57 @@ describe('Marketplace editorial sections', () => {
     expect(screen.getByRole('button', { name: 'Vaquinhas' }).className).toContain('order-2');
     expect(screen.getByRole('button', { name: 'Educação' }).className).toContain('order-3');
     const cowFilter = screen.getByRole('button', { name: 'Vaquinhas' });
-    const initialCowSection = container.querySelector('[data-cow-campaign-section]');
     const founderHeading = screen.getByText('Quem acredita nessa história desde o começo');
-    expect(initialCowSection?.compareDocumentPosition(founderHeading)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
-    expect(cowFilter.querySelector('[data-cow-head]')).not.toBeNull();
+    expect(founderHeading).not.toBeNull();
     fireEvent.click(cowFilter);
     expect(cowFilter.getAttribute('aria-pressed')).toBe('true');
-    const cowSection = container.querySelector('[data-cow-campaign-section]');
-    expect(cowSection?.className).toContain('bg-white');
-    expect(cowSection?.className).not.toContain('bg-[#FFD5C2]');
-    expect(cowSection?.querySelectorAll('[data-cow-spot]').length).toBeGreaterThanOrEqual(8);
+    expect(screen.getByRole('button', { name: 'Quero criar uma vaquinha' })).not.toBeNull();
+    expect(container.querySelector('[data-cow-campaign-section]')).toBeNull();
     fireEvent.click(cowFilter);
     expect(cowFilter.getAttribute('aria-pressed')).toBe('false');
     expect(screen.getByText('Quem acredita nessa história desde o começo')).toBeTruthy();
   });
 
   it('shows interactive seal cards for categories with no registered organizations', async () => {
+    const openSeal = vi.fn();
     render(
       <Marketplace
         ngos={[]}
         onSelectNGO={vi.fn()}
         onSupportNGO={vi.fn()}
+        onCampaignInterest={vi.fn().mockResolvedValue(true)}
+        onCategorySealOpen={openSeal}
         embedded
       />,
     );
 
     expect(screen.getByRole('heading', { name: 'Para quem alegra nossos dias' })).not.toBeNull();
     expect(screen.getByAltText('Selo de Pets')).not.toBeNull();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Conhecer o selo da categoria Pets' })[0]);
+    expect(openSeal).toHaveBeenCalledOnce();
 
     expect(screen.queryByRole('button', { name: 'Ver novidades de Pets' })).toBeNull();
     expect(screen.getByText('Ainda estamos buscando causas e histórias para Para quem alegra nossos dias.')).not.toBeNull();
     expect(screen.queryByText('Uma nova causa pode nascer aqui.')).toBeNull();
     expect(screen.queryByText('Voltaremos com novidades em breve.')).toBeNull();
+  });
+
+  it('keeps a founder organization inside its cause category as well as the founder section', () => {
+    const founder = { ...demoNgos[0], isFounder: true };
+    render(
+      <Marketplace
+        ngos={[founder]}
+        founderNgos={[founder]}
+        onSelectNGO={vi.fn()}
+        onSupportNGO={vi.fn()}
+        onCategorySealOpen={vi.fn()}
+        embedded
+      />,
+    );
+
+    expect(screen.getByRole('region', { name: 'Carrossel de organizações fundadoras' })).not.toBeNull();
+    expect(screen.getByRole('heading', { name: 'Para ninguém enfrentar tudo sozinho' })).not.toBeNull();
+    expect(screen.getAllByText(founder.name).length).toBeGreaterThan(1);
   });
   it('keeps every cause category filter available before organizations are registered', () => {
     render(

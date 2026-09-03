@@ -10,15 +10,18 @@ const ngoUser = {
   avatar: null, credits: 0, accountType: 'ngo' as const, ngoProfile: null,
 };
 const authMocks = vi.hoisted(() => ({
+  currentUser: null as any,
   updateUser: vi.fn(),
   geocodeAddress: vi.fn(),
   prepareOrganizationVisualMedia: vi.fn(),
   markOrganizationVisualSetupReady: vi.fn(),
+  advanceOwnOrganizationOnboarding: vi.fn(),
 }));
 
 vi.mock('@/lib/auth', () => ({
-  authReady: Promise.resolve(), getUser: () => ngoUser, onAuthChange: () => () => undefined,
+  authReady: Promise.resolve(), getUser: () => authMocks.currentUser, onAuthChange: () => () => undefined,
   signOut: vi.fn(), updateUser: authMocks.updateUser,
+  getNgoOnboardingStage: (user: any) => user?.ngoProfile?.onboardingStage ?? 'cause',
 }));
 vi.mock('@/components/AppBottomNav', () => ({ default: () => null }));
 vi.mock('@/lib/geocoding', () => ({ geocodeAddress: authMocks.geocodeAddress }));
@@ -27,6 +30,10 @@ vi.mock('@/lib/organizationVisualMedia', () => ({
   prepareOrganizationVisualMedia: authMocks.prepareOrganizationVisualMedia,
   markOrganizationVisualSetupReady: authMocks.markOrganizationVisualSetupReady,
   visualMediaErrorMessage: () => 'Não foi possível salvar todas as imagens. Tente novamente.',
+}));
+vi.mock('@/lib/organizationOnboarding', () => ({
+  setupValueForOnboardingStage: (stage: string) => stage === 'cause' ? '1' : stage === 'visual' ? 'visual' : stage === 'preparation' ? '4' : null,
+  advanceOwnOrganizationOnboarding: authMocks.advanceOwnOrganizationOnboarding,
 }));
 vi.mock('@/lib/stories', () => ({
   loadOwnOrganizationPublishedStories: vi.fn().mockResolvedValue([]),
@@ -53,10 +60,12 @@ const fillCause = async (user: ReturnType<typeof userEvent.setup>) => {
 describe('NGOAccountProfile', () => {
   afterEach(cleanup);
   beforeEach(() => {
+    authMocks.currentUser = ngoUser;
     authMocks.updateUser.mockReset();
     authMocks.geocodeAddress.mockReset();
     authMocks.prepareOrganizationVisualMedia.mockReset();
     authMocks.markOrganizationVisualSetupReady.mockReset();
+    authMocks.advanceOwnOrganizationOnboarding.mockReset();
     authMocks.updateUser.mockImplementation(async (patch) => ({ ...ngoUser, ...patch }));
     authMocks.prepareOrganizationVisualMedia.mockResolvedValue({
       profileLogoUrl: '/logo-original-com-fundo.jpg',
@@ -66,6 +75,26 @@ describe('NGOAccountProfile', () => {
       logoProcessingFallback: false,
     });
     authMocks.markOrganizationVisualSetupReady.mockResolvedValue(undefined);
+    authMocks.advanceOwnOrganizationOnboarding.mockImplementation(async (stage) => stage);
+  });
+
+  it('resumes the persisted visual step after returning without a setup query', async () => {
+    authMocks.currentUser = {
+      ...ngoUser,
+      ngoProfile: {
+        ...({} as any),
+        publicEmail: ngoUser.email,
+        description: 'Uma causa real.',
+        category: 'Educação',
+        goal: 'Abrir novas turmas.',
+        objectives: [], youtubeUrl: '', coverImage: '', instagram: '', phone: '', cnpj: '', address: '', city: 'São Paulo', state: 'SP',
+        profileStatus: 'ready', visualProfileStatus: 'not_started', onboardingStage: 'visual',
+      },
+    };
+    render(<MemoryRouter initialEntries={['/ngo/profile']}><NGOAccountProfile /><LocationProbe /></MemoryRouter>);
+
+    expect(await screen.findByRole('heading', { name: 'Dê um rosto à sua causa.' })).toBeTruthy();
+    await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/ngo/profile?setup=visual'));
   });
 
   it('apresenta a causa antes de pedir dados de verificação ou recebimentos', async () => {

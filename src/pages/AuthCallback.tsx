@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, ArrowLeft, Loader2 } from 'lucide-react';
-import { authReady, getUser, defaultDestForAccount, needsProfileSetup } from '@/lib/auth';
+import { authReady, getUser, destinationForUser } from '@/lib/auth';
 import logo from '@/assets/logo.png';
 
 const readOAuthError = (): string | null => {
@@ -44,8 +44,7 @@ const AuthCallback: React.FC = () => {
         navigate('/donor/auth', { replace: true });
         return;
       }
-      const dest = defaultDestForAccount(user.accountType);
-      navigate(needsProfileSetup(user) ? `${dest}?setup=1` : dest, { replace: true });
+      navigate(destinationForUser(user), { replace: true });
     });
     return () => {
       alive = false;

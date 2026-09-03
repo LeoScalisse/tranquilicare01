@@ -4,7 +4,6 @@ import {
   ChevronRight,
   LayoutGrid,
   Play,
-  Target,
   Video as VideoIcon,
 } from 'lucide-react';
 
@@ -61,9 +60,6 @@ export const NGOCauseTab: React.FC<CauseTabProps> = ({ ngo, onOpenGoal }) => {
         className='group flex w-full items-center gap-4 border-y border-border py-6 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-blue'
         aria-label='Conhecer o objetivo da causa'
       >
-        <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-full ${categoryTheme.bg} ${categoryTheme.text}`}>
-          <Target size={22} aria-hidden='true' />
-        </span>
         <span className='min-w-0 flex-1'>
           <span className='block text-xs font-bold uppercase text-muted-foreground'>Objetivo atual</span>
           <span className='mt-1 block font-display text-lg font-semibold leading-snug text-brand-ink md:text-xl'>{ngo.goal}</span>

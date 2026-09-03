@@ -62,9 +62,15 @@ export function CoverflowCarousel({
     time: number;
     moved: boolean;
   } | null>(null);
-  const suppressClickRef = React.useRef(false);
+  const suppressClickUntilRef = React.useRef(0);
   const reducedMotionRef = React.useRef(false);
   const [selected, setSelected] = React.useState(0);
+  const selectedRef = React.useRef(0);
+
+  const select = React.useCallback((index: number) => {
+    selectedRef.current = index;
+    setSelected(index);
+  }, []);
 
   const indexAt = React.useCallback(
     (position: number) => ((Math.round(position) % safeCount) + safeCount) % safeCount,
@@ -117,7 +123,7 @@ export function CoverflowCarousel({
   const settle = React.useCallback((target: number) => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     targetRef.current = target;
-    setSelected(indexAt(target));
+    select(indexAt(target));
 
     if (reducedMotionRef.current || count < 2) {
       posRef.current = target;
@@ -129,7 +135,9 @@ export function CoverflowCarousel({
     const step = () => {
       const remaining = target - posRef.current;
       if (Math.abs(remaining) < 0.0004) {
-        posRef.current = target;
+        const normalizedTarget = loop && count > 1 ? indexAt(target) : target;
+        posRef.current = normalizedTarget;
+        targetRef.current = normalizedTarget;
         paint();
         rafRef.current = null;
         return;
@@ -141,7 +149,7 @@ export function CoverflowCarousel({
     };
 
     rafRef.current = requestAnimationFrame(step);
-  }, [count, indexAt, paint]);
+  }, [count, indexAt, loop, paint, select]);
 
   const nudge = React.useCallback((by: number) => {
     settle(clamp(Math.round(targetRef.current) + by));
@@ -152,7 +160,7 @@ export function CoverflowCarousel({
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     event.currentTarget.setPointerCapture(event.pointerId);
     targetRef.current = posRef.current;
-    suppressClickRef.current = false;
+    suppressClickUntilRef.current = 0;
     dragRef.current = {
       id: event.pointerId,
       x: event.clientX,
@@ -180,7 +188,7 @@ export function CoverflowCarousel({
     drag.time = now;
 
     const nextIndex = indexAt(posRef.current);
-    if (nextIndex !== selected) setSelected(nextIndex);
+    if (nextIndex !== selectedRef.current) select(nextIndex);
     paint();
   };
 
@@ -188,7 +196,7 @@ export function CoverflowCarousel({
     const drag = dragRef.current;
     if (!drag || drag.id !== event.pointerId) return;
     dragRef.current = null;
-    suppressClickRef.current = drag.moved;
+    suppressClickUntilRef.current = drag.moved ? performance.now() + 240 : 0;
     const carried = Math.max(-2, Math.min(2, drag.velocity * 0.18));
     settle(clamp(Math.round(posRef.current + carried)));
   };
@@ -245,11 +253,12 @@ export function CoverflowCarousel({
           onPointerMove={onPointerMove}
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
+          onLostPointerCapture={endDrag}
           onClickCapture={(event) => {
-            if (!suppressClickRef.current) return;
+            if (performance.now() >= suppressClickUntilRef.current) return;
             event.preventDefault();
             event.stopPropagation();
-            suppressClickRef.current = false;
+            suppressClickUntilRef.current = 0;
           }}
           onKeyDown={(event) => {
             if (event.key === 'ArrowLeft') {

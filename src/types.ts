@@ -78,21 +78,6 @@ export interface NGO {
   impactMetrics?: ImpactMetric[];
 }
 
-/** A time-boxed fundraiser shown above the NGOs. */
-export interface FlashCampaign {
-  id: string;
-  title: string;
-  ngoId?: string;
-  ngoName: string;
-  category: string;
-  description: string;
-  image: string;
-  raised: number;
-  goal: number;
-  /** Epoch ms when the campaign closes — drives the countdown clock. */
-  endsAt: number;
-}
-
 export enum View {
   HOME = 'HOME',
   STORIES = 'STORIES',

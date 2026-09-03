@@ -1,8 +1,7 @@
 import React, { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import { NGO, FlashCampaign } from "../types";
-import { Search, HeartHandshake, ChevronRight } from "lucide-react";
-import { flashCampaigns } from "@/data/flashCampaigns";
+import { motion, AnimatePresence } from "framer-motion";
+import { NGO } from "../types";
+import { Search, ChevronRight, Check, Loader2 } from "lucide-react";
 import {
   getNgoCategorySectionTitle,
   getNgoCategoryTheme,
@@ -11,11 +10,8 @@ import {
   ngoCategories,
   type NgoCategoryDefinition,
 } from "@/data/ngoCategories";
-import { formatBRL } from "@/lib/impact";
 import { SmoothInput } from "@/components/ui/smooth-input";
 import CauseShowcaseCard from "@/components/marketplace/CauseShowcaseCard";
-import FundraiserDisclosureCard from "@/components/ui/fundraiser-disclosure-card";
-import cowHead from "@/assets/cow-head.png";
 import FounderOrganizationsSection from "@/components/FounderOrganizationsSection";
 
 const SEARCH_PLACEHOLDERS = [
@@ -41,6 +37,8 @@ interface MarketplaceProps {
   onSupportNGO: (ngo: NGO) => void;
   founderNgos?: NGO[];
   founderNgo?: NGO | null;
+  onCampaignInterest?: () => Promise<boolean>;
+  onCategorySealOpen?: () => void;
   /** Slim heading + capped sections for when embedded in the home dashboard */
   embedded?: boolean;
 }
@@ -52,129 +50,47 @@ const getSectionBackground = (key: string, category: string | null) => {
   return "bg-[#DDE6EA]";
 };
 
-const CowCampaignSection: React.FC<{
-  campaigns: FlashCampaign[];
-  onOpen: (campaign: FlashCampaign) => void;
-}> = ({ campaigns, onOpen }) => {
-  const reduceMotion = useReducedMotion();
-  const [expandedCampaignIds, setExpandedCampaignIds] = useState<Set<string>>(
-    () => new Set(),
-  );
-  const layoutTransition = reduceMotion
-    ? { duration: 0.01 }
-    : { type: "spring" as const, bounce: 0.08, duration: 0.38 };
-  const expansionKey = [...expandedCampaignIds].sort().join("|");
+const CampaignInterestSection: React.FC<{
+  onRegister?: () => Promise<boolean>;
+}> = ({ onRegister }) => {
+  const [submitting, setSubmitting] = useState(false);
+  const [registered, setRegistered] = useState(false);
 
-  const handleExpandedChange = (campaignId: string, expanded: boolean) => {
-    setExpandedCampaignIds((current) => {
-      const next = new Set(current);
-      if (expanded) next.add(campaignId);
-      else next.delete(campaignId);
-      return next;
-    });
+  const register = async () => {
+    if (!onRegister || submitting || registered) return;
+    setSubmitting(true);
+    try {
+      setRegistered(await onRegister());
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
-    <motion.section
-      layout="size"
-      layoutDependency={expansionKey}
-      transition={layoutTransition}
-      data-cow-campaign-section
-      className="relative mx-auto max-w-[1400px] overflow-hidden rounded-[28px] border border-brand-ink/10 bg-white pb-9 pt-16 shadow-[0_18px_45px_-36px_rgba(13,45,65,0.5)] md:rounded-[34px] md:pt-[4.5rem]"
-    >
-      <span
-        data-cow-spot
-        aria-hidden="true"
-        className="absolute -left-10 top-8 h-24 w-40 rotate-[-18deg] rounded-[48%_52%_42%_58%] bg-black"
-      />
-      <span
-        data-cow-spot
-        aria-hidden="true"
-        className="absolute left-[18%] top-5 h-12 w-20 rotate-[12deg] rounded-[58%_42%_64%_36%] bg-black"
-      />
-      <span
-        data-cow-spot
-        aria-hidden="true"
-        className="absolute right-[20%] top-10 h-16 w-28 rotate-[-14deg] rounded-[44%_56%_38%_62%] bg-black"
-      />
-      <span
-        data-cow-spot
-        aria-hidden="true"
-        className="absolute -right-8 top-[34%] h-24 w-36 rotate-[18deg] rounded-[62%_38%_48%_52%] bg-black"
-      />
-      <span
-        data-cow-spot
-        aria-hidden="true"
-        className="absolute left-[43%] top-[42%] h-16 w-24 rotate-[-10deg] rounded-[62%_38%_54%_46%] bg-black"
-      />
-      <span
-        data-cow-spot
-        aria-hidden="true"
-        className="absolute left-[8%] bottom-7 h-20 w-32 rotate-[8deg] rounded-[38%_62%_57%_43%] bg-black"
-      />
-      <span
-        data-cow-spot
-        aria-hidden="true"
-        className="absolute left-[61%] bottom-5 h-14 w-24 rotate-[-20deg] rounded-[56%_44%_35%_65%] bg-black"
-      />
-      <span
-        data-cow-spot
-        aria-hidden="true"
-        className="absolute -right-8 bottom-10 h-32 w-48 rotate-[16deg] rounded-[55%_45%_60%_40%] bg-black"
-      />
-
-      <img
-        data-cow-head
-        src={cowHead}
-        alt=""
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-2 z-20 w-28 -translate-x-1/2 object-contain drop-shadow-[0_8px_8px_rgba(0,0,0,0.14)] md:w-32"
-      />
-
-      <motion.div
-        layout="size"
-        layoutDependency={expansionKey}
-        transition={layoutTransition}
-        className="relative z-10 mx-auto max-w-7xl px-4"
-      >
-        <div className="mb-5 w-fit rounded-lg bg-white/90 px-3 py-2 shadow-sm backdrop-blur-sm">
-          <h3 className="font-display text-xl font-semibold text-brand-ink md:text-2xl">
-            Vaquinhas
-          </h3>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Campanhas com um objetivo e um tempo para acontecer.
-          </p>
+    <section className="mx-auto max-w-[1400px] rounded-[28px] border border-brand-ink/10 bg-white px-6 py-8 shadow-[0_18px_45px_-36px_rgba(13,45,65,0.5)] md:rounded-[34px] md:px-9 md:py-10">
+      <p className="text-xs font-black uppercase tracking-[0.14em] text-brand-blue">Vaquinhas</p>
+      <div className="mt-2 flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+        <div className="max-w-2xl">
+          <h3 className="font-display text-2xl font-semibold text-brand-ink md:text-3xl">Campanhas feitas com propósito, em breve.</h3>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">Estamos preparando uma forma segura para organizações criarem suas próprias vaquinhas. Inscreva sua ONG para participar dos primeiros acessos.</p>
         </div>
-        <motion.div
-          layout="size"
-          layoutDependency={expansionKey}
-          transition={layoutTransition}
-          className="-mx-4 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto px-4 pb-3 no-scrollbar"
+        <button
+          type="button"
+          onClick={() => void register()}
+          disabled={!onRegister || submitting || registered}
+          className="tc-button-3d inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold text-white disabled:opacity-60"
         >
-          {campaigns.map((campaign) => (
-            <motion.div
-              key={campaign.id}
-              layout="position"
-              transition={layoutTransition}
-              className="shrink-0 snap-start"
-            >
-              <FundraiserDisclosureCard
-                campaign={campaign}
-                onOpen={onOpen}
-                onExpandedChange={(expanded) =>
-                  handleExpandedChange(campaign.id, expanded)
-                }
-              />
-            </motion.div>
-          ))}
-        </motion.div>
-      </motion.div>
-    </motion.section>
+          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : registered ? <Check className="h-4 w-4" /> : null}
+          {registered ? 'Interesse registrado' : submitting ? 'Registrando...' : 'Quero criar uma vaquinha'}
+        </button>
+      </div>
+    </section>
   );
 };
 const EmptyCategorySection: React.FC<{
   category: NgoCategoryDefinition;
-}> = ({ category }) => (
+  onCategorySealOpen?: () => void;
+}> = ({ category, onCategorySealOpen }) => (
     <section
       className={`mx-auto max-w-[1400px] overflow-hidden rounded-[28px] py-9 md:rounded-[34px] ${category.theme.sectionBg}`}
       style={{ contentVisibility: "auto", containIntrinsicSize: "390px" }}
@@ -182,7 +98,9 @@ const EmptyCategorySection: React.FC<{
     >
       <div className="mx-auto max-w-7xl px-4">
         <div className="mb-5 flex items-start gap-3">
-          <img src={category.sealSrc} alt="" className="h-9 w-9 shrink-0 object-contain" />
+          <button type="button" onClick={onCategorySealOpen} className="shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-brand-blue" aria-label={`Conhecer o selo da categoria ${category.label}`}>
+            <img src={category.sealSrc} alt="" className="h-9 w-9 object-contain" />
+          </button>
           <h3
             id={`empty-category-${category.id}`}
             className="text-balance font-display text-xl font-semibold text-brand-ink md:text-2xl"
@@ -196,9 +114,9 @@ const EmptyCategorySection: React.FC<{
         >
           <span className="relative flex min-h-48 items-center overflow-hidden rounded-[20px] bg-white/60 px-6 py-7 shadow-[inset_0_1px_0_rgba(255,255,255,0.96)] sm:min-h-52 sm:px-8">
             <span className="flex max-w-2xl items-center gap-5">
-              <span className={`grid size-16 shrink-0 place-items-center rounded-[22px] bg-white/72 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_28px_-20px_rgba(5,54,83,0.34)] ${category.theme.border}`}>
+              <button type="button" onClick={onCategorySealOpen} aria-label={`Conhecer o selo da categoria ${category.label}`} className={`grid size-16 shrink-0 place-items-center rounded-[22px] bg-white/72 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.96),0_12px_28px_-20px_rgba(5,54,83,0.34)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-brand-blue ${category.theme.border}`}>
                 <img src={category.sealSrc} alt={`Selo de ${category.label}`} className="h-full w-full object-contain" />
-              </span>
+              </button>
               <span>
                 <span className={`block text-lg font-semibold leading-snug sm:text-xl ${category.theme.text}`}>
                   Ainda estamos buscando causas e histórias para {category.sectionTitle}.
@@ -215,6 +133,8 @@ const Marketplace: React.FC<MarketplaceProps> = ({
   onSelectNGO,
   founderNgos,
   founderNgo = null,
+  onCampaignInterest,
+  onCategorySealOpen,
   embedded = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -270,10 +190,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({
     );
   }, [ngos, deferredSearchTerm]);
 
-  // Airbnb-style themed rows. A category becomes a carousel only when it has
-  // enough cards to feel like a row; thin/leftover ones fold into a grid so a
-  // single-card "carousel" never looks broken with sparse data.
-  const { rows, leftovers } = useMemo(() => {
+  const rows = useMemo(() => {
     const rows: {
       key: string;
       title: string;
@@ -297,19 +214,17 @@ const Marketplace: React.FC<MarketplaceProps> = ({
         storyPreview: true,
       });
     }
-    const leftovers: NGO[] = [];
     for (const cat of categories.filter((c) => c !== "Todas")) {
       const items = ngos.filter((n) => n.category === cat);
-      if (items.length >= 2)
+      if (items.length > 0)
         rows.push({
           key: cat,
           title: getNgoCategorySectionTitle(cat),
           items,
           category: cat,
         });
-      else leftovers.push(...items);
     }
-    return { rows, leftovers };
+    return rows;
   }, [ngos, categories]);
 
   const emptyCategories = useMemo(
@@ -333,11 +248,6 @@ const Marketplace: React.FC<MarketplaceProps> = ({
     (n) => selectedCategory === "Todas" || n.category === selectedCategory,
   );
 
-  const openCampaign = (c: FlashCampaign) => {
-    const ngo = ngos.find((n) => n.id === c.ngoId);
-    if (ngo) onSelectNGO(ngo);
-  };
-
   const cardProps = (ngo: NGO) => ({
     ngo,
     saved: favorites.has(ngo.id),
@@ -348,9 +258,6 @@ const Marketplace: React.FC<MarketplaceProps> = ({
   const EmptyState = () => (
     <div className="py-16 flex flex-col items-center">
       <div className="bg-background border border-border rounded-3xl p-10 max-w-2xl text-center shadow-sm">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-brand-yellow/20">
-          <HeartHandshake className="h-8 w-8 text-brand-ink/60" />
-        </div>
         <p className="font-display text-xl font-semibold text-brand-ink mb-1">
           Não encontramos nenhuma causa por aqui.
         </p>
@@ -457,26 +364,13 @@ const Marketplace: React.FC<MarketplaceProps> = ({
               aria-label="Vaquinhas"
               title="Vaquinhas"
               aria-pressed={isCampaignFilter}
-              className={`tc-motion-control order-2 relative grid h-11 w-14 shrink-0 place-items-center overflow-hidden rounded-full border border-brand-ink/10 transition-[background-color,border-color,box-shadow,transform] ${
+              className={`tc-motion-control order-2 relative shrink-0 rounded-full border border-brand-ink/10 px-5 py-2.5 text-sm font-bold transition-[background-color,border-color,box-shadow,transform] ${
                 isCampaignFilter
                   ? "bg-white shadow-[inset_3px_3px_7px_rgba(16,42,67,0.18),inset_-3px_-3px_7px_rgba(255,255,255,0.9)]"
                   : "bg-white shadow-[4px_4px_10px_rgba(16,42,67,0.12),-4px_-4px_10px_rgba(255,255,255,0.95)] hover:-translate-y-0.5 active:translate-y-0"
               }`}
             >
-              <span
-                aria-hidden="true"
-                className="absolute -left-2 top-1 h-5 w-8 rotate-[-20deg] rounded-full bg-black"
-              />
-              <span
-                aria-hidden="true"
-                className="absolute -right-2 bottom-0 h-6 w-8 rotate-[15deg] rounded-full bg-black"
-              />
-              <img
-                data-cow-head
-                src={cowHead}
-                alt=""
-                className="relative z-10 h-9 w-10 object-contain"
-              />
+              Vaquinhas
             </button>
           </div>
         </div>
@@ -530,28 +424,20 @@ const Marketplace: React.FC<MarketplaceProps> = ({
 
       {mode === "campaigns" && (
         <div className="px-3 pb-28 pt-14 md:px-5 md:pb-12 md:pt-16">
-          <CowCampaignSection
-            campaigns={flashCampaigns}
-            onOpen={openCampaign}
-          />
+          <CampaignInterestSection onRegister={onCampaignInterest} />
         </div>
       )}
 
       {mode === "sections" && (
         <div className="space-y-6 px-3 pb-28 pt-14 md:px-5 md:pb-12 md:pt-16">
-          {flashCampaigns.length > 0 && (
-            <CowCampaignSection
-              campaigns={flashCampaigns}
-              onOpen={openCampaign}
-            />
-          )}
+          <CampaignInterestSection onRegister={onCampaignInterest} />
 
           {founderOrganizations.length > 0 && (
             <FounderOrganizationsSection ngos={founderOrganizations} onOpen={onSelectNGO} />
           )}
 
           {emptyCategories.map((category) => (
-            <EmptyCategorySection key={category.id} category={category} />
+            <EmptyCategorySection key={category.id} category={category} onCategorySealOpen={onCategorySealOpen} />
           ))}
           {rows.map((row) => {
             const categoryDefinition = row.category
@@ -566,11 +452,9 @@ const Marketplace: React.FC<MarketplaceProps> = ({
                 <div className="mx-auto max-w-7xl px-4">
                   <div className="mb-5 flex items-start gap-3">
                     {categoryDefinition && (
-                      <img
-                        src={categoryDefinition.sealSrc}
-                        alt=""
-                        className="h-9 w-9 shrink-0 object-contain"
-                      />
+                      <button type="button" onClick={onCategorySealOpen} className="shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-brand-blue" aria-label={`Conhecer o selo da categoria ${categoryDefinition.label}`}>
+                        <img src={categoryDefinition.sealSrc} alt="" className="h-9 w-9 object-contain" />
+                      </button>
                     )}
                     {row.category ? (
                       <div className="min-w-0">
@@ -616,33 +500,6 @@ const Marketplace: React.FC<MarketplaceProps> = ({
             );
           })}
 
-          {leftovers.length > 0 && (
-            <section className="mx-auto max-w-[1400px] overflow-hidden rounded-[28px] bg-[#E3D5F0] py-9 md:rounded-[34px]">
-              <div className="mx-auto max-w-7xl px-4">
-                <h3 className="mb-5 font-display text-xl font-semibold text-brand-ink md:text-2xl">
-                  Mais causas para conhecer
-                </h3>
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {leftovers.map((ngo) => (
-                    <CauseShowcaseCard
-                      key={ngo.id}
-                      {...cardProps(ngo)}
-                      className="w-full"
-                    />
-                  ))}
-                </div>
-              </div>
-            </section>
-          )}
-
-          {rows.length === 0 &&
-            leftovers.length === 0 &&
-            founderOrganizations.length === 0 &&
-            flashCampaigns.length === 0 && (
-              <div className="mx-auto max-w-7xl px-4">
-                <EmptyState />
-              </div>
-            )}
         </div>
       )}
     </div>

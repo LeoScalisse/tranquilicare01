@@ -24,6 +24,7 @@ import {
   NgoProfileDetails,
   authReady,
   getUser,
+  getNgoOnboardingStage,
   onAuthChange,
   signOut,
   updateUser,
@@ -59,6 +60,10 @@ import {
 } from '@/lib/organizationVisualMedia';
 import { loadOwnOrganizationPublishedStories } from '@/lib/stories';
 import type { NGOPost } from '@/types';
+import {
+  advanceOwnOrganizationOnboarding,
+  setupValueForOnboardingStage,
+} from '@/lib/organizationOnboarding';
 
 const EMPTY_DETAILS: NgoProfileDetails = {
   publicEmail: '',
@@ -82,6 +87,9 @@ const EMPTY_DETAILS: NgoProfileDetails = {
   verificationStatus: 'pending',
   payoutStatus: 'not_configured',
   paymentStatus: 'disabled',
+  onboardingStage: 'cause',
+  visualProfileStatus: 'not_started',
+  onboardingCompletedAt: null,
 };
 
 const hasCauseDetails = (details: NgoProfileDetails) => Boolean(
@@ -358,8 +366,7 @@ const NGOAccountProfile: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const setupValue = searchParams.get('setup');
-  const setupStage = setupValue === '4' ? 4 : setupValue === 'visual' ? 'visual' : 3;
-  const isSetup = setupValue === '1' || setupValue === 'visual' || setupValue === '4';
+  const isPreparationManagement = searchParams.get('preparation') === '1';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -374,6 +381,22 @@ const NGOAccountProfile: React.FC = () => {
   const [founderCodeError, setFounderCodeError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<ProfileFieldErrors>({});
   const [profilePosts, setProfilePosts] = useState<NGOPost[]>([]);
+  const urlRequestedStage = setupValue === 'visual'
+    ? 'visual'
+    : setupValue === '4'
+      ? 'preparation'
+      : setupValue === '1'
+        ? 'cause'
+        : null;
+  const onboardingStage = user?.ngoProfile?.onboardingStage
+    ?? urlRequestedStage
+    ?? getNgoOnboardingStage(user);
+  const setupStage = isPreparationManagement || onboardingStage === 'preparation'
+    ? 4
+    : onboardingStage === 'visual'
+      ? 'visual'
+      : 3;
+  const isOnboarding = Boolean(user && onboardingStage !== 'complete');
 
   useEffect(() => {
     let alive = true;
@@ -404,6 +427,16 @@ const NGOAccountProfile: React.FC = () => {
     });
     return () => { alive = false; };
   }, [navigate]);
+
+  useEffect(() => {
+    if (!user || user.accountType !== 'ngo' || isPreparationManagement) return;
+    const expectedSetup = setupValueForOnboardingStage(onboardingStage);
+    if (expectedSetup && setupValue !== expectedSetup) {
+      setSearchParams({ setup: expectedSetup }, { replace: true });
+    } else if (!expectedSetup && setupValue) {
+      setSearchParams({}, { replace: true });
+    }
+  }, [isPreparationManagement, onboardingStage, setSearchParams, setupValue, user]);
 
   useEffect(() => onAuthChange((next) => {
     if (!next) navigate('/ngo/auth', { replace: true });
@@ -464,6 +497,21 @@ const NGOAccountProfile: React.FC = () => {
 
   const updateDetails = (patch: Partial<NgoProfileDetails>) => {
     setDetails((current) => ({ ...current, ...patch }));
+  };
+
+  const applyOnboardingStage = (stage: NgoProfileDetails['onboardingStage']) => {
+    if (!stage) return;
+    setDetails((current) => ({
+      ...current,
+      onboardingStage: stage,
+      onboardingCompletedAt: stage === 'complete' ? new Date().toISOString() : current.onboardingCompletedAt,
+    }));
+    setUser((current) => current ? {
+      ...current,
+      ngoProfile: current.ngoProfile
+        ? { ...current.ngoProfile, onboardingStage: stage }
+        : { ...EMPTY_DETAILS, publicEmail: current.email, onboardingStage: stage },
+    } : current);
   };
 
   const clearFieldError = (field: ProfileField) => {
@@ -551,6 +599,7 @@ const NGOAccountProfile: React.FC = () => {
         payoutStatus: details.payoutStatus ?? 'not_configured',
         paymentStatus: 'disabled',
       }, avatar, founderCode);
+      applyOnboardingStage(await advanceOwnOrganizationOnboarding('visual'));
       setFounderCode('');
       setSearchParams({ setup: 'visual' }, { replace: true });
     } catch (error) {
@@ -585,6 +634,8 @@ const NGOAccountProfile: React.FC = () => {
         }
       }
       await markOrganizationVisualSetupReady(user.id, input.authorized);
+      setDetails((current) => ({ ...current, visualProfileStatus: 'ready' }));
+      applyOnboardingStage(await advanceOwnOrganizationOnboarding('preparation'));
       setSearchParams({ setup: '4' }, { replace: true });
     } catch (error) {
       toast.error(visualMediaErrorMessage(error));
@@ -603,6 +654,7 @@ const NGOAccountProfile: React.FC = () => {
       await saveOnboardingDetails({
         profileStatus: 'ready',
       });
+      applyOnboardingStage(await advanceOwnOrganizationOnboarding('complete'));
       setSearchParams({}, { replace: true });
       toast.success('Preparação salva. Você poderá configurar os recebimentos quando estiver pronto.');
     } catch (error) {
@@ -620,6 +672,7 @@ const NGOAccountProfile: React.FC = () => {
         payoutStatus: details.payoutStatus ?? 'not_configured',
         paymentStatus: 'disabled',
       });
+      applyOnboardingStage(await advanceOwnOrganizationOnboarding('complete'));
       setSearchParams({}, { replace: true });
     } catch (error) {
       toast.error(organizationProfileSaveError(error));
@@ -712,9 +765,10 @@ const NGOAccountProfile: React.FC = () => {
       setFieldErrors({});
       setProfileSaved(true);
       setEditing(false);
-      if (isSetup) {
+      if (setupValue || isPreparationManagement) {
         const nextSearchParams = new URLSearchParams(searchParams);
         nextSearchParams.delete('setup');
+        nextSearchParams.delete('preparation');
         setSearchParams(nextSearchParams, { replace: true });
       }
       toast.success('Perfil atualizado.');
@@ -751,9 +805,9 @@ const NGOAccountProfile: React.FC = () => {
         </div>
       </header>
 
-      {(isSetup || !profileSaved) ? (
+      {(isOnboarding || isPreparationManagement || !profileSaved) ? (
         <NGOOnboardingFlow
-          stage={isSetup ? setupStage : 3}
+          stage={setupStage}
           organizationName={name}
           avatar={avatar}
           details={details}
@@ -776,7 +830,7 @@ const NGOAccountProfile: React.FC = () => {
           {details.payoutStatus !== 'configured' && (
             <section className='mx-auto mt-6 flex w-full max-w-6xl items-center justify-between gap-4 rounded-xl border border-brand-blue/15 bg-brand-blue/[0.04] px-5 py-4'>
               <div><p className='font-semibold text-brand-ink'>Prepare sua organização para receber apoio</p><p className='mt-1 text-sm text-muted-foreground'>Conclua a verificação e configure os recebimentos quando estiver pronto.</p></div>
-              <button type='button' onClick={() => setSearchParams({ setup: '4' })} className='shrink-0 text-sm font-bold text-brand-blue'>Continuar preparação</button>
+              <button type='button' onClick={() => setSearchParams({ preparation: '1' })} className='shrink-0 text-sm font-bold text-brand-blue'>Continuar preparação</button>
             </section>
           )}
           <NGOProfile ngo={profile} ownerMode onEditProfile={() => setEditing(true)} />

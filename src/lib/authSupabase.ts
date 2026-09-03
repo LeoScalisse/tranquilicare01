@@ -24,6 +24,7 @@ import type {
   Listener,
   NgoProfileDetails,
   SignUpResult,
+  NgoOnboardingStage,
 } from './authTypes';
 
 /** Google is a full-page redirect, so the chosen role has to survive leaving
@@ -78,6 +79,12 @@ type DonorProfileRow = {
   interests: unknown;
 };
 
+type OrganizationOnboardingRow = {
+  visual_profile_status: string | null;
+  onboarding_stage: string | null;
+  onboarding_completed_at: string | null;
+};
+
 const listeners = new Set<Listener>();
 let cached: AppUser | null = null;
 let pendingRoleWrite: Promise<User> | null = null;
@@ -102,6 +109,8 @@ const safeCoordinate = (value: unknown): number | null => {
 const safeStringArray = (value: unknown): string[] => Array.isArray(value)
   ? value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean)
   : [];
+const isNgoOnboardingStage = (value: unknown): value is NgoOnboardingStage =>
+  value === 'cause' || value === 'visual' || value === 'preparation' || value === 'complete';
 
 const safeCredits = (value: unknown): number => {
   const n = Number(value ?? 0);
@@ -144,6 +153,13 @@ const safeNgoProfile = (value: unknown): NgoProfileDetails | null => {
       ? safeText(profile.paymentStatus ?? profile.payment_status) as 'disabled' | 'enabled'
       : 'disabled',
     isFounder: profile.isFounder === true || profile.is_founder === true,
+    onboardingStage: isNgoOnboardingStage(profile.onboardingStage ?? profile.onboarding_stage)
+      ? (profile.onboardingStage ?? profile.onboarding_stage) as NgoOnboardingStage
+      : undefined,
+    visualProfileStatus: ['not_started', 'ready'].includes(safeText(profile.visualProfileStatus ?? profile.visual_profile_status))
+      ? safeText(profile.visualProfileStatus ?? profile.visual_profile_status) as 'not_started' | 'ready'
+      : undefined,
+    onboardingCompletedAt: safeText(profile.onboardingCompletedAt ?? profile.onboarding_completed_at) || null,
   };
   return [...Object.values(details).flat()].some(Boolean) ? details : null;
 };
@@ -244,6 +260,27 @@ const loadAppUser = async (user: User): Promise<AppUser> => {
       appUser.ngoProfile = storedProfile
         ? mergeNgoProfileSources(appUser.ngoProfile, storedProfile, appUser.email)
         : appUser.ngoProfile;
+    }
+
+    const { data: organization, error: organizationError } = await client()
+      .from('organizations')
+      .select('visual_profile_status,onboarding_stage,onboarding_completed_at')
+      .eq('id', user.id)
+      .maybeSingle<OrganizationOnboardingRow>();
+
+    if (organizationError) {
+      if (isOptionalSchemaIssue(organizationError)) logOptionalSchemaIssue('organization-onboarding-load', organizationError);
+      else console.error('Could not load organization onboarding:', organizationError);
+    } else if (organization) {
+      const base = appUser.ngoProfile ?? safeNgoProfile({ public_email: appUser.email })!;
+      appUser.ngoProfile = {
+        ...base,
+        onboardingStage: isNgoOnboardingStage(organization.onboarding_stage)
+          ? organization.onboarding_stage
+          : base.onboardingStage,
+        visualProfileStatus: organization.visual_profile_status === 'ready' ? 'ready' : 'not_started',
+        onboardingCompletedAt: organization.onboarding_completed_at,
+      };
     }
   } else {
     const { data: donorProfile, error: donorError } = await client()

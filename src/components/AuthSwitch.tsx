@@ -12,6 +12,7 @@ import {
   resendSignupCode,
   canUseGoogle,
   defaultDestForAccount,
+  destinationForUser,
   AccountType,
 } from '@/lib/auth';
 import { BrandedText } from '../utils';
@@ -457,7 +458,7 @@ const AuthForm: React.FC<AuthFormProps> = ({
         toast.success('Login realizado com sucesso!');
         onProgressChange({
           confirmationEmail: null,
-          pendingDestination: user.accountType === 'ngo' ? '/ngo/profile' : '/',
+          pendingDestination: destinationForUser(user),
           journeyReady: true,
         });
         onStepComplete(0);
@@ -953,7 +954,7 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
     authReady.then(() => {
       const user = getUser();
       if (!alive || !user) return;
-      navigate(searchParams.get('redirect') || defaultDestForAccount(user.accountType), { replace: true });
+      navigate(searchParams.get('redirect') || destinationForUser(user), { replace: true });
     });
     return () => {
       alive = false;

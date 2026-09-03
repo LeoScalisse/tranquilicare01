@@ -5,17 +5,23 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, describe, expect, it } from "vitest";
 
 import NGOProfile from "@/components/NGOProfile";
 import { demoNgos } from "@/data/demoNgos";
 import { TRANQUILICARE_FOUNDER_NGO } from "@/data/tranquilicarePrototype";
 
+const LocationProbe = () => {
+  const location = useLocation();
+  return <output data-testid="location">{location.pathname}</output>;
+};
+
 const renderProfile = (ngo = demoNgos[0], ownerMode = false) =>
   render(
     <MemoryRouter>
       <NGOProfile ngo={ngo} ownerMode={ownerMode} />
+      <LocationProbe />
     </MemoryRouter>,
   );
 
@@ -75,15 +81,17 @@ describe("NGOProfile cause-led architecture", () => {
     expect(dialog.firstElementChild?.className).toContain("bg-[#FFF7D6]");
   });
 
-  it("shows the category seal without claiming approval for a pending organization", () => {
+  it("opens the category-seal story even for a pending organization", () => {
     renderProfile({ ...demoNgos[0], verified: false, status: "pending" });
 
     expect(
       screen.getByRole("img", { name: "Selo da categoria Saúde Mental" }),
     ).not.toBeNull();
     expect(
-      screen.queryByRole("button", { name: /Conhecer a verificação/i }),
-    ).toBeNull();
+      screen.getByRole("button", { name: /Conhecer a verificação/i }),
+    ).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Conhecer a verificação/i }));
+    expect(screen.getByTestId("location").textContent).toBe("/descobertas/verificacao");
   });
 
   it("uses geocoded coordinates when opening the organization map", () => {
@@ -122,6 +130,8 @@ describe("NGOProfile cause-led architecture", () => {
     ).toBe(true);
     expect(document.querySelector(".apple-edge-glow")).not.toBeNull();
     expect(dialog.querySelector(".bg-brand-ink")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Entender como 100% da doação/i }));
+    expect(screen.getByTestId("location").textContent).toBe("/descobertas/doacao-integral");
   });
 
   it("expands the Abraço Sereno cause video and closes it with Escape", async () => {
