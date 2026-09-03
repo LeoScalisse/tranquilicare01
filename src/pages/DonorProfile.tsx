@@ -24,7 +24,8 @@ import {
 import { toast } from 'sonner';
 import { authReady, getUser, onAuthChange, signOut, updateUser, AppUser, DonorProfileDetails } from '@/lib/auth';
 import { computeStreak, formatBRL, useCountUp, useDonationImpact, weekStrip } from '@/lib/impact';
-import { demoNgos } from '@/data/demoNgos';
+import { loadMarketplaceNgos } from '@/lib/ngos';
+import type { NGO } from '@/types';
 import logo from '@/assets/logo.png';
 import WalletCard from '@/components/WalletCard';
 import AppBottomNav from '@/components/AppBottomNav';
@@ -59,6 +60,7 @@ const DonorProfile: React.FC = () => {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [dirty, setDirty] = useState(false);
   const [editingProfile, setEditingProfile] = useState(isSetup);
+  const [knownNgos, setKnownNgos] = useState<NGO[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { rows } = useDonationImpact(user?.id ?? null, email || null);
@@ -84,8 +86,8 @@ const DonorProfile: React.FC = () => {
   const animatedTotal = useCountUp(stats.total);
   const supportedNgos = useMemo(() => {
     const ids = [...new Set(mine.map((row) => row.ngo_id).filter((id): id is string => Boolean(id)))];
-    return ids.map((id) => demoNgos.find((ngo) => ngo.id === id)).filter((ngo): ngo is (typeof demoNgos)[number] => Boolean(ngo));
-  }, [mine]);
+    return ids.map((id) => knownNgos.find((ngo) => ngo.id === id)).filter((ngo): ngo is NGO => Boolean(ngo));
+  }, [knownNgos, mine]);
 
   const recentDonations = useMemo(() => [...mine].sort((a, b) => b.created_at.localeCompare(a.created_at)).slice(0, 5), [mine]);
   useEffect(() => {
@@ -124,6 +126,17 @@ const DonorProfile: React.FC = () => {
     }),
     [navigate],
   );
+
+  useEffect(() => {
+    if (!user) return undefined;
+    let active = true;
+    void loadMarketplaceNgos(user).then((organizations) => {
+      if (active) setKnownNgos(organizations);
+    }).catch(() => {
+      if (active) setKnownNgos([]);
+    });
+    return () => { active = false; };
+  }, [user]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -335,8 +348,8 @@ const DonorProfile: React.FC = () => {
               <h2 className='mb-4 font-display text-2xl font-semibold'>Atividade recente</h2>
               <div className='overflow-hidden rounded-lg border-2 border-border'>
                 {recentDonations.length ? recentDonations.map((donation, index) => {
-                  const ngo = demoNgos.find((item) => item.id === donation.ngo_id);
-                  return <div key={donation.id} className={`flex items-center gap-3 p-4 ${index ? 'border-t border-border' : ''}`}><img src={ngo?.image || logo} alt='' className='h-11 w-11 rounded-lg object-cover' /><div className='min-w-0 flex-1'><p className='truncate font-bold'>{ngo?.name || 'Causa apoiada'}</p><p className='text-xs text-muted-foreground'>{new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(donation.created_at))}</p></div><span className='font-bold text-brand-blue'>{formatBRL(donation.amount)}</span></div>;
+                  const ngo = knownNgos.find((item) => item.id === donation.ngo_id);
+                  return <div key={donation.id} className={`flex items-center gap-3 p-4 ${index ? 'border-t border-border' : ''}`}><img src={ngo?.image || logo} alt='' className='h-11 w-11 rounded-lg object-cover' /><div className='min-w-0 flex-1'><div className='flex min-w-0 items-center gap-2'><p className='truncate font-bold'>{ngo?.name || 'Causa apoiada'}</p>{donation.is_test ? <span className='shrink-0 rounded-full bg-brand-yellow/30 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-amber-800'>Teste</span> : null}</div><p className='text-xs text-muted-foreground'>{new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(donation.created_at))}</p></div><span className='font-bold text-brand-blue'>{formatBRL(donation.amount)}</span></div>;
                 }) : <div className='p-7 text-center'><Heart className='mx-auto text-brand-blue/35' /><p className='mt-2 font-bold'>Seu primeiro apoio começa aqui</p><button onClick={() => navigate('/#causas')} className='mt-2 text-sm font-bold text-brand-blue'>Explorar causas</button></div>}
               </div>
             </section>
@@ -356,7 +369,7 @@ const DonorProfile: React.FC = () => {
             <section>
               <h2 className='mb-4 font-display text-xl font-semibold'>Causas apoiadas</h2>
               <div className='overflow-hidden rounded-lg border-2 border-border'>
-                {supportedNgos.length ? supportedNgos.slice(0, 4).map((ngo, index) => <button key={ngo.id} onClick={() => navigate('/#causas')} className={`flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-secondary/60 ${index ? 'border-t border-border' : ''}`}><img src={ngo.image} alt='' className='h-10 w-10 rounded-lg object-cover' /><span className='min-w-0 flex-1'><span className='block truncate text-sm font-bold'>{ngo.name}</span><span className='block text-xs text-muted-foreground'>{ngo.category}</span></span><ChevronRight size={17} className='text-muted-foreground' /></button>) : <div className='p-6 text-center text-sm text-muted-foreground'>As organizações que você apoiar aparecerão aqui.</div>}
+                {supportedNgos.length ? supportedNgos.slice(0, 4).map((ngo, index) => <button key={ngo.id} onClick={() => navigate(`/ong/${ngo.id}`)} className={`flex w-full items-center gap-3 p-3 text-left transition-colors hover:bg-secondary/60 ${index ? 'border-t border-border' : ''}`}><img src={ngo.image} alt='' className='h-10 w-10 rounded-lg object-cover' /><span className='min-w-0 flex-1'><span className='block truncate text-sm font-bold'>{ngo.name}</span><span className='block text-xs text-muted-foreground'>{ngo.category}</span></span><ChevronRight size={17} className='text-muted-foreground' /></button>) : <div className='p-6 text-center text-sm text-muted-foreground'>As organizações que você apoiar aparecerão aqui.</div>}
               </div>
             </section>
 

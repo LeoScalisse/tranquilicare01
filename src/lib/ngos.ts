@@ -8,6 +8,7 @@ import type { AppUser } from '@/lib/authTypes';
 import { supabase } from '@/lib/supabase';
 import type { NGO } from '@/types';
 import { demoDataEnabled } from '@/lib/demoData';
+import { loadPublishedStories } from '@/lib/stories';
 
 const stringArray = (value: unknown): string[] => Array.isArray(value)
   ? value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean)
@@ -33,8 +34,9 @@ const rowToNgo = (row: PublicOrganizationRecord): NGO => ({
   longitude: row.longitude,
   geocodedAddress: row.geocodedAddress || undefined,
   verified: row.verified,
-  status: 'approved',
+  status: row.status === 'active' ? 'approved' : row.status === 'rejected' ? 'rejected' : 'pending',
   isFounder: row.isFounder,
+  donationsEnabled: row.donationsEnabled,
   posts: [],
 });
 
@@ -60,9 +62,12 @@ export const ngoFromUser = (user: AppUser): NGO | null => {
     latitude: details.latitude ?? null,
     longitude: details.longitude ?? null,
     geocodedAddress: details.geocodedAddress?.trim() || undefined,
-    verified: status === 'approved',
+    verified: details.verificationStatus === 'verified',
     status,
     isFounder: details.isFounder === true,
+    donationsEnabled: details.paymentStatus === 'enabled'
+      && details.verificationStatus === 'verified'
+      && details.payoutStatus === 'configured',
     posts: [],
   };
 };
@@ -105,5 +110,27 @@ export const loadNgoById = async (ngoId: string, viewer?: AppUser | null): Promi
   const owner = viewer ? ngoFromUser(viewer) : null;
   if (owner?.id === ngoId) return owner;
   const ngos = await loadMarketplaceNgos(viewer);
-  return ngos.find((ngo) => ngo.id === ngoId) ?? null;
+  const ngo = ngos.find((candidate) => candidate.id === ngoId) ?? null;
+  if (!ngo) return null;
+  try {
+    const stories = await loadPublishedStories();
+    return {
+      ...ngo,
+      posts: stories
+        .filter((story) => story.ngoId === ngo.id)
+        .map((story) => ({
+          id: story.id,
+          url: story.url,
+          type: story.type,
+          caption: story.caption,
+          timestamp: story.timestamp,
+          ngoId: story.ngoId ?? undefined,
+          ngoName: story.ngoName,
+          ngoImage: story.ngoImage,
+        })),
+    };
+  } catch (error) {
+    console.error('Could not load organization stories:', error);
+    return ngo;
+  }
 };

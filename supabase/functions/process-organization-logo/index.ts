@@ -76,7 +76,7 @@ Deno.serve(async (request) => {
     return visualMediaJsonResponse({ error: 'Você não pode alterar esta organização.' }, 403, headers);
   }
 
-  const providerName = Deno.env.get('LOGO_BACKGROUND_REMOVAL_PROVIDER') ?? 'photoroom';
+  const providerName = Deno.env.get('LOGO_BACKGROUND_REMOVAL_PROVIDER') ?? 'removebg';
   try {
     const provider = createBackgroundRemovalProvider(providerName, {
       photoRoomApiKey: Deno.env.get('PHOTOROOM_API_KEY'),

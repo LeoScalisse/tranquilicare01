@@ -32,6 +32,7 @@ export interface DonorRelationship {
   position: number;
   lastContactAt: string | null;
   nextContactAt: string | null;
+  isTest?: boolean;
   messages: DonorRelationshipMessage[];
 }
 

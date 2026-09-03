@@ -76,12 +76,12 @@ const initials = (name: string) =>
 const RelationshipCard = ({
   relationship,
   onOpen,
-  onDragStart,
+  onNativeDragStart,
   readOnly = false,
 }: {
   relationship: DonorRelationship;
   onOpen: () => void;
-  onDragStart: (event: DragEvent<HTMLButtonElement>) => void;
+  onNativeDragStart: (event: DragEvent<HTMLButtonElement>) => void;
   readOnly?: boolean;
 }) => (
   <motion.button
@@ -89,7 +89,7 @@ const RelationshipCard = ({
     type="button"
     draggable={!readOnly}
     disabled={readOnly}
-    onDragStart={onDragStart}
+    onDragStartCapture={onNativeDragStart}
     onClick={onOpen}
     aria-label={`Abrir relacionamento com ${relationship.donorName}`}
     className={cn(
@@ -109,9 +109,16 @@ const RelationshipCard = ({
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-bold text-slate-900">
-          {relationship.donorName}
-        </p>
+        <div className="flex min-w-0 items-center gap-2">
+          <p className="truncate text-sm font-bold text-slate-900">
+            {relationship.donorName}
+          </p>
+          {relationship.isTest ? (
+            <span className="shrink-0 rounded-full bg-brand-yellow/25 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] text-amber-800">
+              Teste
+            </span>
+          ) : null}
+        </div>
         <p className="mt-0.5 text-xs text-slate-500">
           {format(new Date(relationship.donatedAt), "d 'de' MMMM", {
             locale: ptBR,
@@ -238,7 +245,7 @@ export const AfterDonationWorkspace = ({
         ? undefined
         : await sendDonorRelationshipMessage(input);
     const message: DonorRelationshipMessage =
-      result ?? {
+      result && typeof result === 'object' ? result : {
         id: `optimistic-${Date.now()}`,
         relationshipId: selectedRelationship.id,
         direction: "organization_to_donor",
@@ -426,7 +433,7 @@ export const AfterDonationWorkspace = ({
                           onOpen={() =>
                             setSelectedRelationshipId(relationship.id)
                           }
-                          onDragStart={(event) => {
+                          onNativeDragStart={(event) => {
                             if (demoMode) return;
                             event.dataTransfer.effectAllowed = "move";
                             event.dataTransfer.setData(

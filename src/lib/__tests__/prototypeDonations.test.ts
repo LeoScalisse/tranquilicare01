@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   confirmPrototypePixDonation,
+  startSimulatedPixDonation,
   startPrototypePixDonation,
 } from "@/lib/donations";
 
@@ -22,6 +23,21 @@ describe("doação PIX de demonstração", () => {
       donor_email: "doador@exemplo.com",
       ngo_id: "founder-tranquilicare",
       payment_action_id: payment.actionId,
+    });
+  });
+
+  it("prepara uma simulação persistível sem criar uma cobrança", () => {
+    const payment = startSimulatedPixDonation({
+      organizationId: "organization-id",
+      amountCents: 7500,
+    });
+
+    expect(payment.actionId).toMatch(/^simulated-pix-/);
+    expect(payment.qrCodeText).toContain("SIMULACAO-PIX");
+    expect(payment.isSimulation).toBe(true);
+    expect(payment.simulatedDonation).toMatchObject({
+      organizationId: "organization-id",
+      amountCents: 7500,
     });
   });
 });

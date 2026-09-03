@@ -57,6 +57,8 @@ import {
   prepareOrganizationVisualMedia,
   visualMediaErrorMessage,
 } from '@/lib/organizationVisualMedia';
+import { loadOwnOrganizationPublishedStories } from '@/lib/stories';
+import type { NGOPost } from '@/types';
 
 const EMPTY_DETAILS: NgoProfileDetails = {
   publicEmail: '',
@@ -85,7 +87,6 @@ const EMPTY_DETAILS: NgoProfileDetails = {
 const hasCauseDetails = (details: NgoProfileDetails) => Boolean(
   details.description.trim()
   && details.category.trim()
-  && details.objectives[0]?.trim()
   && details.goal.trim()
   && isValidLocation(details.city, details.state),
 );
@@ -369,7 +370,10 @@ const NGOAccountProfile: React.FC = () => {
   const [name, setName] = useState('');
   const [avatar, setAvatar] = useState<string | null>(null);
   const [details, setDetails] = useState<NgoProfileDetails>(EMPTY_DETAILS);
+  const [founderCode, setFounderCode] = useState('');
+  const [founderCodeError, setFounderCodeError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<ProfileFieldErrors>({});
+  const [profilePosts, setProfilePosts] = useState<NGOPost[]>([]);
 
   useEffect(() => {
     let alive = true;
@@ -405,6 +409,31 @@ const NGOAccountProfile: React.FC = () => {
     if (!next) navigate('/ngo/auth', { replace: true });
   }), [navigate]);
 
+  useEffect(() => {
+    if (!user || user.accountType !== 'ngo') return undefined;
+    let active = true;
+    void loadOwnOrganizationPublishedStories(user.id, {
+      name: user.name.trim() || 'Organização',
+      avatarUrl: user.avatar || logo,
+      isFounder: user.ngoProfile?.isFounder === true,
+    }).then((stories) => {
+      if (!active) return;
+      setProfilePosts(stories.map((story) => ({
+        id: story.id,
+        url: story.url,
+        type: story.type,
+        timestamp: story.timestamp,
+        caption: story.caption,
+        ngoId: story.ngoId ?? undefined,
+        ngoName: story.ngoName,
+        ngoImage: story.ngoImage,
+      })));
+    }).catch((error) => {
+      if (import.meta.env.DEV) console.info('Could not load own organization stories:', error);
+    });
+    return () => { active = false; };
+  }, [user]);
+
   const profile = useMemo(() => ({
     id: user?.id ?? 'new-organization',
     name: name.trim(),
@@ -426,8 +455,12 @@ const NGOAccountProfile: React.FC = () => {
     status: details.status ?? 'pending',
     posts: isTranquiliCarePrototypeAccount(user?.email)
       ? TRANQUILICARE_PROTOTYPE_STORIES
-      : [],
-  }), [avatar, details, name, user]);
+      : profilePosts,
+    isFounder: details.isFounder === true,
+    donationsEnabled: details.paymentStatus === 'enabled'
+      && details.verificationStatus === 'verified'
+      && details.payoutStatus === 'configured',
+  }), [avatar, details, name, profilePosts, user]);
 
   const updateDetails = (patch: Partial<NgoProfileDetails>) => {
     setDetails((current) => ({ ...current, ...patch }));
@@ -480,27 +513,34 @@ const NGOAccountProfile: React.FC = () => {
     };
   };
 
-  const saveOnboardingDetails = async (patch: Partial<NgoProfileDetails> = {}, avatarOverride: string | null = avatar) => {
+  const saveOnboardingDetails = async (
+    patch: Partial<NgoProfileDetails> = {},
+    avatarOverride: string | null = avatar,
+    founderCodeOverride = '',
+  ) => {
     const normalized = normalizeOnboardingDetails(patch);
     const updated = await updateUser({
       name: name.trim(),
       avatar: avatarOverride,
       ngoProfile: normalized,
+      founderCode: founderCodeOverride,
     });
     if (!updated) throw new Error('organization-profile-not-persisted');
     setUser(updated);
     setAvatar(updated.avatar);
-    setDetails({ ...normalized, cnpj: formatCnpj(normalized.cnpj), phone: formatPhone(normalized.phone) });
+    const persisted = { ...normalized, ...(updated.ngoProfile ?? {}) };
+    setDetails({ ...persisted, cnpj: formatCnpj(persisted.cnpj), phone: formatPhone(persisted.phone) });
     setProfileSaved(hasCauseDetails(normalized));
   };
 
   const continueCauseSetup = async () => {
+    setFounderCodeError('');
     if (!NGO_CATEGORY_ORDER.includes(details.category)) {
       toast.error('Escolha a principal causa da organização.');
       return;
     }
-    if (!details.description.trim() || !details.objectives[0]?.trim() || !details.goal.trim() || !isValidLocation(details.city, details.state)) {
-      toast.error('Preencha a apresentação da causa, a atuação, o foco atual e a localização.');
+    if (!details.description.trim() || !details.goal.trim() || !isValidLocation(details.city, details.state)) {
+      toast.error('Preencha a apresentação da causa, o foco atual e a localização.');
       return;
     }
     setSaving(true);
@@ -510,10 +550,15 @@ const NGOAccountProfile: React.FC = () => {
         verificationStatus: details.verificationStatus ?? 'pending',
         payoutStatus: details.payoutStatus ?? 'not_configured',
         paymentStatus: 'disabled',
-      });
+      }, avatar, founderCode);
+      setFounderCode('');
       setSearchParams({ setup: 'visual' }, { replace: true });
     } catch (error) {
-      toast.error(organizationProfileSaveError(error));
+      const message = organizationProfileSaveError(error, {
+        founderCodeProvided: Boolean(founderCode.trim()),
+      });
+      if (founderCode.trim()) setFounderCodeError(message);
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -712,9 +757,15 @@ const NGOAccountProfile: React.FC = () => {
           organizationName={name}
           avatar={avatar}
           details={details}
+          founderCode={founderCode}
+          founderCodeError={founderCodeError}
           categories={CATEGORY_ITEMS}
           saving={saving || uploadingAvatar}
           onDetailsChange={updateDetails}
+          onFounderCodeChange={(value) => {
+            setFounderCode(value);
+            setFounderCodeError('');
+          }}
           onCauseSubmit={() => void continueCauseSetup()}
           onVisualSubmit={(input) => void continueVisualSetup(input)}
           onPreparationSubmit={() => void finishPreparation()}

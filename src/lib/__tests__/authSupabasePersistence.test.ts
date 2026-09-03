@@ -170,6 +170,14 @@ describe('Supabase organization profile persistence', () => {
     });
   });
 
+  it('normalizes founder codes before sending them to the protected RPC', async () => {
+    await updateUser({ name: 'Instituto Horizonte', ngoProfile, founderCode: ' tc_codigo exemplo ' });
+
+    expect(supabaseMocks.rpc).toHaveBeenCalledWith('save_own_ngo_profile', expect.objectContaining({
+      founder_invitation_code: 'TC-CODIGOEXEMPLO',
+    }));
+  });
+
   it('rejects the save when the canonical organization was not created', async () => {
     supabaseMocks.saveNgoProfileResult.mockReturnValue({
       data: null,

@@ -200,6 +200,71 @@ export const loadPublishedStories = async (): Promise<PublishedStory[]> => {
   }));
 };
 
+/** Loads the authenticated organization's own published media, including while
+ * its public profile is still awaiting verification. */
+export const loadOwnOrganizationPublishedStories = async (
+  organizationId: string,
+  organization: { name: string; avatarUrl: string; isFounder: boolean },
+): Promise<PublishedStory[]> => {
+  if (!supabase) return [];
+  const identity = await requireIdentity();
+  const ownedOrganizationId = await resolvePublishingOrganization(identity.id);
+  if (ownedOrganizationId !== organizationId) throw new Error('organization-access-denied');
+
+  const { data: storyRows, error: storyError } = await supabase
+    .from('stories')
+    .select('id, body, published_at')
+    .eq('organization_id', organizationId)
+    .eq('status', 'published')
+    .order('published_at', { ascending: false })
+    .limit(60);
+  if (storyError) throw storyError;
+  if (!storyRows?.length) return [];
+
+  const storyIds = storyRows.map((story) => story.id as string);
+  const { data: mediaLinks, error: linkError } = await supabase
+    .from('story_media')
+    .select('story_id, media_asset_id, sort_order')
+    .in('story_id', storyIds)
+    .order('sort_order', { ascending: true });
+  if (linkError) throw linkError;
+
+  const mediaIds = [...new Set((mediaLinks ?? []).map((link) => link.media_asset_id as string))];
+  const mediaAssets = mediaIds.length
+    ? await supabase
+        .from('media_assets')
+        .select('id, bucket, storage_key, external_url, media_type')
+        .in('id', mediaIds)
+    : { data: [], error: null };
+  if (mediaAssets.error) throw mediaAssets.error;
+
+  const assetById = new Map((mediaAssets.data ?? []).map((asset) => [asset.id as string, asset]));
+  const firstAssetByStory = new Map<string, (typeof mediaAssets.data)[number]>();
+  for (const link of mediaLinks ?? []) {
+    const storyId = link.story_id as string;
+    if (firstAssetByStory.has(storyId)) continue;
+    const asset = assetById.get(link.media_asset_id as string);
+    if (asset) firstAssetByStory.set(storyId, asset);
+  }
+
+  return Promise.all(storyRows.map(async (story): Promise<PublishedStory> => {
+    const asset = firstAssetByStory.get(story.id as string);
+    const url = asset ? await signedMediaUrl(asset) : organization.avatarUrl;
+    return {
+      id: story.id as string,
+      url: url || '/images/tranquilicare-heart-transparent.png',
+      type: asset?.media_type === 'video' ? 'video' : 'image',
+      caption: String(story.body ?? '').trim(),
+      timestamp: new Date(story.published_at as string).getTime(),
+      ngoId: organizationId,
+      ngoName: organization.name,
+      ngoImage: organization.avatarUrl || '/images/tranquilicare-heart-transparent.png',
+      isFounder: organization.isFounder,
+      persisted: true,
+    };
+  }));
+};
+
 export const loadStoryViewerState = async (): Promise<StoryViewerState> => {
   if (!supabase) return emptyViewerState();
   const { data: identity } = await supabase.auth.getUser();
@@ -289,11 +354,16 @@ export const publishStory = async (body: string, imageFile: File | null) => {
       if (linkError) throw linkError;
     }
 
-    const { error: publishError } = await supabase
+    const { data: publishedStory, error: publishError } = await supabase
       .from('stories')
       .update({ status: 'published', published_at: new Date().toISOString() })
-      .eq('id', storyId);
+      .eq('id', storyId)
+      .select('id, status, published_at')
+      .single();
     if (publishError) throw publishError;
+    if (!publishedStory || publishedStory.id !== storyId || publishedStory.status !== 'published' || !publishedStory.published_at) {
+      throw new Error('story-not-persisted');
+    }
     return storyId;
   } catch (error) {
     await supabase.from('story_media').delete().eq('story_id', storyId);
@@ -333,6 +403,7 @@ export const storyErrorMessage = (error: unknown) => {
   if (code === 'story-empty') return 'Escreva algo antes de publicar.';
   if (code === 'story-too-long') return 'A história pode ter até 5.000 caracteres.';
   if (code === 'publisher-not-ready') return 'Este acesso ainda não está pronto para publicar histórias.';
+  if (code === 'story-not-persisted') return 'A publicação não foi confirmada pelo banco. Tente novamente.';
   if (code === 'auth-required') return 'Entre novamente para continuar.';
   if (code === 'backend-unavailable') return 'Conecte o projeto ao Supabase para publicar histórias reais.';
   return 'Não foi possível publicar a história. Tente novamente.';

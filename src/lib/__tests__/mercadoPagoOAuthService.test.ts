@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { PaymentError } from "../../../supabase/functions/_shared/payments/domain/payment.errors.ts";
 import {
   MercadoPagoOAuthService,
   type MercadoPagoOAuthRepository,
@@ -62,7 +61,7 @@ describe("MercadoPagoOAuthService", () => {
       userId: "22222222-2222-4222-8222-222222222222",
       requestedLiveMode: true,
       redirectUri: "https://example.test/oauth/callback",
-    })).rejects.toMatchObject<Partial<PaymentError>>({
+    })).rejects.toMatchObject({
       code: "mercado-pago-oauth-forbidden",
       httpStatus: 403,
     });

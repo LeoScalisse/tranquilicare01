@@ -20,6 +20,8 @@ export interface PublicOrganizationRecord {
   geocodedAddress: string;
   verified: boolean;
   isFounder: boolean;
+  status: 'pending' | 'active' | 'suspended' | 'rejected' | 'archived';
+  donationsEnabled: boolean;
 }
 
 export interface OrganizationRepository {

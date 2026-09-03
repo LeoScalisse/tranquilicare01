@@ -55,8 +55,8 @@ describe('ngoFromUser', () => {
     expect(ngo?.coverImage).toBe('https://example.com/cover.webp');
   });
 
-  it('marks only the approved database status as verified', () => {
-    expect(ngoFromUser(organization('approved'))?.verified).toBe(true);
+  it('does not confuse publication status with verification', () => {
+    expect(ngoFromUser(organization('approved'))?.verified).toBe(false);
   });
 
   it('returns only persisted organizations after a successful marketplace query', async () => {
@@ -82,6 +82,8 @@ describe('ngoFromUser', () => {
       geocodedAddress: 'Rua das Flores, 120, São Paulo, SP, Brasil',
       verified: true,
       isFounder: false,
+      status: 'active',
+      donationsEnabled: true,
     };
     repositoryMocks.listPublic.mockResolvedValue([persisted]);
 
@@ -90,6 +92,7 @@ describe('ngoFromUser', () => {
     expect(result.map((ngo) => ngo.id)).toEqual(['org-persisted']);
     expect(result[0].coverImage).toBe('https://example.com/marketplace-cover.webp');
     expect(result[0].marketplaceLogo).toBe('/horizonte-sem-fundo.png');
+    expect(result[0].donationsEnabled).toBe(true);
   });
 
   it('keeps a successful empty marketplace empty', async () => {

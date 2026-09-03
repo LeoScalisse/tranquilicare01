@@ -7,12 +7,18 @@ const {
   waitForConfirmation,
   startPrototypePix,
   confirmPrototypePix,
+  getSimulationStatus,
+  startSimulatedPix,
+  confirmSimulatedPix,
   writeText,
 } = vi.hoisted(() => ({
   startPix: vi.fn(),
   waitForConfirmation: vi.fn(),
   startPrototypePix: vi.fn(),
   confirmPrototypePix: vi.fn(),
+  getSimulationStatus: vi.fn(),
+  startSimulatedPix: vi.fn(),
+  confirmSimulatedPix: vi.fn(),
   writeText: vi.fn(),
 }));
 
@@ -21,6 +27,9 @@ vi.mock("@/lib/donations", () => ({
   waitForDonationConfirmation: waitForConfirmation,
   startPrototypePixDonation: startPrototypePix,
   confirmPrototypePixDonation: confirmPrototypePix,
+  getDonationSimulationStatus: getSimulationStatus,
+  startSimulatedPixDonation: startSimulatedPix,
+  confirmSimulatedPixDonation: confirmSimulatedPix,
 }));
 
 vi.mock("@/components/ui/payment-success-check", () => ({
@@ -49,6 +58,7 @@ describe("NGOProfile PIX checkout", () => {
   beforeEach(() => {
     localStorage.clear();
     writeText.mockResolvedValue(undefined);
+    getSimulationStatus.mockResolvedValue(false);
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
       value: { writeText },
@@ -78,6 +88,27 @@ describe("NGOProfile PIX checkout", () => {
       ngo_id: TRANQUILICARE_FOUNDER_NGO.id,
       payment_action_id: "prototype-pix-test",
     });
+    startSimulatedPix.mockReturnValue({
+      actionId: "simulated-pix-test",
+      confirmationToken: "simulated-confirmation-token",
+      qrCodeText: "SIMULACAO-PIX:simulated-pix-test",
+      isSimulation: true,
+      simulatedDonation: {
+        organizationId: demoNgos[0].id,
+        amountCents: 5000,
+        createdAt: "2026-09-02T12:00:00.000Z",
+      },
+    });
+    confirmSimulatedPix.mockResolvedValue({
+      id: "simulated-donation-test",
+      amount: 5000,
+      donor_id: "donor-test",
+      donor_email: "doador@exemplo.com",
+      created_at: "2026-09-02T12:00:00.000Z",
+      ngo_id: demoNgos[0].id,
+      payment_action_id: "simulation:test",
+      is_test: true,
+    });
     waitForConfirmation.mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -92,6 +123,9 @@ describe("NGOProfile PIX checkout", () => {
     waitForConfirmation.mockReset();
     startPrototypePix.mockReset();
     confirmPrototypePix.mockReset();
+    getSimulationStatus.mockReset();
+    startSimulatedPix.mockReset();
+    confirmSimulatedPix.mockReset();
     writeText.mockReset();
   });
 
@@ -226,5 +260,33 @@ describe("NGOProfile PIX checkout", () => {
       amountCents: 5000,
       payerEmail: undefined,
     });
+  });
+
+  it("libera uma ONG comum no modo de teste e persiste a simulação", async () => {
+    getSimulationStatus.mockResolvedValue(true);
+    render(
+      <MemoryRouter>
+        <NGOProfile ngo={{ ...demoNgos[0], verified: false, donationsEnabled: false }} />
+      </MemoryRouter>,
+    );
+
+    const supportButton = await screen.findByRole("button", { name: "Apoiar esta causa" });
+    fireEvent.click(supportButton);
+    fireEvent.click(screen.getByRole("button", { name: /Editar valor manualmente/i }));
+    fireEvent.change(screen.getByLabelText(/em reais$/i), { target: { value: "50" } });
+    fireEvent.blur(screen.getByLabelText(/em reais$/i));
+    fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
+
+    expect(await screen.findByText("PIX de demonstração")).not.toBeNull();
+    expect(startPix).not.toHaveBeenCalled();
+    expect(startSimulatedPix).toHaveBeenCalledWith({
+      organizationId: demoNgos[0].id,
+      amountCents: 5000,
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver PIX" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Pagamento concluído" }));
+    expect(confirmSimulatedPix).toHaveBeenCalled();
+    expect(await screen.findByRole("heading", { name: "Pagamento identificado" })).not.toBeNull();
   });
 });

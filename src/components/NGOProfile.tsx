@@ -20,9 +20,13 @@ import {
 import { toast } from "sonner";
 import { NGO, NGOPost } from "../types";
 import {
+  confirmSimulatedPixDonation,
   confirmPrototypePixDonation,
+  getDonationSimulationStatus,
   type PixPaymentAction,
   type PrototypePixPaymentAction,
+  type SimulatedPixPaymentAction,
+  startSimulatedPixDonation,
   startPrototypePixDonation,
   startMercadoPagoPixDonation,
   waitForDonationConfirmation,
@@ -78,9 +82,14 @@ type DonationViewTransitionDocument = Document & {
 };
 
 const isPrototypePixPayment = (
-  payment: PixPaymentAction | PrototypePixPaymentAction,
+  payment: PixPaymentAction | PrototypePixPaymentAction | SimulatedPixPaymentAction,
 ): payment is PrototypePixPaymentAction =>
   "isPrototype" in payment && payment.isPrototype === true;
+
+const isSimulatedPixPayment = (
+  payment: PixPaymentAction | PrototypePixPaymentAction | SimulatedPixPaymentAction,
+): payment is SimulatedPixPaymentAction =>
+  "isSimulation" in payment && payment.isSimulation === true;
 
 interface NGOProfileProps {
   ngo: NGO;
@@ -102,6 +111,10 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
     ownerMode && isTranquiliCarePrototypeAccount(currentDonor?.email);
   const isPublicPrototypeDemo =
     isPrototypeDonationTarget && !isTranquiliCarePrototype;
+  const [donationSimulationEnabled, setDonationSimulationEnabled] = useState(false);
+  const donationsEnabled = donationSimulationEnabled
+    || isPrototypeDonationTarget
+    || (ngo.donationsEnabled ?? ngo.verified);
   const [activeTab, setActiveTab] = useState<ProfileTab>(
     isPublicPrototypeDemo ? "after_donation" : "causa",
   );
@@ -113,7 +126,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [zoomedPost, setZoomedPost] = useState<NGOPost | null>(null);
   const [pixPayment, setPixPayment] = useState<
-    PixPaymentAction | PrototypePixPaymentAction | null
+    PixPaymentAction | PrototypePixPaymentAction | SimulatedPixPaymentAction | null
   >(null);
   const [donationCheckoutStage, setDonationCheckoutStage] =
     useState<DonationCheckoutStage>("amount");
@@ -124,6 +137,14 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   const donationSuccessAudioRef = useRef<HTMLAudioElement>(null);
   const checkoutStageAudioRef = useRef<HTMLAudioElement>(null);
   const previousGlowStageRef = useRef(0);
+
+  useEffect(() => {
+    let active = true;
+    void getDonationSimulationStatus().then((enabled) => {
+      if (active) setDonationSimulationEnabled(enabled);
+    });
+    return () => { active = false; };
+  }, []);
   const categoryDefinition = getNgoCategory(ngo.category);
   const categoryTheme = getNgoCategoryTheme(ngo.category);
   const sealTriggerId = `ngo-verification-seal-${ngo.id}`;
@@ -209,6 +230,10 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   }, [donationGlowStage, showDonationModal]);
 
   const openDonation = () => {
+    if (!donationsEnabled) {
+      toast('Esta organização ainda está preparando os recebimentos.');
+      return;
+    }
     setPixPayment(null);
     setIsPixExpanded(false);
     setDonationCheckoutStage("amount");
@@ -240,11 +265,16 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
             amountCents,
             payerEmail: normalizedPayerEmail || undefined,
           })
-        : await startMercadoPagoPixDonation({
-            organizationId: ngo.id,
-            amountCents,
-            payerEmail: normalizedPayerEmail || undefined,
-          });
+        : donationSimulationEnabled
+          ? startSimulatedPixDonation({
+              organizationId: ngo.id,
+              amountCents,
+            })
+          : await startMercadoPagoPixDonation({
+              organizationId: ngo.id,
+              amountCents,
+              payerEmail: normalizedPayerEmail || undefined,
+            });
       setPixPayment(payment);
       setIsPixExpanded(false);
       setDonationCheckoutStage("pix");
@@ -271,19 +301,22 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
       const donorEmail = normalizedPayerEmail || getUser()?.email || null;
       const donation = isPrototypePixPayment(pixPayment)
         ? confirmPrototypePixDonation(pixPayment, donorEmail)
-        : await waitForDonationConfirmation(
-            pixPayment.actionId,
-            donorEmail,
-            pixPayment.confirmationToken ?? null,
-          );
+        : isSimulatedPixPayment(pixPayment)
+          ? await confirmSimulatedPixDonation(pixPayment, donorEmail)
+          : await waitForDonationConfirmation(
+              pixPayment.actionId,
+              donorEmail,
+              pixPayment.confirmationToken ?? null,
+            );
       setConfirmedDonation(donation);
       setDonationCheckoutStage("confirmed");
     } catch (error) {
       console.error("Could not confirm PIX donation:", error);
       setDonationCheckoutStage("pix");
-      toast(
-        "Ainda não identificamos o pagamento. Aguarde alguns instantes e tente novamente.",
-      );
+      const message = error instanceof Error ? error.message : "";
+      toast(message.includes("donor-account-required")
+        ? "Entre com uma conta de doador para registrar esta simulação."
+        : "Ainda não identificamos o pagamento. Aguarde alguns instantes e tente novamente.");
     }
   };
 
@@ -593,11 +626,11 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                       </p>
                     </>
                   )}
-                  {isPrototypePixPayment(pixPayment) && (
+                  {(isPrototypePixPayment(pixPayment) || isSimulatedPixPayment(pixPayment)) && (
                     <div className="mt-4 rounded-xl border border-brand-yellow/50 bg-brand-yellow/10 px-4 py-3 text-sm text-brand-ink">
                       <strong className="block font-bold">PIX de demonstração</strong>
                       <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                        Nenhuma cobrança será realizada.
+                        Nenhuma cobrança será realizada. Este apoio será identificado como teste.
                       </span>
                     </div>
                   )}
@@ -806,10 +839,11 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
               ) : (
                 <button
                   onClick={openDonation}
-                  className="tc-button-3d inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white sm:w-auto"
+                  disabled={!donationsEnabled}
+                  className="tc-button-3d inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
                 >
                   <Heart size={17} className="fill-current" />
-                  Apoiar esta causa
+                  {donationsEnabled ? 'Apoiar esta causa' : 'Recebimentos em preparação'}
                 </button>
               )}
               {hasPublicContact && (

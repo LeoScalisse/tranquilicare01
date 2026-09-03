@@ -7,7 +7,7 @@ const ADDITIONAL_DATA = new TextEncoder().encode(
 
 const fail = (code: string, cause?: unknown): Error => {
   const error = new Error(code);
-  if (cause !== undefined) error.cause = cause;
+  if (cause !== undefined) (error as Error & { cause?: unknown }).cause = cause;
   return error;
 };
 

@@ -14,6 +14,7 @@ import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { isCompleteEmailCode, normalizeEmailCode } from './emailVerification';
 import { normalizeCnpj, normalizePhone } from './organizationProfile';
+import { normalizeFounderCode } from './founderCode';
 import { mergeNgoProfileSources } from './ngoProfileHydration';
 import type {
   AccountType,
@@ -532,7 +533,7 @@ export const updateUser = async (patch: EditableUserProfile): Promise<AppUser | 
       profile_latitude: normalizedProfile.latitude,
       profile_longitude: normalizedProfile.longitude,
       profile_geocoded_address: normalizedProfile.geocodedAddress,
-      founder_invitation_code: patch.founderCode?.trim().toUpperCase() ?? '',
+      founder_invitation_code: normalizeFounderCode(patch.founderCode ?? ''),
     });
 
     if (saveError) throw saveError;

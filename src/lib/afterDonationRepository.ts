@@ -31,6 +31,7 @@ interface RelationshipRow {
   position: number;
   last_contact_at: string | null;
   next_contact_at: string | null;
+  is_test: boolean;
   donor_relationship_messages?: MessageRow[];
 }
 
@@ -67,6 +68,7 @@ const mapRelationship = (row: RelationshipRow): DonorRelationship => ({
   position: row.position,
   lastContactAt: row.last_contact_at,
   nextContactAt: row.next_contact_at,
+  isTest: row.is_test,
   messages: (row.donor_relationship_messages ?? []).map(mapMessage),
 });
 
@@ -83,7 +85,7 @@ export const loadDonorRelationships = async (
   const { data, error } = await supabase
     .from("donor_relationships")
     .select(
-      "id,organization_id,donation_id,donor_profile_id,donor_name,donor_email,donor_avatar_url,amount_cents,donated_at,stage,position,last_contact_at,next_contact_at,donor_relationship_messages(id,relationship_id,direction,body,sent_at,status)",
+      "id,organization_id,donation_id,donor_profile_id,donor_name,donor_email,donor_avatar_url,amount_cents,donated_at,stage,position,last_contact_at,next_contact_at,is_test,donor_relationship_messages(id,relationship_id,direction,body,sent_at,status)",
     )
     .eq("organization_id", organizationId)
     .order("position", { ascending: true })

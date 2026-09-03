@@ -28,6 +28,9 @@ vi.mock('@/lib/organizationVisualMedia', () => ({
   markOrganizationVisualSetupReady: authMocks.markOrganizationVisualSetupReady,
   visualMediaErrorMessage: () => 'Não foi possível salvar todas as imagens. Tente novamente.',
 }));
+vi.mock('@/lib/stories', () => ({
+  loadOwnOrganizationPublishedStories: vi.fn().mockResolvedValue([]),
+}));
 
 const LocationProbe = () => {
   const location = useLocation();
@@ -42,7 +45,6 @@ const selectCategory = async (user: ReturnType<typeof userEvent.setup>) => {
 const fillCause = async (user: ReturnType<typeof userEvent.setup>) => {
   await selectCategory(user);
   fireEvent.change(screen.getByLabelText('Por que essa causa existe?'), { target: { value: 'Acreditamos que toda criança merece aprender com segurança.' } });
-  fireEvent.change(screen.getByLabelText('O que vocês fazem?'), { target: { value: 'Oferecemos reforço escolar e acompanhamento para famílias.' } });
   fireEvent.change(screen.getByLabelText('O que vocês querem tornar possível agora?'), { target: { value: 'Abrir uma nova turma comunitária.' } });
   fireEvent.change(screen.getByLabelText('Onde vocês atuam?'), { target: { value: 'São Paulo' } });
   fireEvent.change(screen.getByLabelText('Estado'), { target: { value: 'SP' } });
@@ -72,9 +74,10 @@ describe('NGOAccountProfile', () => {
     expect(screen.getByText('3 de 4')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Qual é a principal causa de vocês?' })).toBeTruthy();
     expect(screen.getByLabelText('Por que essa causa existe?')).toBeTruthy();
-    expect(screen.getByLabelText('O que vocês fazem?')).toBeTruthy();
+    expect(screen.queryByLabelText('O que vocês fazem?')).toBeNull();
     expect(screen.getByLabelText('O que vocês querem tornar possível agora?')).toBeTruthy();
     expect(screen.getByLabelText('Onde vocês atuam?')).toBeTruthy();
+    expect(screen.getByLabelText(/Código de ONG fundadora/)).toBeTruthy();
     expect(screen.queryByLabelText(/^CNPJ/i)).toBeNull();
     expect(screen.queryByLabelText(/^Instagram/i)).toBeNull();
   });
@@ -100,7 +103,42 @@ describe('NGOAccountProfile', () => {
     expect(authMocks.updateUser.mock.calls[0][0].ngoProfile).toMatchObject({
       category: 'Educação', profileStatus: 'ready', verificationStatus: 'pending',
       payoutStatus: 'not_configured', paymentStatus: 'disabled',
+      objectives: [],
     });
+  });
+
+  it('forwards the founder invitation with the first cause save', async () => {
+    const user = userEvent.setup();
+    render(<MemoryRouter initialEntries={['/ngo/profile?setup=1']}><NGOAccountProfile /></MemoryRouter>);
+    await screen.findByRole('heading', { name: 'Apresente sua causa.' });
+    await fillCause(user);
+    fireEvent.change(screen.getByLabelText(/Código de ONG fundadora/), {
+      target: { value: 'tc exemplo' },
+    });
+    await user.click(screen.getByRole('button', { name: 'Continuar' }));
+
+    await waitFor(() => expect(authMocks.updateUser).toHaveBeenCalledOnce());
+    expect(authMocks.updateUser).toHaveBeenCalledWith(expect.objectContaining({
+      founderCode: 'tc exemplo',
+    }));
+  });
+
+  it('shows a specific inline error when the founder code does not exist', async () => {
+    authMocks.updateUser.mockRejectedValueOnce({
+      code: 'P0001',
+      message: 'founder-code-not-found',
+    });
+    const user = userEvent.setup();
+    render(<MemoryRouter initialEntries={['/ngo/profile?setup=1']}><NGOAccountProfile /></MemoryRouter>);
+    await screen.findByRole('heading', { name: 'Apresente sua causa.' });
+    await fillCause(user);
+    fireEvent.change(screen.getByLabelText(/Código de ONG fundadora/), {
+      target: { value: 'TC-INEXISTENTE' },
+    });
+    await user.click(screen.getByRole('button', { name: 'Continuar' }));
+
+    expect(await screen.findByText('O código de ONG fundadora não existe. Confira o código e tente novamente.')).toBeTruthy();
+    expect(screen.getByLabelText(/Código de ONG fundadora/).getAttribute('aria-invalid')).toBe('true');
   });
 
   it('shows logo, three cause photos and the real marketplace preview in step 3B', async () => {

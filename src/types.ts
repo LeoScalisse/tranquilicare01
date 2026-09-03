@@ -72,6 +72,8 @@ export interface NGO {
   verified: boolean;
   status?: 'pending' | 'approved' | 'rejected';
   isFounder?: boolean;
+  /** Server-computed eligibility; public visibility never implies checkout eligibility. */
+  donationsEnabled?: boolean;
   posts: NGOPost[];
   impactMetrics?: ImpactMetric[];
 }

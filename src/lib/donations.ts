@@ -91,7 +91,84 @@ export type PrototypePixPaymentAction = PixPaymentAction & {
   };
 };
 
+export type SimulatedPixPaymentAction = PixPaymentAction & {
+  isSimulation: true;
+  simulatedDonation: {
+    organizationId: string;
+    amountCents: number;
+    createdAt: string;
+  };
+};
+
+type SimulatedDonationRow = {
+  id: string;
+  amount_cents: number;
+  donor_id: string;
+  organization_id: string;
+  created_at: string;
+  provider_action_id: string;
+};
+
 let prototypePixSequence = 0;
+let simulatedPixSequence = 0;
+
+/** The database owns this temporary switch so a frontend deploy cannot enable
+ * test donations after the launch flag has been turned off. */
+export const getDonationSimulationStatus = async (): Promise<boolean> => {
+  if (!supabase) return false;
+  const { data, error } = await supabase.rpc("donation_simulation_status");
+  if (error) return false;
+  return data === true;
+};
+
+export const startSimulatedPixDonation = (
+  input: Pick<DonationPaymentInput, "organizationId" | "amountCents">,
+): SimulatedPixPaymentAction => {
+  simulatedPixSequence += 1;
+  const createdAt = new Date().toISOString();
+  const actionId = `simulated-pix-${Date.now().toString(36)}-${simulatedPixSequence}`;
+
+  return {
+    actionId,
+    qrCodeText: `SIMULACAO-PIX:${actionId}`,
+    confirmationToken: `simulated-confirmation-${actionId}`,
+    isSimulation: true,
+    simulatedDonation: {
+      organizationId: input.organizationId,
+      amountCents: input.amountCents,
+      createdAt,
+    },
+  };
+};
+
+/** Persists a test-only donation through a guarded database function. No
+ * payment provider is called and the row is excluded from public totals. */
+export const confirmSimulatedPixDonation = async (
+  payment: SimulatedPixPaymentAction,
+  donorEmail: string | null,
+): Promise<DonationRow> => {
+  if (!supabase) throw new Error("payments-not-configured");
+
+  const { data, error } = await supabase
+    .rpc("create_simulated_donation", {
+      target_organization_id: payment.simulatedDonation.organizationId,
+      donation_amount_cents: payment.simulatedDonation.amountCents,
+    })
+    .single<SimulatedDonationRow>();
+  if (error) throw error;
+  if (!data?.id || !data.organization_id) throw new Error("simulation-not-persisted");
+
+  return {
+    id: data.id,
+    amount: Number(data.amount_cents) || 0,
+    donor_id: data.donor_id,
+    donor_email: donorEmail,
+    created_at: data.created_at,
+    ngo_id: data.organization_id,
+    payment_action_id: data.provider_action_id,
+    is_test: true,
+  };
+};
 
 /**
  * Produces a local-only PIX action for the TranquiliCare demonstration NGO.
@@ -129,6 +206,7 @@ export const confirmPrototypePixDonation = (
   created_at: payment.prototypeDonation.createdAt,
   ngo_id: payment.prototypeDonation.organizationId,
   payment_action_id: payment.actionId,
+  is_test: true,
 });
 
 export const startMercadoPagoPixDonation = async (

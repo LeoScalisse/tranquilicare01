@@ -14,18 +14,6 @@ const PANEL_WIDTH = 440;
 const PANEL_HEIGHT = 430;
 const GAP = 14;
 
-export const SkiperGooeyFilterProvider = () => (
-  <svg xmlns='http://www.w3.org/2000/svg' className='pointer-events-none fixed h-0 w-0' aria-hidden='true'>
-    <defs>
-      <filter id='tranquilicare-story-gooey'>
-        <feGaussianBlur in='SourceGraphic' stdDeviation='5' result='blur' />
-        <feColorMatrix in='blur' mode='matrix' values='1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 20 -7' result='goo' />
-        <feBlend in='SourceGraphic' in2='goo' />
-      </filter>
-    </defs>
-  </svg>
-);
-
 const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish, onUnavailable, onPublish }) => {
   const reduceMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
@@ -114,7 +102,6 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
 
   return createPortal(
     <>
-      <SkiperGooeyFilterProvider />
       <AnimatePresence>
         {open && (
           <motion.div
@@ -153,8 +140,8 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
                 {error && <p role='alert' className='mt-3 text-sm font-semibold text-red-600'>{error}</p>}
               </div>
 
-              <footer className='flex items-center justify-between gap-3 border-t border-brand-ink/10 px-5 py-4 sm:px-6'>
-                <span className='text-xs text-muted-foreground'>{draft.length > 4500 ? `${draft.length}/5000` : 'Foto opcional'}</span>
+              <footer className='flex items-center justify-end gap-3 border-t border-brand-ink/10 px-5 py-4 sm:px-6'>
+                {draft.length > 4500 && <span className='mr-auto text-xs text-muted-foreground'>{draft.length}/5000</span>}
                 <button type='submit' disabled={publishing || !draft.trim()} className='inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-blue px-5 text-sm font-bold text-white shadow-[0_8px_20px_rgba(55,181,247,0.28)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0'>{publishing ? <LoaderCircle size={17} className='animate-spin' /> : <Send size={16} />}{publishing ? 'Publicando' : 'Publicar'}</button>
               </footer>
             </form>
@@ -179,9 +166,7 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
         onDragEnd={() => window.setTimeout(() => { draggedRef.current = false; }, 80)}
         transition={{ type: 'spring', duration: 0.5, bounce: 0.2 }}
         className='fixed bottom-24 right-5 z-[182] touch-none sm:bottom-8 sm:right-8'
-        style={{ filter: open ? 'url(#tranquilicare-story-gooey)' : undefined }}
       >
-        {open && <span aria-hidden='true' className={`absolute left-1/2 h-8 w-8 -translate-x-1/2 rounded-full bg-brand-blue ${panelPosition.above ? '-top-6' : '-bottom-6'}`} />}
         <motion.button
           ref={triggerRef}
           type='button'

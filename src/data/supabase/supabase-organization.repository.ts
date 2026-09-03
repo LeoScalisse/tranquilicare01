@@ -27,6 +27,8 @@ type PublicOrganizationRow = {
   geocoded_address: string | null;
   verified: boolean | null;
   is_founder: boolean | null;
+  status: 'pending' | 'active' | 'suspended' | 'rejected' | 'archived' | null;
+  donations_enabled: boolean | null;
 };
 
 const PUBLIC_ORGANIZATION_COLUMNS = [
@@ -51,6 +53,8 @@ const PUBLIC_ORGANIZATION_COLUMNS = [
   'geocoded_address',
   'verified',
   'is_founder',
+  'status',
+  'donations_enabled',
 ].join(', ');
 
 const text = (value: string | null): string => value?.trim() ?? '';
@@ -77,6 +81,8 @@ const toDomain = (row: PublicOrganizationRow): PublicOrganizationRecord => ({
   geocodedAddress: text(row.geocoded_address),
   verified: row.verified === true,
   isFounder: row.is_founder === true,
+  status: row.status ?? 'pending',
+  donationsEnabled: row.donations_enabled === true,
 });
 
 export class SupabaseOrganizationRepository implements OrganizationRepository {

@@ -35,6 +35,10 @@ vi.mock('@/lib/impact', () => ({
   weekStrip: () => [],
 }));
 
+vi.mock('@/lib/ngos', () => ({
+  loadMarketplaceNgos: vi.fn().mockResolvedValue([]),
+}));
+
 vi.mock('@/components/AppBottomNav', () => ({ default: () => null }));
 vi.mock('@/components/WalletCard', () => ({ default: () => null }));
 vi.mock('@/components/ui/impact-stat-carousel', () => ({ default: () => null }));
