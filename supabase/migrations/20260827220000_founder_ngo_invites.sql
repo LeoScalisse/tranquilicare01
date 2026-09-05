@@ -241,7 +241,6 @@ select
   organization.youtube_url,
   organization.status,
   organization.published_at,
-  organization.is_founder,
   private.organization_is_verified(organization.id) as verified,
   avatar.provider as avatar_provider,
   avatar.bucket as avatar_bucket,
@@ -252,7 +251,10 @@ select
   cover.storage_key as cover_storage_key,
   cover.external_url as cover_image_url,
   organization.created_at,
-  organization.updated_at
+  organization.updated_at,
+  -- CREATE OR REPLACE VIEW requires existing columns to remain in the same
+  -- order. New public fields must be appended to preserve migration replay.
+  organization.is_founder
 from public.organizations as organization
 left join public.media_assets as avatar on avatar.id = organization.avatar_media_id
 left join public.media_assets as cover on cover.id = organization.cover_media_id

@@ -3,14 +3,15 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { AppUser } from '@/lib/authTypes';
 import NGOAccountProfile from '@/pages/NGOAccountProfile';
 
-const ngoUser = {
+const ngoUser: AppUser = {
   id: 'ngo-new', email: 'contato@horizonte.org', name: 'Instituto Horizonte',
   avatar: null, credits: 0, accountType: 'ngo' as const, ngoProfile: null,
 };
 const authMocks = vi.hoisted(() => ({
-  currentUser: null as any,
+  currentUser: null as AppUser | null,
   updateUser: vi.fn(),
   geocodeAddress: vi.fn(),
   prepareOrganizationVisualMedia: vi.fn(),
@@ -21,7 +22,7 @@ const authMocks = vi.hoisted(() => ({
 vi.mock('@/lib/auth', () => ({
   authReady: Promise.resolve(), getUser: () => authMocks.currentUser, onAuthChange: () => () => undefined,
   signOut: vi.fn(), updateUser: authMocks.updateUser,
-  getNgoOnboardingStage: (user: any) => user?.ngoProfile?.onboardingStage ?? 'cause',
+  getNgoOnboardingStage: (user: AppUser | null) => user?.ngoProfile?.onboardingStage ?? 'cause',
 }));
 vi.mock('@/components/AppBottomNav', () => ({ default: () => null }));
 vi.mock('@/lib/geocoding', () => ({ geocodeAddress: authMocks.geocodeAddress }));
@@ -82,7 +83,6 @@ describe('NGOAccountProfile', () => {
     authMocks.currentUser = {
       ...ngoUser,
       ngoProfile: {
-        ...({} as any),
         publicEmail: ngoUser.email,
         description: 'Uma causa real.',
         category: 'Educação',
