@@ -66,6 +66,18 @@ grant select on table public.ngo_profiles to authenticated;
 -- CNPJ remains temporarily as NULL only for older clients that still request
 -- that column. It cannot disclose real data and should be removed in a later
 -- API-major cleanup.
+do $migration$
+begin
+  -- A database updated manually can already contain the later marketplace
+  -- projection even when its migration history has not caught up yet.
+  if not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'public_organizations'
+      and column_name = 'marketplace_logo_url'
+  ) then
+    execute $view$
 create or replace view public.public_organizations
 with (security_invoker = true)
 as
@@ -111,6 +123,10 @@ from public.organizations as organization
 left join public.media_assets as avatar on avatar.id = organization.avatar_media_id
 left join public.media_assets as cover on cover.id = organization.cover_media_id
 where organization.status = 'active';
+$view$;
+  end if;
+end
+$migration$;
 
 revoke all on table public.public_organizations from public, anon, authenticated;
 grant select on table public.public_organizations to anon, authenticated;

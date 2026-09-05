@@ -1,6 +1,16 @@
 -- Expose the most recent public processed logo separately from the original
 -- profile/avatar image. The original remains the profile identity; the
 -- transparent variant is only a presentation asset for marketplace cards.
+do $migration$
+begin
+  if not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'public_organizations'
+      and column_name = 'donations_enabled'
+  ) then
+    execute $view$
 create or replace view public.public_organizations
 with (security_invoker = true)
 as
@@ -54,6 +64,10 @@ left join lateral (
   limit 1
 ) as marketplace_logo on true
 where organization.status = 'active';
+$view$;
+  end if;
+end
+$migration$;
 
 revoke all on table public.public_organizations from public, anon, authenticated;
 grant select on table public.public_organizations to anon, authenticated;

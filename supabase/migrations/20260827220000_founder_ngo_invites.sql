@@ -214,6 +214,16 @@ grant execute on function public.save_own_ngo_profile(
   text, text, double precision, double precision, text, text
 ) to authenticated;
 
+do $migration$
+begin
+  if not exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'public_organizations'
+      and column_name = 'is_founder'
+  ) then
+    execute $view$
 create or replace view public.public_organizations
 with (security_invoker = true)
 as
@@ -259,6 +269,10 @@ from public.organizations as organization
 left join public.media_assets as avatar on avatar.id = organization.avatar_media_id
 left join public.media_assets as cover on cover.id = organization.cover_media_id
 where organization.status = 'active';
+$view$;
+  end if;
+end
+$migration$;
 
 revoke all on table public.public_organizations from public, anon, authenticated;
 grant select on table public.public_organizations to anon, authenticated;
