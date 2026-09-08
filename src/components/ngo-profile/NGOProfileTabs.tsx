@@ -11,6 +11,7 @@ import { getNgoCategoryTheme } from '@/data/ngoCategories';
 import ExpandableVideoPlayer from '@/components/ui/expandable-video-player';
 import { VideoPreview } from '@/components/ui/embedded-video';
 import { ImpactMetric, NGO, NGOPost } from '@/types';
+import ImpactMetricHumanScale from '@/components/ngo-profile/ImpactMetricHumanScale';
 
 interface CauseTabProps {
   ngo: NGO;
@@ -141,7 +142,7 @@ export const NGOImpactTab: React.FC<{ ngo: NGO }> = ({ ngo }) => {
       {metrics.length > 0 ? (
         <>
           <div className='mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>
-            {metrics.map((metric) => <ImpactMetricCard key={metric.id} metric={metric} />)}
+            {metrics.map((metric) => <ImpactMetricCard key={metric.id} metric={metric} organizationId={ngo.id} category={ngo.category} />)}
           </div>
           {collectiveMetrics.length > 0 && (
             <div className='mt-10 border-l-4 border-brand-yellow pl-5'>
@@ -158,7 +159,7 @@ export const NGOImpactTab: React.FC<{ ngo: NGO }> = ({ ngo }) => {
   );
 };
 
-export const ImpactMetricCard: React.FC<{ metric: ImpactMetric }> = ({ metric }) => {
+export const ImpactMetricCard: React.FC<{ metric: ImpactMetric; organizationId?: string; category?: string }> = ({ metric, organizationId, category }) => {
   const updatedAt = metric.updatedAt ? formatMonthYear(metric.updatedAt) : null;
 
   return (
@@ -167,6 +168,7 @@ export const ImpactMetricCard: React.FC<{ metric: ImpactMetric }> = ({ metric })
       <p className='mt-2 font-display text-4xl font-semibold tabular-nums text-brand-ink'>{formatMetricValue(metric.value)}{metric.unit && <span className='ml-1.5 text-lg'>{metric.unit}</span>}</p>
       <h3 className='mt-2 font-semibold text-brand-ink'>{metric.label}</h3>
       {metric.context && <p className='mt-3 text-sm leading-6 text-muted-foreground'>{metric.context}</p>}
+      {organizationId && category && metric.impactUnitKey && typeof metric.value === 'number' && <ImpactMetricHumanScale organizationId={organizationId} category={category} impactUnitKey={metric.impactUnitKey} quantity={metric.value} />}
       {(metric.source || updatedAt) && <div className='mt-5 border-t border-border pt-3 text-xs leading-5 text-muted-foreground'>{metric.source && <p>{metric.source}</p>}{updatedAt && <p>Atualizado em {updatedAt}</p>}</div>}
     </article>
   );

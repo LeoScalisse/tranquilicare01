@@ -182,7 +182,7 @@ export const StoryShareSheet: React.FC<StoryShareSheetProps> = ({ storyId, story
         aria-haspopup='menu'
         aria-expanded={status === 'open'}
         onClick={() => setStatus((current) => current === 'open' ? 'idle' : current === 'idle' ? 'open' : current)}
-        className='relative grid h-10 w-10 place-items-center overflow-hidden rounded-[14px] transition-colors hover:bg-brand-blue/10 hover:text-brand-blue focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue'
+        className='relative grid h-10 w-16 shrink-0 place-items-center overflow-hidden rounded-[14px] bg-brand-blue text-white shadow-[0_7px_18px_rgba(55,181,247,0.28)] transition-colors hover:bg-brand-blue/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue'
         whileTap={reduceMotion ? undefined : { scale: 0.94 }}
         transition={SPRING}
       >

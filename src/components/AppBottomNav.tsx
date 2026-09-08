@@ -16,6 +16,7 @@ const AppBottomNav: React.FC<AppBottomNavProps> = ({ activeKey, user }) => {
     isLoggedIn: Boolean(user),
     onHome: () => navigate('/'),
     onStories: () => navigate('/?view=stories'),
+    onChat: () => navigate(user ? '/chats' : '/donor/auth?mode=login&redirect=/chats'),
     onPerfil: () => navigate(user ? defaultDestForAccount(user.accountType) : '/donor/auth'),
   });
 

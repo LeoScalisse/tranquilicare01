@@ -12,6 +12,7 @@ import DonationThankYouDialog from "@/components/DonationThankYouDialog";
 const defaultProps = {
   open: true,
   amountCents: 5_000,
+  organizationId: "00000000-0000-4000-8000-000000000001",
   ngoName: "Abraço Sereno",
   ngoCategory: "Saúde Mental",
   ngoImage: "/ngo-logo.png",
@@ -108,17 +109,11 @@ describe("DonationThankYouDialog", () => {
     );
   });
 
-  it("troca a expressão de impacto com ritmo ágil", () => {
-    vi.useFakeTimers();
+  it("não apresenta impacto fictício quando não há taxa verificada", () => {
     renderDialog();
     expect(screen.getByLabelText("R$ 50,00")).not.toBeNull();
-    expect(
-      screen
-        .getByTestId("rotating-3d-stagger-text")
-        .querySelector("svg path"),
-    ).not.toBeNull();
-    act(() => vi.advanceTimersByTime(3_000));
-    expect(screen.getByLabelText("2 kits de alimento")).not.toBeNull();
+    expect(screen.queryByLabelText("2 kits de alimento")).toBeNull();
+    expect(screen.queryByText("1 atendimento veterinário")).toBeNull();
   });
 
   it("não mostra o convite para quem já fez a doação com conta", () => {

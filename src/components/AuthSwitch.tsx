@@ -1088,6 +1088,7 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
     isLoggedIn: false,
     onHome: () => navigate('/'),
     onStories: () => navigate('/?view=stories'),
+    onChat: () => navigate('/donor/auth?mode=login&redirect=/chats'),
     onPerfil: () => {
       setSide('donor');
       setOpenStage(null);

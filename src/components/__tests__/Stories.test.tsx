@@ -8,12 +8,16 @@ const storyMocks = vi.hoisted(() => ({
   loadPublishedStories: vi.fn().mockResolvedValue([]),
   loadStoryViewerState: vi.fn().mockResolvedValue({
     savedStoryIds: new Set<string>(),
+    likedStoryIds: new Set<string>(),
     reportedStoryIds: new Set<string>(),
     followedOrganizationIds: new Set<string>(),
+    currentProfileId: null,
   }),
   publishStory: vi.fn().mockResolvedValue('86d0cf8c-2f44-4a7b-839f-3f9af961ea11'),
   reportStory: vi.fn().mockResolvedValue(undefined),
   setStorySaved: vi.fn().mockResolvedValue(undefined),
+  setStoryLiked: vi.fn().mockResolvedValue(undefined),
+  deleteOwnStory: vi.fn().mockResolvedValue(undefined),
 }));
 
 vi.mock('@/lib/stories', () => ({
@@ -23,6 +27,10 @@ vi.mock('@/lib/stories', () => ({
 
 vi.mock('@/lib/publicStoryImages', () => ({
   loadPublicStoryImages: vi.fn().mockResolvedValue([]),
+}));
+
+vi.mock('@/lib/demoData', () => ({
+  demoDataEnabled: true,
 }));
 
 describe('Stories', () => {
@@ -47,7 +55,9 @@ describe('Stories', () => {
     storyMocks.loadPublishedStories.mockResolvedValue([]);
     storyMocks.reportStory.mockClear();
     storyMocks.setStorySaved.mockClear();
+    storyMocks.setStoryLiked.mockClear();
     storyMocks.publishStory.mockClear();
+    storyMocks.deleteOwnStory.mockClear();
   });
 
   afterEach(() => {
@@ -57,7 +67,7 @@ describe('Stories', () => {
     vi.useRealTimers();
   });
 
-  it('uses the new editorial copy and removes the old inline composer, likes and comments', async () => {
+  it('uses the new editorial copy and restores likes without comments', async () => {
     render(<Stories onOpenNGO={vi.fn()} />);
 
     expect(screen.getByRole('heading', { name: 'Histórias que aproximam.' })).not.toBeNull();
@@ -65,7 +75,7 @@ describe('Stories', () => {
     expect(screen.queryByLabelText('Compartilhar uma história')).toBeNull();
 
     await waitFor(() => expect(screen.getAllByRole('article', { hidden: true }).length).toBeGreaterThan(8));
-    expect(screen.queryByRole('button', { name: 'Curtir história', hidden: true })).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'Curtir história', hidden: true }).length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: 'Comentar', hidden: true })).toBeNull();
     expect(screen.queryByText('SIMULAÇÃO')).toBeNull();
     expect(screen.queryByText('Momentos e vozes das causas', { exact: true })).toBeNull();
@@ -73,35 +83,32 @@ describe('Stories', () => {
     expect(screen.getAllByRole('tab', { hidden: true })).toHaveLength(2);
   });
 
-  it('keeps the circular feed preview and loads another demo batch near the end', async () => {
+  it('keeps the feed preview inside the circular carousel using document scroll', async () => {
     const { container } = render(<Stories onOpenNGO={vi.fn()} />);
     await waitFor(() => expect(container.querySelectorAll('article').length).toBeGreaterThan(8));
     const initialCount = container.querySelectorAll('article').length;
-
     expect(container.querySelector('[data-circular-story-gallery]')).not.toBeNull();
-    expect(container.querySelector('.scroll-expand--circle')).not.toBeNull();
-
+    expect(container.querySelector('.scroll-expand--content-preview')).not.toBeNull();
+    expect(container.querySelector('.scroll-expand--window')).not.toBeNull();
     await act(async () => {
       intersectionCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
     });
-    await waitFor(() => expect(container.querySelectorAll('article')).toHaveLength(initialCount + 6));
+    expect(container.querySelectorAll('article')).toHaveLength(initialCount);
   });
 
-  it('shows the two local TranquiliCare videos first and incorporates Instagram posts', async () => {
+  it('shows local videos first and defers social embeds until the story is opened', async () => {
     const { container } = render(<Stories onOpenNGO={vi.fn()} />);
     await waitFor(() => expect(container.querySelectorAll('article').length).toBeGreaterThan(4));
-
     const articles = container.querySelectorAll('article');
     expect(articles[0].querySelector('video')?.getAttribute('src')).toContain('tranquilicare_1786385739');
     expect(articles[1].querySelector('video')?.getAttribute('src')).toContain('tranquilicare_1786723077');
-    expect(articles[2].querySelector('iframe')?.getAttribute('src')).toContain('/p/DcExwOAkYPS/embed/');
-    expect(articles[3].querySelector('iframe')?.getAttribute('src')).toContain('/p/DatXtL6EXc3/embed/');
-
+    expect(articles[2].querySelector('iframe')).toBeNull();
+    expect(articles[3].querySelector('iframe')).toBeNull();
+    expect(screen.getAllByText('Ver publicação incorporada').length).toBeGreaterThan(1);
     const circularCards = container.querySelectorAll('[data-circular-story-card]');
     expect(circularCards[0].querySelector('video')?.getAttribute('src')).toContain('tranquilicare_1786385739');
     expect(circularCards[1].querySelector('video')?.getAttribute('src')).toContain('tranquilicare_1786723077');
   });
-
   it('opens the draggable publisher and publishes a real organization story', async () => {
     const user = userEvent.setup();
     render(<Stories onOpenNGO={vi.fn()} canTellStory />);
@@ -111,7 +118,7 @@ describe('Stories', () => {
     await user.type(input, 'Hoje abrimos um novo espaço de acolhimento.');
     await user.click(within(composer).getByRole('button', { name: 'Publicar' }));
 
-    await waitFor(() => expect(storyMocks.publishStory).toHaveBeenCalledWith('Hoje abrimos um novo espaço de acolhimento.', null));
+    await waitFor(() => expect(storyMocks.publishStory).toHaveBeenCalledWith('Hoje abrimos um novo espaço de acolhimento.', null, null));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'O que aconteceu por aí?' })).toBeNull());
   });
 
@@ -137,7 +144,7 @@ describe('Stories', () => {
     const composer = screen.getByRole('dialog', { name: 'O que aconteceu por aí?' });
     await user.type(within(composer).getByRole('textbox', { name: 'Escreva sua história' }), 'Quero compartilhar este momento com a comunidade.');
     await user.click(within(composer).getByRole('button', { name: 'Publicar' }));
-    await waitFor(() => expect(storyMocks.publishStory).toHaveBeenCalledWith('Quero compartilhar este momento com a comunidade.', null));
+    await waitFor(() => expect(storyMocks.publishStory).toHaveBeenCalledWith('Quero compartilhar este momento com a comunidade.', null, null));
   });
 
   it('identifies a founder organization beside its name', async () => {
@@ -164,6 +171,11 @@ describe('Stories', () => {
     const firstStory = screen.getAllByRole('article', { hidden: true })[0];
     const firstStoryId = firstStory.id;
 
+    fireEvent.click(within(firstStory).getByRole('button', { name: 'Curtir história', hidden: true }));
+    expect(within(firstStory).getByRole('button', { name: 'Remover curtida', hidden: true })).not.toBeNull();
+    expect(within(firstStory).getByRole('button', { name: 'Remover curtida', hidden: true }).querySelector('img')?.getAttribute('src')).toBe('/tranquilicare-heart.png');
+    expect(storyMocks.setStoryLiked).toHaveBeenCalledOnce();
+
     fireEvent.click(within(firstStory).getByRole('button', { name: 'Salvar história', hidden: true }));
     expect(within(firstStory).getByRole('button', { name: 'Remover dos salvos', hidden: true })).not.toBeNull();
 
@@ -177,13 +189,40 @@ describe('Stories', () => {
     expect(storyMocks.reportStory).toHaveBeenCalledOnce();
   });
 
-  it('keeps the window as the only vertical scroller for the expanded feed', async () => {
+  it('offers timed deletion only to the story owner', async () => {
+    storyMocks.loadStoryViewerState.mockResolvedValueOnce({
+      savedStoryIds: new Set<string>(),
+      likedStoryIds: new Set<string>(),
+      reportedStoryIds: new Set<string>(),
+      followedOrganizationIds: new Set<string>(),
+      currentProfileId: 'owner-profile',
+    });
+    storyMocks.loadPublishedStories.mockResolvedValueOnce([{
+      id: '86d0cf8c-2f44-4a7b-839f-3f9af961ea11',
+      url: '/images/founder-story.webp',
+      type: 'image',
+      caption: 'Uma história que posso excluir.',
+      timestamp: Date.now(),
+      ngoId: null,
+      ngoName: 'Leo',
+      ngoImage: '/images/tranquilicare-heart-transparent.png',
+      authorProfileId: 'owner-profile',
+      persisted: true,
+    }]);
+
+    const user = userEvent.setup();
+    render(<Stories onOpenNGO={vi.fn()} canTellStory />);
+    const ownerCaption = await screen.findByText('Uma história que posso excluir.');
+    const ownerArticle = ownerCaption.closest('article');
+    if (!ownerArticle) throw new Error('owner-story-not-found');
+    fireEvent.click(within(ownerArticle).getByRole('button', { name: 'Mais opções', hidden: true }));
+    expect(await screen.findByRole('button', { name: 'Excluir história', hidden: true })).not.toBeNull();
+  });
+  it('keeps the document as the only vertical scroller for stories', async () => {
     const { container } = render(<Stories onOpenNGO={vi.fn()} />);
-    const scrollExpand = container.querySelector('.scroll-expand');
-    const feed = container.querySelector('.scroll-expand__overlay')?.firstElementChild;
-    expect(scrollExpand?.classList.contains('scroll-expand--window')).toBe(true);
-    expect(feed?.classList.contains('overflow-y-auto')).toBe(false);
-    expect(feed?.classList.contains('overflow-y-hidden')).toBe(true);
+    expect(container.querySelector('.scroll-expand--content-preview')).not.toBeNull();
+    expect(container.querySelector('.scroll-expand--window')).not.toBeNull();
+    expect(container.querySelector('.overflow-y-auto')).toBeNull();
     expect(screen.getByTestId('story-feed-tabs').classList.contains('sticky')).toBe(true);
   });
 });

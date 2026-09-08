@@ -37,9 +37,9 @@ describe('Marketplace editorial sections', () => {
 
     expect(screen.getByText('Busque uma causa...')).not.toBeNull();
     expect(screen.getAllByText('Vaquinhas').length).toBeGreaterThan(0);
-    expect(screen.getByText(
-      'Campanhas feitas com propósito, em breve.',
-    )).not.toBeNull();
+    expect(screen.getByText('Campanhas com um objetivo e um tempo para acontecer.')).not.toBeNull();
+    expect(container.querySelector('[data-cow-campaign-section]')).not.toBeNull();
+    expect(container.querySelector('[data-cow-head]')).not.toBeNull();
     expect(screen.queryByRole('heading', { name: 'Saúde Mental' })).toBeNull();
     expect(screen.getByRole('heading', { name: 'Para ninguém enfrentar tudo sozinho' })).not.toBeNull();
     expect(screen.getByText('Para ninguém enfrentar tudo sozinho').closest('section')?.className).toContain('bg-[#FFE89A]');
@@ -63,8 +63,8 @@ describe('Marketplace editorial sections', () => {
     expect(founderHeading).not.toBeNull();
     fireEvent.click(cowFilter);
     expect(cowFilter.getAttribute('aria-pressed')).toBe('true');
-    expect(screen.getByRole('button', { name: 'Quero criar uma vaquinha' })).not.toBeNull();
-    expect(container.querySelector('[data-cow-campaign-section]')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Criar vaquinha' })).not.toBeNull();
+    expect(container.querySelector('[data-cow-campaign-section]')).not.toBeNull();
     fireEvent.click(cowFilter);
     expect(cowFilter.getAttribute('aria-pressed')).toBe('false');
     expect(screen.getByText('Quem acredita nessa história desde o começo')).toBeTruthy();

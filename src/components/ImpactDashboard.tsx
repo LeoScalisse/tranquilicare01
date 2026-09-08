@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { motion, type Variants } from 'framer-motion';
 import { HandCoins, HandHeart, Heart, ShieldCheck } from 'lucide-react';
 import {
@@ -67,8 +67,8 @@ const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
   userEmail,
   isLoggedIn,
   accountType,
-  ownedNgoId,
-  verifiedCount,
+  ownedNgoId: _ownedNgoId,
+  verifiedCount: verifiedCountFallback,
   onExplore,
   onStories,
   onVerificationDiscovery,
@@ -77,7 +77,7 @@ const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
   celebrationPhase,
   onDonationAnimationComplete,
 }) => {
-  const { rows, communityTotal, communityDonationCount } = useDonationImpact(
+  const { rows, communityTotal, communityDonationCount, personalTotal: databasePersonalTotal, receivedTotal: databaseReceivedTotal, verifiedOrganizationCount, dashboardStatsLoaded } = useDonationImpact(
     userId,
     userEmail,
     celebratingDonation,
@@ -85,16 +85,15 @@ const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
   const isNgoAccount = isLoggedIn && accountType === 'ngo';
   const [releasedDonationId, setReleasedDonationId] = useState<string | null>(null);
 
-  const { personalTotal, receivedTotal } = useMemo(() => {
-    let personal = 0;
-    let received = 0;
-    for (const d of rows) {
-      if (userEmail && d.donor_email === userEmail) personal += d.amount || 0;
-      if (ownedNgoId && d.ngo_id === ownedNgoId) received += d.amount || 0;
-    }
-    return { personalTotal: personal, receivedTotal: received };
-  }, [rows, userEmail, ownedNgoId]);
-
+  const fallbackPersonalTotal = rows.reduce((total, donation) => (
+    userEmail && donation.donor_email === userEmail ? total + (donation.amount || 0) : total
+  ), 0);
+  const fallbackReceivedTotal = rows.reduce((total, donation) => (
+    _ownedNgoId && donation.ngo_id === _ownedNgoId ? total + (donation.amount || 0) : total
+  ), 0);
+  const personalTotal = dashboardStatsLoaded ? databasePersonalTotal : fallbackPersonalTotal;
+  const receivedTotal = dashboardStatsLoaded ? databaseReceivedTotal : fallbackReceivedTotal;
+  const verifiedCount = dashboardStatsLoaded ? verifiedOrganizationCount : verifiedCountFallback;
   useEffect(() => {
     if (celebratingDonation) setReleasedDonationId(null);
   }, [celebratingDonation]);
@@ -119,7 +118,7 @@ const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
   const communityValue = useCountUp(communityTotal);
   const personalValue = useCountUp(displayedPersonalTotal);
   const receivedValue = useCountUp(receivedTotal);
-  const firstName = userName?.trim().split(' ')[0] || null;
+  const displayName = userName?.trim() || null;
 
   if (!isLoggedIn) {
     return (
@@ -145,11 +144,11 @@ const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
         >
           <h1 className="font-display text-3xl md:text-5xl font-semibold leading-tight">
-            {firstName ? <span className="text-brand-ink">Olá, {firstName}</span> : <><span className="text-brand-ink">Olá,</span>{' '}<span className="text-muted-foreground/60">{getGreeting()}</span></>}
+            {displayName ? <span className="text-brand-ink">Olá, {displayName}</span> : <><span className="text-brand-ink">Olá,</span>{' '}<span className="text-muted-foreground/60">{getGreeting()}</span></>}
           </h1>
         </motion.div>
 
-        <div className={`grid gap-4 md:gap-5 mt-8 ${isLoggedIn ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+        <div className={`grid gap-4 md:gap-5 mt-8 ${isNgoAccount ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
           {/* Meter 1 — platform-wide donations */}
           <motion.div
             custom={0}
@@ -255,6 +254,7 @@ const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
           )}
 
           {/* Verified NGOs stat */}
+          {!isNgoAccount && (
           <motion.div
             custom={isLoggedIn ? 2 : 1}
             variants={cardVariants}
@@ -271,6 +271,7 @@ const ImpactDashboard: React.FC<ImpactDashboardProps> = ({
               <p className="text-xs text-white/60 mt-1">prontas para receber seu apoio</p>
             </div>
           </motion.div>
+          )}
         </div>
       </div>
     </section>

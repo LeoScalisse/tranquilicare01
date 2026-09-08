@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from 'sonner';
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { HeartHandshake, Loader2, MoveRight, Send } from "lucide-react";
+import { HeartHandshake, Loader2, MessageCircleMore, MoveRight, Send } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +19,9 @@ import {
   type DonorRelationshipStage,
 } from "@/lib/afterDonation";
 import { cn } from "@/lib/utils";
+import { SmoothTextarea } from "@/components/ui/smooth-textarea";
+import { getUser } from "@/lib/auth";
+import { getChatErrorMessage, listChatMessages, sendChatMessage, startDirectChat, subscribeToChatMessages, type ChatMessage } from "@/lib/chat";
 
 const messageSuggestions = [
   "Obrigado por fazer parte desta história.",
@@ -30,18 +34,62 @@ export const DonorConversationDialog = ({
   onClose,
   onSend,
   onMove,
+  onOpenChat,
 }: {
   relationship: DonorRelationship | null;
   onClose: () => void;
   onSend: (body: string) => Promise<void>;
   onMove: (stage: DonorRelationshipStage) => Promise<void>;
+  onOpenChat?: () => void;
 }) => {
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [loadingChat, setLoadingChat] = useState(false);
 
   useEffect(() => {
-    if (!relationship) setBody("");
-  }, [relationship]);
+    setBody("");
+    setConversationId(null);
+    setChatMessages([]);
+    if (!relationship?.donorProfileId) return undefined;
+
+    let active = true;
+    let unsubscribe = () => undefined;
+    setLoadingChat(true);
+    void startDirectChat(relationship.donorProfileId)
+      .then(async (nextConversationId) => {
+        if (!active) return;
+        setConversationId(nextConversationId);
+        const messages = await listChatMessages(nextConversationId);
+        if (!active) return;
+        setChatMessages(messages);
+        unsubscribe = subscribeToChatMessages(nextConversationId, (message) => {
+          setChatMessages((current) => current.some((item) => item.id === message.id) ? current : [...current, message]);
+        });
+      })
+      .catch(() => {
+        if (!active) return;
+        setConversationId(null);
+        setChatMessages([]);
+      })
+      .finally(() => {
+        if (active) setLoadingChat(false);
+      });
+
+    return () => {
+      active = false;
+      unsubscribe();
+    };
+  }, [relationship?.donorProfileId, relationship?.id]);
+
+  const currentUserId = getUser()?.id ?? null;
+  const displayedMessages = useMemo(() => conversationId ? chatMessages.map((message) => ({
+    id: message.id,
+    body: message.body,
+    sentAt: message.sentAt,
+    direction: message.senderProfileId === currentUserId ? 'organization_to_donor' as const : 'donor_to_organization' as const,
+  })) : relationship?.messages ?? [], [chatMessages, conversationId, currentUserId, relationship]);
 
   const nextStageIndex = relationship
     ? AFTER_DONATION_STAGES.findIndex((stage) => stage.id === relationship.stage) + 1
@@ -50,15 +98,36 @@ export const DonorConversationDialog = ({
 
   const submit = async () => {
     if (!body.trim() || sending) return;
+    const normalizedBody = body.trim();
     setSending(true);
+    const relationshipSend = onSend(normalizedBody);
     try {
-      await onSend(body.trim());
-      setBody("");
+      let targetConversationId = conversationId;
+      if (!targetConversationId && relationship?.donorProfileId) {
+        try {
+          targetConversationId = await startDirectChat(relationship.donorProfileId);
+          setConversationId(targetConversationId);
+        } catch {
+          targetConversationId = null;
+        }
+      }
+
+      if (targetConversationId) {
+        try {
+          const sent = await sendChatMessage(targetConversationId, normalizedBody);
+          setChatMessages((current) => current.some((item) => item.id === sent.id) ? current : [...current, sent]);
+        } catch {
+          // Keep the relationship message available even if the central chat is temporarily offline.
+        }
+      }
+      await relationshipSend;
+      setBody('');
+    } catch (error) {
+      toast.error(getChatErrorMessage(error));
     } finally {
       setSending(false);
     }
   };
-
   return (
     <Dialog open={Boolean(relationship)} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
@@ -75,8 +144,10 @@ export const DonorConversationDialog = ({
 
             <ScrollArea className="h-[300px] px-6 py-5">
               <div className="space-y-3">
-                {relationship.messages.length ? (
-                  relationship.messages.map((message) => (
+                {loadingChat ? (
+                  <div className="grid h-40 place-items-center text-sky-500" role="status"><Loader2 className="animate-spin" /><span className="sr-only">Carregando conversa</span></div>
+                ) : displayedMessages.length ? (
+                  displayedMessages.map((message) => (
                     <div
                       key={message.id}
                       className={cn(
@@ -135,7 +206,7 @@ export const DonorConversationDialog = ({
               >
                 Mensagem para {relationship.donorName}
               </label>
-              <textarea
+              <SmoothTextarea
                 id={`relationship-message-${relationship.id}`}
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
@@ -144,6 +215,12 @@ export const DonorConversationDialog = ({
                 className="w-full resize-none rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-sky-400 focus:bg-white focus:ring-4 focus:ring-sky-100"
               />
               <div className="mt-3 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between">
+                {onOpenChat && (
+                  <Button type="button" variant="outline" onClick={onOpenChat} className="border-sky-200 text-sky-700">
+                    <MessageCircleMore />
+                    Abrir no Chat
+                  </Button>
+                )}
                 {nextStage ? (
                   <Button
                     type="button"

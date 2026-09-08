@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { resolveStorySocialEmbed, type StorySocialProvider } from '@/lib/storySocialEmbed';
 
 const STORY_BUCKET = 'stories-public';
 const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
@@ -9,10 +10,11 @@ const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3
 export interface PublishedStory {
   id: string;
   url: string;
-  type: 'image' | 'video';
+  type: 'image' | 'video' | StorySocialProvider;
   caption: string;
   timestamp: number;
   ngoId: string | null;
+  authorProfileId: string | null;
   ngoName: string;
   ngoImage: string;
   isFounder: boolean;
@@ -20,7 +22,9 @@ export interface PublishedStory {
 }
 
 export interface StoryViewerState {
+  currentProfileId: string | null;
   savedStoryIds: Set<string>;
+  likedStoryIds: Set<string>;
   reportedStoryIds: Set<string>;
   followedOrganizationIds: Set<string>;
 }
@@ -38,7 +42,9 @@ interface PublicStoryAuthor {
 }
 
 const emptyViewerState = (): StoryViewerState => ({
+  currentProfileId: null,
   savedStoryIds: new Set(),
+  likedStoryIds: new Set(),
   reportedStoryIds: new Set(),
   followedOrganizationIds: new Set(),
 });
@@ -160,7 +166,7 @@ export const loadPublishedStories = async (): Promise<PublishedStory[]> => {
   const mediaAssets = mediaIds.length
     ? await supabase
         .from('media_assets')
-        .select('id, bucket, storage_key, external_url, media_type')
+        .select('id, bucket, storage_key, external_url, media_type, provider')
         .in('id', mediaIds)
     : { data: [], error: null };
   if (mediaAssets.error) throw mediaAssets.error;
@@ -188,10 +194,11 @@ export const loadPublishedStories = async (): Promise<PublishedStory[]> => {
       .then((url): PublishedStory => ({
         id: story.id as string,
         url: url || '/images/tranquilicare-heart-transparent.png',
-        type: asset?.media_type === 'video' ? 'video' : 'image',
+        type: asset?.media_type === 'video' ? 'video' : asset?.media_type === 'document' && ['instagram', 'tiktok', 'threads', 'substack'].includes(String(asset.provider)) ? asset.provider as StorySocialProvider : 'image',
         caption: String(story.body ?? '').trim(),
         timestamp: new Date(story.published_at as string).getTime(),
         ngoId: organizationId,
+        authorProfileId: story.author_profile_id as string | null,
         ngoName: String(organization?.name ?? author?.name ?? 'Pessoa apoiadora'),
         ngoImage: String(organization?.avatar_url || author?.avatar_url || '/images/tranquilicare-heart-transparent.png'),
         isFounder: organization?.is_founder === true,
@@ -233,7 +240,7 @@ export const loadOwnOrganizationPublishedStories = async (
   const mediaAssets = mediaIds.length
     ? await supabase
         .from('media_assets')
-        .select('id, bucket, storage_key, external_url, media_type')
+        .select('id, bucket, storage_key, external_url, media_type, provider')
         .in('id', mediaIds)
     : { data: [], error: null };
   if (mediaAssets.error) throw mediaAssets.error;
@@ -253,10 +260,11 @@ export const loadOwnOrganizationPublishedStories = async (
     return {
       id: story.id as string,
       url: url || '/images/tranquilicare-heart-transparent.png',
-      type: asset?.media_type === 'video' ? 'video' : 'image',
+      type: asset?.media_type === 'video' ? 'video' : asset?.media_type === 'document' && ['instagram', 'tiktok', 'threads', 'substack'].includes(String(asset.provider)) ? asset.provider as StorySocialProvider : 'image',
       caption: String(story.body ?? '').trim(),
       timestamp: new Date(story.published_at as string).getTime(),
       ngoId: organizationId,
+      authorProfileId: identity.id,
       ngoName: organization.name,
       ngoImage: organization.avatarUrl || '/images/tranquilicare-heart-transparent.png',
       isFounder: organization.isFounder,
@@ -270,24 +278,30 @@ export const loadStoryViewerState = async (): Promise<StoryViewerState> => {
   const { data: identity } = await supabase.auth.getUser();
   if (!identity.user) return emptyViewerState();
 
-  const [saves, reports, follows] = await Promise.all([
+  const [saves, likes, reports, follows] = await Promise.all([
     supabase.from('story_saves').select('story_id').eq('profile_id', identity.user.id),
+    supabase.from('story_likes').select('story_id').eq('profile_id', identity.user.id),
     supabase.from('story_reports').select('story_id').eq('reporter_profile_id', identity.user.id),
     supabase.from('organization_follows').select('organization_id').eq('profile_id', identity.user.id),
   ]);
 
   return {
+    currentProfileId: identity.user.id,
     savedStoryIds: new Set((saves.data ?? []).map((row) => row.story_id as string)),
+    likedStoryIds: new Set((likes.data ?? []).map((row) => row.story_id as string)),
     reportedStoryIds: new Set((reports.data ?? []).map((row) => row.story_id as string)),
     followedOrganizationIds: new Set((follows.data ?? []).map((row) => row.organization_id as string)),
   };
 };
 
-export const publishStory = async (body: string, imageFile: File | null) => {
+export const publishStory = async (body: string, imageFile: File | null, socialUrl: string | null = null) => {
   if (!supabase) throw new Error('backend-unavailable');
   const content = body.trim();
   if (!content) throw new Error('story-empty');
   if (content.length > 5000) throw new Error('story-too-long');
+  const socialEmbed = socialUrl ? resolveStorySocialEmbed(socialUrl) : null;
+  if (socialUrl && !socialEmbed) throw new Error('invalid-social-url');
+  if (imageFile && socialEmbed) throw new Error('story-media-conflict');
 
   const identity = await requireIdentity();
   const { data: profile, error: profileError } = await supabase
@@ -345,7 +359,26 @@ export const publishStory = async (body: string, imageFile: File | null) => {
         .single();
       if (mediaError) throw mediaError;
       mediaAssetId = mediaAsset.id as string;
+    } else if (socialEmbed) {
+      const { data: mediaAsset, error: mediaError } = await supabase
+        .from('media_assets')
+        .insert({
+          owner_profile_id: identity.id,
+          organization_id: organizationId,
+          purpose: 'story',
+          provider: socialEmbed.provider,
+          external_url: socialEmbed.sourceUrl,
+          media_type: 'document',
+          visibility: 'private',
+          metadata: { source: 'story-composer', embedProvider: socialEmbed.provider },
+        })
+        .select('id')
+        .single();
+      if (mediaError) throw mediaError;
+      mediaAssetId = mediaAsset.id as string;
+    }
 
+    if (mediaAssetId) {
       const { error: linkError } = await supabase.from('story_media').insert({
         story_id: storyId,
         media_asset_id: mediaAssetId,
@@ -384,6 +417,15 @@ export const setStorySaved = async (storyId: string, saved: boolean) => {
   if (error && error.code !== '23505') throw error;
 };
 
+export const setStoryLiked = async (storyId: string, liked: boolean) => {
+  if (!supabase || !isPersistedStoryId(storyId)) return;
+  await requireIdentity();
+  const { error } = await supabase.rpc('set_story_like', {
+    target_story_id: storyId,
+    should_like: liked,
+  });
+  if (error) throw error;
+};
 export const reportStory = async (storyId: string, reason: string) => {
   if (!supabase || !isPersistedStoryId(storyId)) return;
   const identity = await requireIdentity();
@@ -401,10 +443,42 @@ export const storyErrorMessage = (error: unknown) => {
   if (code === 'image-too-large') return 'A imagem original pode ter até 20 MB.';
   if (code === 'invalid-image') return 'Não foi possível ler essa imagem.';
   if (code === 'story-empty') return 'Escreva algo antes de publicar.';
+  if (code === 'invalid-social-url') return 'Cole um link público válido do Instagram, TikTok, Threads ou Substack.';
+  if (code === 'story-media-conflict') return 'Escolha uma foto ou uma publicação externa por história.';
   if (code === 'story-too-long') return 'A história pode ter até 5.000 caracteres.';
   if (code === 'publisher-not-ready') return 'Este acesso ainda não está pronto para publicar histórias.';
   if (code === 'story-not-persisted') return 'A publicação não foi confirmada pelo banco. Tente novamente.';
   if (code === 'auth-required') return 'Entre novamente para continuar.';
   if (code === 'backend-unavailable') return 'Conecte o projeto ao Supabase para publicar histórias reais.';
   return 'Não foi possível publicar a história. Tente novamente.';
+};
+
+export const deleteOwnStory = async (storyId: string): Promise<void> => {
+  if (!supabase || !isPersistedStoryId(storyId)) throw new Error('story-not-persisted');
+  await requireIdentity();
+
+  const { data: links, error: linkReadError } = await supabase
+    .from('story_media')
+    .select('media_asset_id')
+    .eq('story_id', storyId);
+  if (linkReadError) throw linkReadError;
+
+  const mediaIds = (links ?? []).map((link) => link.media_asset_id as string);
+  const assets = mediaIds.length
+    ? await supabase.from('media_assets').select('id, bucket, storage_key').in('id', mediaIds)
+    : { data: [], error: null };
+  if (assets.error) throw assets.error;
+
+  const { error: deleteError } = await supabase.from('stories').delete().eq('id', storyId);
+  if (deleteError) throw deleteError;
+
+  if (mediaIds.length) {
+    await Promise.resolve(supabase.from('media_assets').delete().in('id', mediaIds)).catch(() => undefined);
+  }
+  const storageGroups = new Map<string, string[]>();
+  for (const asset of assets.data ?? []) {
+    if (!asset.bucket || !asset.storage_key) continue;
+    storageGroups.set(asset.bucket, [...(storageGroups.get(asset.bucket) ?? []), asset.storage_key]);
+  }
+  await Promise.allSettled([...storageGroups].map(([bucket, keys]) => supabase.storage.from(bucket).remove(keys)));
 };

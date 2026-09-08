@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import AfterDonationWorkspace from "@/components/ngo-profile/AfterDonationWorkspace";
@@ -61,12 +61,12 @@ describe("AfterDonationWorkspace", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Enviar atualização" }));
 
-    expect(onSendMessage).toHaveBeenCalledWith(
+    await waitFor(() => expect(onSendMessage).toHaveBeenCalledWith(
       expect.objectContaining({
         relationshipId: "relationship-1",
         body: "Seu apoio já ajudou no primeiro atendimento.",
       }),
-    );
+    ));
   });
 
   it("opens a contact calendar that can show multiple donors on one day", () => {

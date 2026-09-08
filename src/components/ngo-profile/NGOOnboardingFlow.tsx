@@ -3,6 +3,7 @@ import { Building2, CheckCircle2, CircleDollarSign, Loader2, ShieldCheck } from 
 
 import { CategoryDisclosure, type CategoryDisclosureItem } from '@/components/ui/category-disclosure';
 import { SmoothInput } from '@/components/ui/smooth-input';
+import { SmoothTextarea } from '@/components/ui/smooth-textarea';
 import { BRAZILIAN_STATES } from '@/lib/organizationProfile';
 import { gsap, useGSAP } from '@/lib/gsap';
 import type { NgoProfileDetails } from '@/lib/authTypes';
@@ -106,12 +107,12 @@ export const NGOOnboardingFlow = ({
 
           <label className={labelClass} htmlFor='setup-cause-purpose'>
             Por que essa causa existe?
-            <textarea id='setup-cause-purpose' value={details.description} onChange={(event) => onDetailsChange({ description: event.target.value })} placeholder='O que vocês acreditam que precisa mudar?' rows={4} maxLength={700} className={`${fieldClass} resize-y leading-6`} />
+            <SmoothTextarea id='setup-cause-purpose' value={details.description} onChange={(event) => onDetailsChange({ description: event.target.value })} placeholder='O que vocês acreditam que precisa mudar?' rows={4} maxLength={700} className={`${fieldClass} resize-y leading-6`} />
           </label>
 
           <label className={labelClass} htmlFor='setup-cause-goal'>
             O que vocês querem tornar possível agora?
-            <textarea id='setup-cause-goal' value={details.goal} onChange={(event) => onDetailsChange({ goal: event.target.value })} placeholder='Conte qual é a prioridade mais importante da organização neste momento.' rows={4} maxLength={400} className={`${fieldClass} resize-y leading-6`} />
+            <SmoothTextarea id='setup-cause-goal' value={details.goal} onChange={(event) => onDetailsChange({ goal: event.target.value })} placeholder='Conte qual é a prioridade mais importante da organização neste momento.' rows={4} maxLength={400} className={`${fieldClass} resize-y leading-6`} />
           </label>
 
           <div className='grid gap-4 sm:grid-cols-[1fr_9rem]'>

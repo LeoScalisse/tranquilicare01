@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowUpRight } from 'lucide-react';
 
 import founderSeal from '@/assets/founder-ngo-seal.png';
-import { CoverflowCarousel, type CoverflowSlide } from '@/components/ui/coverflow-carousel';
+import FounderCarousel, { type FounderCarouselSlide } from '@/components/ui/founder-carousel';
 import type { NGO } from '@/types';
 
 interface FounderOrganizationsSectionProps {
@@ -17,7 +17,7 @@ const FounderOrganizationsSection = memo(function FounderOrganizationsSection({
 }: FounderOrganizationsSectionProps) {
   const reduceMotion = useReducedMotion();
 
-  const slides = useMemo<CoverflowSlide[]>(() => ngos.map((ngo) => {
+  const slides = useMemo<FounderCarouselSlide[]>(() => ngos.map((ngo) => {
     const background = ngo.coverImage
       || ngo.posts.find((post) => post.type === 'image')?.url
       || '';
@@ -100,13 +100,7 @@ const FounderOrganizationsSection = memo(function FounderOrganizationsSection({
           </h2>
         </div>
 
-        <CoverflowCarousel
-          slides={slides}
-          cardWidth='clamp(300px, 72vw, 760px)'
-          cardHeight='clamp(340px, 48vw, 400px)'
-          showNavigation
-          className='relative z-10 mt-1'
-        />
+        <FounderCarousel slides={slides} className='relative z-10 mt-1' />
       </div>
     </section>
   );

@@ -1,7 +1,7 @@
 .apple-edge-glow {
-  --apple-glow-depth: 30px;
+  --apple-glow-depth: 26px;
   --apple-glow-scale: 1;
-  --apple-glow-blur: 5.5px;
+  --apple-glow-blur: 4px;
   --apple-glow-ambient-blur: 11px;
   position: fixed;
   z-index: 115;
@@ -12,31 +12,31 @@
 }
 
 .apple-edge-glow[data-stage="2"] {
-  --apple-glow-scale: 2;
+  --apple-glow-scale: 1.12;
 }
 
 .apple-edge-glow[data-stage="3"] {
-  --apple-glow-scale: 3;
+  --apple-glow-scale: 1.24;
 }
 
 .apple-edge-glow[data-stage="4"] {
-  --apple-glow-scale: 4;
+  --apple-glow-scale: 1.46;
 }
 
 .apple-edge-glow[data-intensity="sm"] {
-  --apple-glow-depth: 20px;
+  --apple-glow-depth: 12px;
   --apple-glow-blur: 4px;
   --apple-glow-ambient-blur: 8px;
 }
 
 .apple-edge-glow[data-intensity="md"] {
-  --apple-glow-depth: 24px;
+  --apple-glow-depth: 14px;
   --apple-glow-blur: 4.5px;
   --apple-glow-ambient-blur: 9px;
 }
 
 .apple-edge-glow[data-intensity="lg"] {
-  --apple-glow-depth: 27px;
+  --apple-glow-depth: 24px;
   --apple-glow-blur: 5px;
   --apple-glow-ambient-blur: 10px;
 }
@@ -57,7 +57,7 @@
   position: absolute;
   inset: 0;
   display: block;
-  filter: blur(var(--apple-glow-blur)) saturate(1.24) brightness(1.05);
+  filter: blur(var(--apple-glow-blur)) saturate(1.42) brightness(1.12);
   mix-blend-mode: screen;
   transition: transform 620ms cubic-bezier(0.77, 0, 0.175, 1);
   will-change: transform, opacity, background-position, filter;
@@ -70,7 +70,7 @@
   background: inherit;
   content: "";
   filter: blur(var(--apple-glow-ambient-blur));
-  opacity: 0.48;
+  opacity: 0.62;
   animation: apple-edge-ambient-drift 10s cubic-bezier(0.77, 0, 0.175, 1) infinite alternate;
   will-change: transform, opacity;
 }
@@ -83,7 +83,7 @@
 }
 
 .apple-edge-glow__edge--right {
-  right: calc(var(--apple-glow-depth) * -0.58);
+  right: calc(var(--apple-glow-depth) * -0.38);
 }
 
 .apple-edge-glow__edge--right .apple-edge-glow__edge-fill {
@@ -115,7 +115,7 @@
 }
 
 .apple-edge-glow__edge--left {
-  left: calc(var(--apple-glow-depth) * -0.58);
+  left: calc(var(--apple-glow-depth) * -0.38);
 }
 
 .apple-edge-glow__edge--left .apple-edge-glow__edge-fill {
@@ -155,7 +155,7 @@
 }
 
 .apple-edge-glow__edge--bottom {
-  bottom: calc(var(--apple-glow-depth) * -0.58);
+  bottom: calc(var(--apple-glow-depth) * -0.38);
 }
 
 .apple-edge-glow__edge--bottom .apple-edge-glow__edge-fill {
@@ -188,7 +188,7 @@
 }
 
 .apple-edge-glow__edge--top {
-  top: calc(var(--apple-glow-depth) * -0.58);
+  top: calc(var(--apple-glow-depth) * -0.38);
 }
 
 .apple-edge-glow__edge--top .apple-edge-glow__edge-fill {
@@ -251,7 +251,7 @@
 
 @media (max-width: 640px) {
   .apple-edge-glow {
-    --apple-glow-depth: 24px;
+    --apple-glow-depth: 14px;
     --apple-glow-blur: 4.5px;
     --apple-glow-ambient-blur: 9px;
   }

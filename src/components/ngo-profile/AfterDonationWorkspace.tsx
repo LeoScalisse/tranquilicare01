@@ -52,6 +52,7 @@ interface AfterDonationWorkspaceProps {
   initialRelationships?: DonorRelationship[];
   /** Public-only fixture mode: shows the workspace without changing data. */
   demoMode?: boolean;
+  onOpenChat?: (profileId: string) => void;
   onSendMessage?: (
     input: SendMessageInput,
   ) =>
@@ -151,6 +152,7 @@ export const AfterDonationWorkspace = ({
   initialRelationships,
   demoMode = false,
   onSendMessage,
+  onOpenChat,
 }: AfterDonationWorkspaceProps) => {
   const isLocalPrototype = initialRelationships !== undefined;
   const [relationships, setRelationships] = useState<DonorRelationship[]>(
@@ -430,9 +432,7 @@ export const AfterDonationWorkspace = ({
                         <RelationshipCard
                           key={relationship.id}
                           relationship={relationship}
-                          onOpen={() =>
-                            setSelectedRelationshipId(relationship.id)
-                          }
+                          onOpen={() => setSelectedRelationshipId(relationship.id)}
                           onNativeDragStart={(event) => {
                             if (demoMode) return;
                             event.dataTransfer.effectAllowed = "move";
@@ -468,6 +468,8 @@ export const AfterDonationWorkspace = ({
             ? moveRelationship(selectedRelationship.id, stage)
             : Promise.resolve()
         }
+        onOpenChat={selectedRelationship?.donorProfileId && onOpenChat ? () => onOpenChat(selectedRelationship.donorProfileId!) : undefined}
+
       />
 
       <Dialog open={calendarOpen} onOpenChange={setCalendarOpen}>

@@ -42,6 +42,7 @@ import {
 } from "@/lib/discoveryNavigation";
 import DonationAmountWheel from "@/components/ui/donation-amount-wheel";
 import DonationThankYouDialog from "@/components/DonationThankYouDialog";
+import ImpactTranslation from "@/components/ImpactTranslation";
 import AppleEdgeGlow from "@/components/ui/apple-edge-glow";
 import { PixQrDisclosure } from "@/components/ui/pix-qr-disclosure";
 import { PaymentSuccessCheck } from "@/components/ui/payment-success-check";
@@ -107,7 +108,8 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   const location = useLocation();
   const reduceMotion = useReducedMotion();
   const currentDonor = getUser();
-  const isPrototypeDonationTarget = isTranquiliCarePrototypeOrganization(ngo);
+  const isPrototypeDonationTarget =
+    !import.meta.env.PROD && isTranquiliCarePrototypeOrganization(ngo);
   const isTranquiliCarePrototype =
     ownerMode && isTranquiliCarePrototypeAccount(currentDonor?.email);
   const isPublicPrototypeDemo =
@@ -134,7 +136,6 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   const [isPixExpanded, setIsPixExpanded] = useState(false);
   const [confirmedDonation, setConfirmedDonation] =
     useState<DonationRow | null>(null);
-  const [copiedPhone, setCopiedPhone] = useState(false);
   const donationSuccessAudioRef = useRef<HTMLAudioElement>(null);
   const checkoutStageAudioRef = useRef<HTMLAudioElement>(null);
   const previousGlowStageRef = useRef(0);
@@ -348,11 +349,6 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
     finishDonationCelebration();
     navigate("/donor/auth?mode=signup");
   };
-  const copyPhone = async (text: string) => {
-    await navigator.clipboard.writeText(text);
-    setCopiedPhone(true);
-    window.setTimeout(() => setCopiedPhone(false), 2000);
-  };
 
   const openVerificationDiscovery = () => {
     saveDiscoveryOrigin(window.location, sealTriggerId);
@@ -377,7 +373,10 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   const instagramUrl = ngo.instagram
     ? `https://www.instagram.com/${ngo.instagram.replace(/^@/, "")}`
     : null;
-  const hasPublicContact = Boolean(instagramUrl || ngo.email || ngo.phone);
+  const whatsappDigits = ngo.phone?.replace(/\D/g, '') ?? '';
+  const whatsappUrl = whatsappDigits
+    ? 'https://wa.me/' + (whatsappDigits.startsWith('55') ? whatsappDigits : '55' + whatsappDigits)
+    : null;
   const tabs: Array<{ id: ProfileTab; label: string }> = [
     { id: "causa", label: "A Causa" },
     { id: "historias", label: "Histórias" },
@@ -513,6 +512,18 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
             </div>
           </div>
           <div className="space-y-2">
+            <button
+              type='button'
+              onClick={() => {
+                const target = '/chats?organization=' + ngo.id;
+                navigate(currentDonor ? target : '/donor/auth?mode=login&redirect=' + encodeURIComponent(target));
+              }}
+              className='flex w-full items-center gap-3 rounded-lg bg-brand-blue p-3 text-left font-semibold text-white shadow-[0_8px_20px_rgba(55,181,247,0.2)] transition-colors hover:bg-brand-blue/90'
+            >
+              <MessageCircle size={19} />
+              <span className='min-w-0 flex-1'>Conversar no TranquiliCare</span>
+              <ExternalLink size={15} className='text-white/80' />
+            </button>
             {instagramUrl && (
               <a
                 href={instagramUrl}
@@ -535,19 +546,17 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                 <ExternalLink size={15} className="text-muted-foreground" />
               </a>
             )}
-            {ngo.phone && (
-              <button
-                onClick={() => copyPhone(ngo.phone!)}
+            {whatsappUrl && (
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex w-full items-center gap-3 rounded-lg border border-border p-3 text-left font-semibold transition-colors hover:border-brand-blue"
               >
                 <Phone size={19} className="text-brand-blue" />
                 <span className="flex-1">{ngo.phone}</span>
-                {copiedPhone ? (
-                  <Check size={17} className="text-emerald-500" />
-                ) : (
-                  <Copy size={15} className="text-muted-foreground" />
-                )}
-              </button>
+                <ExternalLink size={15} className="text-muted-foreground" />
+              </a>
             )}
           </div>
         </ModalShell>
@@ -754,6 +763,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                       <>Os <strong className="font-bold text-brand-ink">{formatBRL(amountCents)}</strong> que você escolheu chegam à organização. O valor do TranquiliCare é adicionado separadamente.</>
                     )}
                   </p>
+                  {donationAmount !== null && isDonationAmountValid && <ImpactTranslation organizationId={ngo.id} category={ngo.category} amountCents={amountCents} />}
                   <button
                     disabled={
                       isStartingCheckout ||
@@ -784,6 +794,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
         <DonationThankYouDialog
           open
           amountCents={confirmedDonation.amount}
+          organizationId={ngo.id}
           ngoName={ngo.name}
           ngoCategory={ngo.category}
           ngoImage={ngo.image}
@@ -857,7 +868,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                   {donationsEnabled ? 'Apoiar esta causa' : 'Recebimentos em preparação'}
                 </button>
               )}
-              {hasPublicContact && (
+              {!ownerMode && (
                 <button
                 onClick={() => setShowContactModal(true)}
                 className="tc-button-neumorph inline-flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-background px-5 py-2.5 text-sm font-bold transition-colors hover:border-brand-blue hover:text-brand-blue sm:w-auto"
@@ -946,6 +957,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                   : undefined
               }
               demoMode={isPublicPrototypeDemo}
+              onOpenChat={(profileId) => navigate(`/chats?profile=${profileId}`)}
             />
           )}
         </motion.div>

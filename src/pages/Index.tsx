@@ -135,6 +135,14 @@ const TranquiliCareApp: React.FC = () => {
       return false;
     }
   }, [navigate, user]);
+  const handleCreateCampaign = useCallback(async (): Promise<boolean> => {
+    if (!user) {
+      navigate('/donor/auth?mode=login');
+      return false;
+    }
+    navigate('/campaign/new');
+    return true;
+  }, [navigate, user]);
 
   useEffect(() => {
     const origin = readDiscoveryOrigin();
@@ -273,7 +281,7 @@ const TranquiliCareApp: React.FC = () => {
         founderNgos={founderNgos}
         onSelectNGO={handleSelectNGO}
         onSupportNGO={handleSelectNGO}
-        onCampaignInterest={handleCampaignInterest}
+        onCampaignInterest={handleCreateCampaign}
         onCategorySealOpen={handleVerificationDiscovery}
       />
     </>
@@ -287,6 +295,7 @@ const TranquiliCareApp: React.FC = () => {
         return (
           <Stories
             onOpenNGO={(ngoId) => navigate(`/ong/${ngoId}`)}
+            onOpenProfile={(profileId) => navigate('/perfil/' + profileId)}
             canTellStory={Boolean(user)}
             onTellStory={() => navigate(user ? defaultDestForAccount(user.accountType) : '/donor/auth')}
           />
@@ -308,8 +317,9 @@ const TranquiliCareApp: React.FC = () => {
         onProfileClick={handleProfileClick}
         onLogout={handleLogout}
         onDonorLogin={() => navigate('/donor/auth')}
+        onChatClick={() => navigate(user ? '/chats' : '/donor/auth?mode=login&redirect=/chats')}
       />
-      <main className="animate-fade-in">
+      <main id='main-content' className="animate-fade-in">
         <Suspense fallback={<div className="min-h-[45vh]" aria-label="Carregando conteúdo" />}>
           {renderView()}
         </Suspense>
@@ -320,6 +330,7 @@ const TranquiliCareApp: React.FC = () => {
           <DonationThankYouDialog
             open={celebrationPhase === 'dialog'}
             amountCents={confirmedDonation.amount}
+            organizationId={confirmedNgo?.id ?? confirmedDonation.ngo_id}
             ngoName={confirmedNgoName}
             ngoCategory={confirmedNgo?.category ?? "Social"}
             ngoImage={confirmedNgo?.image ?? logo}
@@ -347,7 +358,7 @@ const TranquiliCareApp: React.FC = () => {
           <p className="mb-2 font-bold text-gray-400">
             TRANQUILI<span className="text-brand-blue">CARE</span>
           </p>
-          <p>© 2025 TranquiliCare. Conectando corações, mudando o mundo.</p>
+          <p>© {new Date().getFullYear()} TranquiliCare. Conectando corações, mudando o mundo.</p>
         </div>
       </footer>
     </div>

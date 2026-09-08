@@ -14,6 +14,7 @@ import { SmoothInput } from "@/components/ui/smooth-input";
 import CauseShowcaseCard from "@/components/marketplace/CauseShowcaseCard";
 import FounderOrganizationsSection from "@/components/FounderOrganizationsSection";
 
+import CampaignShowcaseSection from '@/components/campaigns/CampaignShowcaseSection';
 const SEARCH_PLACEHOLDERS = [
   "Busque uma causa...",
   "Uma ONG...",
@@ -424,13 +425,13 @@ const Marketplace: React.FC<MarketplaceProps> = ({
 
       {mode === "campaigns" && (
         <div className="px-3 pb-28 pt-14 md:px-5 md:pb-12 md:pt-16">
-          <CampaignInterestSection onRegister={onCampaignInterest} />
+          <CampaignShowcaseSection ngos={ngos} onCreate={() => void onCampaignInterest?.()} onOpenOrganization={onSelectNGO} />
         </div>
       )}
 
       {mode === "sections" && (
         <div className="space-y-6 px-3 pb-28 pt-14 md:px-5 md:pb-12 md:pt-16">
-          <CampaignInterestSection onRegister={onCampaignInterest} />
+          <CampaignShowcaseSection ngos={ngos} onCreate={() => void onCampaignInterest?.()} onOpenOrganization={onSelectNGO} />
 
           {founderOrganizations.length > 0 && (
             <FounderOrganizationsSection ngos={founderOrganizations} onOpen={onSelectNGO} />

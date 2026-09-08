@@ -6,10 +6,13 @@ import { useEffect, useRef, useState } from "react";
 import DonationShareStudio from "@/components/DonationShareStudio";
 import Rotating3DStaggerText from "@/components/ui/rotating-3d-stagger-text";
 import { formatBRL } from "@/lib/impact";
+import { loadImpactTranslation } from "@/lib/impact-scale/repository";
+import type { ImpactTranslation } from "@/lib/impact-scale/types";
 
 interface Props {
   open: boolean;
   amountCents: number;
+  organizationId: string;
   ngoName: string;
   ngoCategory: string;
   ngoImage: string;
@@ -36,6 +39,7 @@ const TRANSFER_DURATION_MS = 880;
 const DonationThankYouDialog = ({
   open,
   amountCents,
+  organizationId,
   ngoName,
   ngoCategory,
   ngoImage,
@@ -61,12 +65,25 @@ const DonationThankYouDialog = ({
   const reducedMotion = useReducedMotion();
   const motionDuration = reducedMotion ? 0.01 : 0.42;
   const skipSecondaryEntrance = Boolean(reducedMotion || enteredViaCircle);
+  const [impactTranslation, setImpactTranslation] = useState<ImpactTranslation | null>(null);
   const impactTexts = [
     formatBRL(amountCents),
-    "2 kits de alimento",
-    "1 atendimento veterinário",
-    "apoio para mais resgates",
-  ];
+    impactTranslation?.baseImpact,
+    impactTranslation?.humanScale,
+  ].filter((text): text is string => Boolean(text));
+
+  useEffect(() => {
+    let active = true;
+    if (!open) return undefined;
+    void loadImpactTranslation(organizationId, ngoCategory, amountCents)
+      .then((translation) => {
+        if (active) setImpactTranslation(translation);
+      })
+      .catch(() => {
+        if (active) setImpactTranslation(null);
+      });
+    return () => { active = false; };
+  }, [amountCents, ngoCategory, open, organizationId]);
 
 
   useEffect(

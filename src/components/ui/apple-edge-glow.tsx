@@ -36,10 +36,10 @@ const getHiddenTransform = (
   }
 };
 const intensityOpacity: Record<GlowIntensity, number> = {
-  sm: 0.58,
-  md: 0.66,
-  lg: 0.74,
-  xl: 0.82,
+  sm: 0.38,
+  md: 0.44,
+  lg: 0.5,
+  xl: 0.56,
 };
 
 export const AppleEdgeGlow: React.FC<AppleEdgeGlowProps> = ({

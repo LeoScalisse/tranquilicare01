@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { HandHeart } from 'lucide-react';
+import { HandHeart, MessageCircle } from 'lucide-react';
 import { isValidElement } from 'react';
 
 import { buildMobileNavItems } from '@/components/mobileNavItems';
@@ -16,11 +16,14 @@ describe('cause navigation', () => {
       isLoggedIn: false,
       onHome: vi.fn(),
       onStories: vi.fn(),
+      onChat: vi.fn(),
       onPerfil: vi.fn(),
     });
 
-    expect(items.map((item) => item.label)).toEqual(['Home', 'Hist\u00f3rias', 'Entrar']);
+    expect(items.map((item) => item.label)).toEqual(['Home', 'Hist\u00f3rias', 'Chat', 'Entrar']);
     const storiesIcon = items.find((item) => item.key === 'historias')?.icon;
     expect(isValidElement(storiesIcon) ? storiesIcon.type : null).toBe(HandHeart);
+    const chatIcon = items.find((item) => item.key === 'chat')?.icon;
+    expect(isValidElement(chatIcon) ? chatIcon.type : null).toBe(MessageCircle);
   });
 });

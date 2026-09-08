@@ -1,32 +1,38 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { Bookmark, ChevronLeft, ChevronRight, LoaderCircle, Play, X } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { Bookmark, ChevronLeft, ChevronRight, LoaderCircle, Play, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import CircularStoryGallery from '@/components/ui/circular-story-gallery';
 import ScrollExpand from '@/components/ui/scroll-expand';
 import ScrollIdleCue from '@/components/ui/scroll-idle-cue';
 import StoryComposerFab from '@/components/ui/story-composer-fab';
-import InstagramStoryEmbed from '@/components/ui/instagram-story-embed';
+import BrandLikeButton from '@/components/ui/brand-like-button';
+import SocialStoryEmbed from '@/components/ui/social-story-embed';
 import StoryReportMenu from '@/components/ui/story-report-menu';
 import StoryShareSheet from '@/components/ui/story-share-sheet';
+import { SmoothInput } from '@/components/ui/smooth-input';
 import founderSeal from '@/assets/founder-ngo-seal.png';
 import { curatedStoryMedia } from '@/data/curatedStoryMedia';
 import { demoNgos } from '@/data/demoNgos';
 import { loadPublicStoryImages, type PublicStoryImage } from '@/lib/publicStoryImages';
 import {
+  deleteOwnStory,
   loadPublishedStories,
   loadStoryViewerState,
   publishStory,
   reportStory,
+  setStoryLiked,
   setStorySaved,
   storyErrorMessage,
   type PublishedStory,
 } from '@/lib/stories';
+import { demoDataEnabled } from '@/lib/demoData';
 import type { StoryAttribution, StoryPresentationType } from '@/types/storyPresentation';
 
 interface StoriesProps {
   onOpenNGO: (ngoId: string) => void;
+  onOpenProfile?: (profileId: string) => void;
   canTellStory?: boolean;
   onTellStory?: () => void;
 }
@@ -38,6 +44,7 @@ interface StoryItem {
   caption: string;
   timestamp: number;
   ngoId: string | null;
+  authorProfileId?: string | null;
   ngoName: string;
   ngoImage: string;
   isFounder?: boolean;
@@ -50,18 +57,6 @@ type DiscoveryLane = 'for-you' | 'saved';
 const DISCOVERY_LANES: Array<{ id: DiscoveryLane; label: string }> = [
   { id: 'for-you', label: 'Para você' },
   { id: 'saved', label: 'Salvas' },
-];
-
-const DEMO_BATCH_SIZE = 6;
-const INITIAL_DEMO_BATCHES = 2;
-const DEMO_EPOCH = Date.now();
-const DEMO_CAPTIONS = [
-  'Mais uma etapa concluída com a participação de voluntários e pessoas da comunidade.',
-  'Os recursos recebidos ajudaram a manter o cuidado chegando a quem mais precisa.',
-  'Um novo encontro transformou apoio em escuta, presença e possibilidades.',
-  'A equipe compartilhou os avanços da semana e os próximos passos desta causa.',
-  'Pequenas contribuições se encontraram para tornar esta ação possível.',
-  'Hoje foi dia de acolher pessoas e preparar a próxima atividade.',
 ];
 
 const formatTimestamp = (timestamp: number) => {
@@ -101,27 +96,18 @@ const publicImageStories = (images: PublicStoryImage[]): StoryItem[] => images.m
   attribution: image.attribution,
 }));
 
-const extendDemoStories = (base: StoryItem[], count: number): StoryItem[] => {
-  if (!base.length) return [];
-  return Array.from({ length: count }, (_, index) => {
-    const source = base[index % base.length];
-    return {
-      ...source,
-      id: `demo-feed-${index}-${source.id}`,
-      caption: DEMO_CAPTIONS[index % DEMO_CAPTIONS.length],
-      timestamp: DEMO_EPOCH - (index + base.length + 1) * 1000 * 60 * 47,
-      persisted: false,
-    };
-  });
-};
-
 interface StoryFeedProps {
   stories: StoryItem[];
   savedIds: Set<string>;
+  likedIds: Set<string>;
   canInteract: boolean;
+  currentProfileId: string | null;
   onOpenStory: (story: StoryItem) => void;
   onOpenNGO: (ngoId: string) => void;
+  onOpenProfile?: (profileId: string) => void;
   onToggleSaved: (story: StoryItem) => void;
+  onToggleLike: (story: StoryItem) => void;
+  onDelete: (story: StoryItem) => Promise<void>;
   onReport: (story: StoryItem, reason: string) => Promise<void>;
   onRequireAuth: () => void;
   emptyText: string;
@@ -130,43 +116,52 @@ interface StoryFeedProps {
 const StoryFeed: React.FC<StoryFeedProps> = ({
   stories,
   savedIds,
+  likedIds,
   canInteract,
+  currentProfileId,
   onOpenStory,
   onOpenNGO,
+  onOpenProfile,
   onToggleSaved,
+  onToggleLike,
+  onDelete,
   onReport,
   onRequireAuth,
   emptyText,
 }) => {
-  const reduceMotion = useReducedMotion();
   if (!stories.length) return <p className='py-16 text-center text-sm text-muted-foreground'>{emptyText}</p>;
 
   return (
     <div className='divide-y divide-brand-ink/10 overflow-hidden rounded-[24px] border border-brand-ink/10 bg-background'>
-      {stories.map((story, index) => {
+      {stories.map((story) => {
         const saved = savedIds.has(story.id);
+        const liked = likedIds.has(story.id);
+        const canOpenAuthor = Boolean(story.ngoId || story.authorProfileId);
+        const canDelete = Boolean(story.persisted && currentProfileId && story.authorProfileId === currentProfileId);
+        const openAuthor = () => {
+          if (story.ngoId) onOpenNGO(story.ngoId);
+          else if (story.authorProfileId) onOpenProfile?.(story.authorProfileId);
+        };
         return (
-          <motion.article
+          <article
             id={`story-${story.id}`}
             key={story.id}
-            initial={reduceMotion ? false : { opacity: 0, y: 18 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: '120px 0px' }}
-            transition={{ duration: reduceMotion ? 0.01 : 0.38, delay: Math.min(index * 0.025, 0.12), ease: [0.22, 1, 0.36, 1] }}
             className='px-3 py-5 sm:px-5'
           >
             <header className='flex items-start gap-3'>
-              <button type='button' disabled={!story.ngoId} onClick={() => story.ngoId && onOpenNGO(story.ngoId)} className='shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20 disabled:cursor-default'>
+              <button type='button' disabled={!canOpenAuthor} onClick={openAuthor} className='shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20 disabled:cursor-default' aria-label={canOpenAuthor ? 'Abrir perfil de ' + story.ngoName : undefined}>
                 <img src={story.ngoImage} alt='' className='h-11 w-11 rounded-full border border-brand-ink/10 bg-secondary object-cover' />
               </button>
               <div className='min-w-0 flex-1 pt-0.5'>
                 <div className='flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1'>
-                  <button type='button' disabled={!story.ngoId} onClick={() => story.ngoId && onOpenNGO(story.ngoId)} className='max-w-full truncate text-left text-sm font-bold text-brand-ink hover:text-brand-blue disabled:cursor-default disabled:hover:text-brand-ink'>{story.ngoName}</button>
+                  <button type='button' disabled={!canOpenAuthor} onClick={openAuthor} className='max-w-full truncate text-left text-sm font-bold text-brand-ink hover:text-brand-blue disabled:cursor-default disabled:hover:text-brand-ink'>{story.ngoName}</button>
                   {story.isFounder && <span className='inline-flex shrink-0 items-center gap-1 rounded-full bg-brand-yellow/25 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.08em] text-brand-ink' title='ONG fundadora'><img src={founderSeal} alt='' className='h-3.5 w-3.5 object-contain' />ONG fundadora</span>}
                 </div>
                 <span className='block text-xs text-muted-foreground'>{formatTimestamp(story.timestamp)}</span>
               </div>
-              <StoryReportMenu canReport={canInteract} onRequireAuth={onRequireAuth} onReport={(reason) => onReport(story, reason)} />
+              <div className='flex shrink-0 items-center gap-2'>
+                <StoryReportMenu canReport={canInteract} canDelete={canDelete} onDelete={() => onDelete(story)} onRequireAuth={onRequireAuth} onReport={(reason) => onReport(story, reason)} />
+              </div>
             </header>
 
             {story.caption && <p className='ml-14 mt-1.5 pr-2 text-[15px] leading-6 text-brand-ink/80'>{story.caption}</p>}
@@ -176,12 +171,12 @@ const StoryFeed: React.FC<StoryFeedProps> = ({
                 <img src={story.url} alt={story.caption || `História de ${story.ngoName}`} loading='lazy' decoding='async' className='block max-h-[38rem] w-full object-cover' />
               ) : story.type === 'video' ? (
                 <div className='relative aspect-[16/10] w-full'>
-                  <video src={story.url} className='h-full w-full object-cover' muted playsInline preload='metadata' />
+                  <video src={story.url} className='h-full w-full object-cover' muted playsInline preload='none' />
                   <span className='absolute inset-0 grid place-items-center bg-brand-ink/15'><span className='grid h-12 w-12 place-items-center rounded-full bg-background/90 text-brand-blue shadow-lg'><Play size={21} className='ml-0.5 fill-current' /></span></span>
                 </div>
               ) : (
                 <div className='h-[min(620px,74vh)] min-h-[28rem] w-full bg-white'>
-                  <InstagramStoryEmbed src={story.url} title={`Publicação de ${story.ngoName} no Instagram`} interactive={false} />
+                  <SocialStoryEmbed src={story.url} provider={story.type} title={`Publicação de ${story.ngoName} no ${story.type}`} interactive={false} />
                 </div>
               )}
             </button>
@@ -189,30 +184,31 @@ const StoryFeed: React.FC<StoryFeedProps> = ({
             {story.attribution && <a href={story.attribution.href} target='_blank' rel='noreferrer' className='ml-14 mt-2 block w-[calc(100%_-_3.5rem)] truncate text-xs font-semibold text-brand-blue underline-offset-4 hover:underline'>{story.attribution.label}</a>}
 
             <footer className='ml-14 mt-3 flex min-w-0 items-center justify-center gap-5 text-muted-foreground'>
+              <BrandLikeButton liked={liked} onChange={() => onToggleLike(story)} />
               <StoryShareSheet storyId={story.id} storyTitle={story.caption || `História de ${story.ngoName}`} />
-              <button type='button' onClick={() => onToggleSaved(story)} aria-pressed={saved} className={`grid h-10 w-10 shrink-0 place-items-center rounded-[14px] transition-colors hover:bg-brand-yellow/25 ${saved ? 'text-brand-blue' : ''}`} aria-label={saved ? 'Remover dos salvos' : 'Salvar história'}>
+              <button type='button' onClick={() => onToggleSaved(story)} aria-pressed={saved} className={`grid h-10 w-10 shrink-0 place-items-center rounded-[14px] transition-colors hover:bg-brand-yellow/25 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20 ${saved ? 'text-brand-blue' : ''}`} aria-label={saved ? 'Remover dos salvos' : 'Salvar história'}>
                 <Bookmark size={19} className={saved ? 'fill-current' : ''} />
               </button>
             </footer>
-          </motion.article>
+          </article>
         );
       })}
     </div>
   );
 };
 
-const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTellStory }) => {
+const Stories: React.FC<StoriesProps> = ({ onOpenNGO, onOpenProfile, canTellStory = false, onTellStory }) => {
   const [discoveryLane, setDiscoveryLane] = useState<DiscoveryLane>('for-you');
+  const [searchQuery, setSearchQuery] = useState('');
   const [activeStoryId, setActiveStoryId] = useState<string | null>(null);
   const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
   const [reportedIds, setReportedIds] = useState<Set<string>>(new Set());
+  const [currentProfileId, setCurrentProfileId] = useState<string | null>(null);
   const [realStories, setRealStories] = useState<PublishedStory[]>([]);
   const [publicImages, setPublicImages] = useState<PublicStoryImage[]>([]);
   const [loadingRealStories, setLoadingRealStories] = useState(true);
-  const [demoBatches, setDemoBatches] = useState(INITIAL_DEMO_BATCHES);
   const [expandProgress, setExpandProgress] = useState(0);
-  const feedScrollerRef = useRef<HTMLDivElement>(null);
-  const loadMoreRef = useRef<HTMLDivElement>(null);
   const baseDemoStories = useMemo(demoStories, []);
 
   const refreshStories = async () => {
@@ -227,7 +223,9 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
       .then(([stories, viewer]) => {
         if (!active) return;
         setRealStories(stories);
+        setCurrentProfileId(viewer.currentProfileId ?? null);
         setSavedIds(viewer.savedStoryIds);
+        setLikedIds(viewer.likedStoryIds ?? new Set());
         setReportedIds(viewer.reportedStoryIds);
       })
       .catch(() => {
@@ -241,47 +239,37 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
 
   useEffect(() => {
     let active = true;
+    if (!demoDataEnabled) return undefined;
     void loadPublicStoryImages().then((images) => {
       if (active) setPublicImages(images);
     });
     return () => { active = false; };
   }, []);
 
-  const usingDemoFallback = !loadingRealStories && realStories.length === 0;
   const feedStories = useMemo<StoryItem[]>(() => {
     const databaseOrDemoStories: StoryItem[] = realStories.length
       ? realStories
-      : [...baseDemoStories, ...extendDemoStories(baseDemoStories, demoBatches * DEMO_BATCH_SIZE)];
+      : demoDataEnabled ? baseDemoStories.slice(0, 12) : [];
     return [
-      ...curatedStoryMedia.map((story) => ({ ...story, persisted: false })),
-      ...publicImageStories(publicImages),
+      ...(demoDataEnabled ? curatedStoryMedia.map((story) => ({ ...story, persisted: false })) : []),
+      ...(demoDataEnabled ? publicImageStories(publicImages) : []),
       ...databaseOrDemoStories,
     ];
-  }, [baseDemoStories, demoBatches, publicImages, realStories]);
-
-  useEffect(() => {
-    if (!usingDemoFallback) return undefined;
-    const root = feedScrollerRef.current;
-    const sentinel = loadMoreRef.current;
-    if (!root || !sentinel || typeof IntersectionObserver === 'undefined') return undefined;
-    let waitingForLayout = false;
-    const observer = new IntersectionObserver((entries) => {
-      if (!entries.some((entry) => entry.isIntersecting) || waitingForLayout) return;
-      waitingForLayout = true;
-      setDemoBatches((current) => current + 1);
-      requestAnimationFrame(() => { waitingForLayout = false; });
-    }, { root, rootMargin: '700px 0px', threshold: 0.01 });
-    observer.observe(sentinel);
-    return () => observer.disconnect();
-  }, [discoveryLane, usingDemoFallback]);
+  }, [baseDemoStories, publicImages, realStories]);
 
   const availableStories = useMemo(() => feedStories.filter((story) => !reportedIds.has(story.id)), [feedStories, reportedIds]);
   const activeIndex = activeStoryId === null ? -1 : availableStories.findIndex((story) => story.id === activeStoryId);
   const activeStory = activeIndex < 0 ? null : availableStories[activeIndex];
   const visibleStories = useMemo(() => {
-    if (discoveryLane === 'saved') return availableStories.filter((story) => savedIds.has(story.id));
-    return availableStories;
-  }, [availableStories, discoveryLane, savedIds]);
+    const laneStories = discoveryLane === 'saved' ? availableStories.filter((story) => savedIds.has(story.id)) : availableStories;
+    const normalizedQuery = searchQuery.trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+    if (!normalizedQuery) return laneStories;
+    const terms = normalizedQuery.split(/\s+/).filter(Boolean);
+    return laneStories.filter((story) => {
+      const searchable = (story.ngoName + ' ' + story.caption).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR');
+      return terms.every((term) => searchable.includes(term));
+    });
+  }, [availableStories, discoveryLane, savedIds, searchQuery]);
 
   const openStory = (story: StoryItem) => setActiveStoryId(story.id);
   const move = (direction: -1 | 1) => {
@@ -317,6 +305,40 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
     }
   };
 
+  const handleToggleLike = async (story: StoryItem) => {
+    if (!canTellStory) {
+      requireAuth();
+      return;
+    }
+    const nextLiked = !likedIds.has(story.id);
+    setLikedIds((current) => {
+      const next = new Set(current);
+      if (nextLiked) next.add(story.id); else next.delete(story.id);
+      return next;
+    });
+    try {
+      await setStoryLiked(story.id, nextLiked);
+    } catch {
+      setLikedIds((current) => {
+        const next = new Set(current);
+        if (nextLiked) next.delete(story.id); else next.add(story.id);
+        return next;
+      });
+      toast.error('Não foi possível atualizar sua curtida. Tente novamente.');
+    }
+  };
+
+  const handleDelete = async (story: StoryItem) => {
+    try {
+      await deleteOwnStory(story.id);
+      setRealStories((current) => current.filter((item) => item.id !== story.id));
+      setActiveStoryId((current) => current === story.id ? null : current);
+      toast.success('História excluída.');
+    } catch {
+      toast.error('Não foi possível excluir a história. Ela continua publicada.');
+      throw new Error('story-delete-failed');
+    }
+  };
   const handleReport = async (story: StoryItem, reason: string) => {
     await reportStory(story.id, reason);
     toast.success('Recebemos sua denúncia. O time do TranquiliCare vai investigar.');
@@ -324,9 +346,9 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
     setReportedIds((current) => new Set(current).add(story.id));
   };
 
-  const handlePublish = async (body: string, image: File | null) => {
+  const handlePublish = async (body: string, image: File | null, socialUrl: string | null) => {
     try {
-      await publishStory(body, image);
+      await publishStory(body, image, socialUrl);
       await refreshStories();
       toast.success('História publicada.');
     } catch (error) {
@@ -346,8 +368,22 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
         <p className='font-narrative mx-auto mt-4 max-w-[22rem] break-words text-base leading-7 text-muted-foreground sm:max-w-2xl sm:text-lg sm:leading-8'>Conheça de perto as pessoas, os momentos e as causas que estão acontecendo por aqui.</p>
       </section>
 
-      <ScrollExpand contentPreview restingOverlay={<ScrollIdleCue active={expandProgress < 0.08} />} onProgressChange={setExpandProgress} startWidth={48} startHeight={48} startShape='circle' scrollDistance={0.68} holdDistance={0} smoothing={0.055} overlayScrim={0} useWindowScroll surround={<CircularStoryGallery items={availableStories} />}>
-        <div ref={feedScrollerRef} className='h-full w-full overflow-y-hidden bg-background text-brand-ink'>
+      <ScrollExpand
+        contentPreview
+        restingOverlay={<ScrollIdleCue active={expandProgress < 0.08} />}
+        onProgressChange={setExpandProgress}
+        startWidth={48}
+        startHeight={48}
+        startShape='circle'
+        scrollDistance={0.68}
+        holdDistance={0}
+        smoothing={0.055}
+        overlayScrim={0}
+        useWindowScroll
+        surround={<CircularStoryGallery items={availableStories} />}
+        aria-label='Prévia circular das histórias'
+      >
+      <div className='h-full w-full overflow-y-hidden bg-background text-brand-ink'>
           <main className='mx-auto w-full max-w-2xl px-3 pb-28 pt-8 sm:px-5 sm:pt-10'>
             <div className='sticky top-0 z-30 -mx-3 bg-background/95 px-3 pt-4 backdrop-blur sm:-mx-5 sm:px-5' data-testid='story-feed-tabs'>
               <div className='border-b border-brand-ink/10' role='tablist' aria-label='Formas de navegar pelas histórias'>
@@ -363,15 +399,22 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
                 })}
                 </div>
               </div>
+              <div className='pb-3 pt-3'>
+                <label htmlFor='story-search' className='sr-only'>Pesquisar histórias por pessoa ou palavra-chave</label>
+                <div className='relative'>
+                  <Search className='pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground' size={18} aria-hidden='true' />
+                  <SmoothInput id='story-search' type='search' value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder='Buscar por pessoa ou palavra-chave' className='h-11 w-full rounded-2xl border border-brand-ink/10 bg-secondary/70 pl-10 pr-4 text-sm text-brand-ink outline-none transition focus:border-brand-blue/50 focus:bg-background focus:ring-4 focus:ring-brand-blue/10' autoComplete='off' />
+                </div>
+                {searchQuery.trim() && <p className='mt-2 text-xs text-muted-foreground' role='status'>{visibleStories.length} {visibleStories.length === 1 ? 'história encontrada' : 'histórias encontradas'}</p>}
+              </div>
             </div>
 
             <section className='mt-5' aria-live='polite'>
               {loadingRealStories ? (
                 <div className='grid min-h-52 place-items-center text-brand-blue' role='status' aria-label='Carregando histórias'><LoaderCircle size={22} className='animate-spin' /></div>
               ) : (
-                <StoryFeed stories={visibleStories} savedIds={savedIds} canInteract={canTellStory} onOpenStory={openStory} onOpenNGO={onOpenNGO} onToggleSaved={handleToggleSaved} onReport={handleReport} onRequireAuth={requireAuth} emptyText={discoveryLane === 'saved' ? 'As histórias que você salvar aparecerão aqui.' : 'Novas histórias estão a caminho.'} />
+                <StoryFeed stories={visibleStories} savedIds={savedIds} likedIds={likedIds} canInteract={canTellStory} currentProfileId={currentProfileId} onOpenStory={openStory} onOpenNGO={onOpenNGO} onOpenProfile={onOpenProfile} onToggleSaved={handleToggleSaved} onToggleLike={handleToggleLike} onDelete={handleDelete} onReport={handleReport} onRequireAuth={requireAuth} emptyText={searchQuery.trim() ? 'Nenhuma história corresponde à sua busca.' : discoveryLane === 'saved' ? 'As histórias que você salvar aparecerão aqui.' : 'Novas histórias estão a caminho.'} />
               )}
-              {usingDemoFallback && discoveryLane !== 'saved' && <div ref={loadMoreRef} className='grid min-h-24 place-items-center text-brand-blue' role='status' aria-label='Carregando mais histórias'><LoaderCircle size={22} className='animate-spin' aria-hidden='true' /></div>}
             </section>
           </main>
         </div>
@@ -386,9 +429,9 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, canTellStory = false, onTe
             <button type='button' onClick={() => setActiveStoryId(null)} className='absolute right-4 top-8 grid h-10 w-10 place-items-center rounded-full bg-background text-brand-blue' aria-label='Fechar história'><X size={19} /></button>
             {availableStories.length > 1 && <><button type='button' onClick={(event) => { event.stopPropagation(); move(-1); }} className='absolute left-3 z-10 grid h-10 w-10 place-items-center rounded-full bg-background/15 text-white backdrop-blur md:left-8' aria-label='História anterior'><ChevronLeft /></button><button type='button' onClick={(event) => { event.stopPropagation(); move(1); }} className='absolute right-3 z-10 grid h-10 w-10 place-items-center rounded-full bg-background/15 text-white backdrop-blur md:right-8' aria-label='Próxima história'><ChevronRight /></button></>}
             <motion.div key={activeStory.id} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className='relative h-[78vh] w-full max-w-md overflow-hidden rounded-[26px] bg-black shadow-2xl' onClick={(event) => event.stopPropagation()}>
-              {activeStory.type === 'image' ? <img src={activeStory.url} alt='' className='h-full w-full object-contain' /> : activeStory.type === 'video' ? <video src={activeStory.url} className='h-full w-full object-contain' controls autoPlay playsInline /> : <InstagramStoryEmbed src={activeStory.url} title={`Publicação de ${activeStory.ngoName} no Instagram`} className='bg-white' />}
-              <div className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-5 pt-20 text-white ${activeStory.type === 'instagram' ? 'pointer-events-none' : ''}`}>
-                <button type='button' disabled={!activeStory.ngoId} onClick={() => activeStory.ngoId && onOpenNGO(activeStory.ngoId)} className='flex items-center gap-3 text-left disabled:cursor-default'><img src={activeStory.ngoImage} alt='' className='h-11 w-11 rounded-full border-2 border-white object-cover' /><span><span className='flex flex-wrap items-center gap-2 font-bold'>{activeStory.ngoName}{activeStory.isFounder && <img src={founderSeal} alt='ONG fundadora' className='h-5 w-5 object-contain' />}</span><span className='mt-1 block text-sm text-white/75'>{activeStory.caption}</span></span></button>
+              {activeStory.type === 'image' ? <img src={activeStory.url} alt='' className='h-full w-full object-contain' /> : activeStory.type === 'video' ? <video src={activeStory.url} className='h-full w-full object-contain' controls autoPlay playsInline /> : <SocialStoryEmbed src={activeStory.url} provider={activeStory.type} title={`Publicação de ${activeStory.ngoName} no ${activeStory.type}`} className='bg-white' />}
+              <div className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-5 pt-20 text-white ${['instagram', 'tiktok', 'threads', 'substack'].includes(activeStory.type) ? 'pointer-events-none' : ''}`}>
+                <button type='button' disabled={!activeStory.ngoId && !activeStory.authorProfileId} onClick={() => activeStory.ngoId ? onOpenNGO(activeStory.ngoId) : activeStory.authorProfileId && onOpenProfile?.(activeStory.authorProfileId)} className='flex items-center gap-3 text-left disabled:cursor-default'><img src={activeStory.ngoImage} alt='' className='h-11 w-11 rounded-full border-2 border-white object-cover' /><span><span className='flex flex-wrap items-center gap-2 font-bold'>{activeStory.ngoName}{activeStory.isFounder && <img src={founderSeal} alt='ONG fundadora' className='h-5 w-5 object-contain' />}</span><span className='mt-1 block text-sm text-white/75'>{activeStory.caption}</span></span></button>
               </div>
             </motion.div>
           </motion.div>

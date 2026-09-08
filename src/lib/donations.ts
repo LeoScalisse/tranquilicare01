@@ -116,6 +116,7 @@ let simulatedPixSequence = 0;
  * test donations after the launch flag has been turned off. */
 export const getDonationSimulationStatus = async (): Promise<boolean> => {
   if (!supabase) return false;
+  if (import.meta.env.PROD) return false;
   const { data, error } = await supabase.rpc("donation_simulation_status");
   if (error) return false;
   return data === true;

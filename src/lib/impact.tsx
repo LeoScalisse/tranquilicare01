@@ -26,6 +26,12 @@ export interface DonationImpact {
   rows: DonationRow[];
   communityTotal: number;
   communityDonationCount: number;
+  personalTotal: number;
+  personalDonationCount: number;
+  receivedTotal: number;
+  receivedDonationCount: number;
+  verifiedOrganizationCount: number;
+  dashboardStatsLoaded: boolean;
   isLive: boolean;
 }
 
@@ -130,7 +136,9 @@ export const devDonationRows = (userEmail: string | null): DonationRow[] => {
 type DonationDatabaseRow = {
   id: string;
   donor_id: string | null;
+  donor_profile_id: string | null;
   ngo_id: string | null;
+  organization_id: string | null;
   amount_cents: number;
   created_at: string;
   provider_action_id: string | null;
@@ -143,16 +151,26 @@ type ImpactStatsRow = {
   donation_count: number;
 };
 
+type HomeDashboardStatsRow = {
+  community_amount_cents: number | string;
+  community_donation_count: number | string;
+  personal_amount_cents: number | string;
+  personal_donation_count: number | string;
+  received_amount_cents: number | string;
+  received_donation_count: number | string;
+  verified_organization_count: number | string;
+};
+
 const donationFromDatabase = (
   row: DonationDatabaseRow,
   userEmail: string | null,
 ): DonationRow => ({
   id: row.id,
   amount: Number(row.amount_cents) || 0,
-  donor_id: row.donor_id,
+  donor_id: row.donor_profile_id ?? row.donor_id,
   donor_email: userEmail,
   created_at: row.created_at,
-  ngo_id: row.ngo_id,
+  ngo_id: row.organization_id ?? row.ngo_id,
   payment_action_id: row.provider_action_id,
   is_test: row.is_test,
 });
@@ -184,6 +202,12 @@ export const useDonationImpact = (
   const [communityDonationCount, setCommunityDonationCount] = useState(() =>
     supabase ? 0 : fallbackRows.length,
   );
+  const [personalTotal, setPersonalTotal] = useState(0);
+  const [personalDonationCount, setPersonalDonationCount] = useState(0);
+  const [receivedTotal, setReceivedTotal] = useState(0);
+  const [receivedDonationCount, setReceivedDonationCount] = useState(0);
+  const [verifiedOrganizationCount, setVerifiedOrganizationCount] = useState(0);
+  const [dashboardStatsLoaded, setDashboardStatsLoaded] = useState(false);
   const channelKey = useRef(`impact-${crypto.randomUUID()}`);
 
   useEffect(() => {
@@ -221,7 +245,6 @@ export const useDonationImpact = (
               event: '*',
               schema: 'public',
               table: 'donations',
-              filter: `donor_id=eq.${userId}`,
             },
             (payload) => {
               const next = payload.new as DonationDatabaseRow | undefined;
@@ -257,10 +280,25 @@ export const useDonationImpact = (
         setCommunityDonationCount(Number(data?.donation_count) || 0);
       });
 
+    void supabase
+      .rpc('get_home_dashboard_stats')
+      .then(({ data, error }) => {
+        if (!active || error) return;
+        const stats = (data?.[0] as HomeDashboardStatsRow | undefined);
+        if (!stats) return;
+        setCommunityTotal(Number(stats.community_amount_cents) || 0);
+        setCommunityDonationCount(Number(stats.community_donation_count) || 0);
+        setPersonalTotal(Number(stats.personal_amount_cents) || 0);
+        setPersonalDonationCount(Number(stats.personal_donation_count) || 0);
+        setReceivedTotal(Number(stats.received_amount_cents) || 0);
+        setReceivedDonationCount(Number(stats.received_donation_count) || 0);
+        setVerifiedOrganizationCount(Number(stats.verified_organization_count) || 0);
+        setDashboardStatsLoaded(true);
+      });
     if (userId) {
       void supabase
         .from('donations')
-        .select('id, donor_id, ngo_id, amount_cents, created_at, provider_action_id, status, is_test')
+        .select('id, donor_id, donor_profile_id, ngo_id, organization_id, amount_cents, created_at, provider_action_id, status, is_test')
         .eq('status', 'succeeded')
         .order('created_at', { ascending: false })
         .then(({ data, error }) => {
@@ -293,6 +331,12 @@ export const useDonationImpact = (
     rows,
     communityTotal,
     communityDonationCount,
+    personalTotal,
+    personalDonationCount,
+    receivedTotal,
+    receivedDonationCount,
+    verifiedOrganizationCount,
+    dashboardStatsLoaded,
     isLive: Boolean(supabase),
   };
 };

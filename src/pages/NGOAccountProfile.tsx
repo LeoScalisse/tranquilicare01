@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
+import { SmoothTextarea } from '@/components/ui/smooth-textarea';
 import NGOProfile from '@/components/NGOProfile';
 import { getNgoCategory, NGO_CATEGORY_ORDER } from '@/data/ngoCategories';
 import {
@@ -58,7 +59,8 @@ import {
   prepareOrganizationVisualMedia,
   visualMediaErrorMessage,
 } from '@/lib/organizationVisualMedia';
-import { loadOwnOrganizationPublishedStories } from '@/lib/stories';
+import { loadOwnOrganizationPublishedStories, publishStory, storyErrorMessage } from '@/lib/stories';
+import StoryComposerFab from '@/components/ui/story-composer-fab';
 import type { NGOPost } from '@/types';
 import {
   advanceOwnOrganizationOnboarding,
@@ -228,7 +230,7 @@ const ProfileFields: React.FC<ProfileFieldsProps> = ({
 
     <label className={`${labelClass} md:col-span-2`} htmlFor={`${idPrefix}-description`}>
       Sobre a organização
-      <textarea
+      <SmoothTextarea
         id={`${idPrefix}-description`}
         value={details.description}
         onChange={(event) => {
@@ -246,7 +248,7 @@ const ProfileFields: React.FC<ProfileFieldsProps> = ({
 
     <label className={`${labelClass} md:col-span-2`} htmlFor={`${idPrefix}-goal`}>
       Objetivo atual
-      <textarea
+      <SmoothTextarea
         id={`${idPrefix}-goal`}
         value={details.goal}
         onChange={(event) => {
@@ -381,6 +383,7 @@ const NGOAccountProfile: React.FC = () => {
   const [founderCodeError, setFounderCodeError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<ProfileFieldErrors>({});
   const [profilePosts, setProfilePosts] = useState<NGOPost[]>([]);
+  const [storyRefreshKey, setStoryRefreshKey] = useState(0);
   const urlRequestedStage = setupValue === 'visual'
     ? 'visual'
     : setupValue === '4'
@@ -465,7 +468,7 @@ const NGOAccountProfile: React.FC = () => {
       if (import.meta.env.DEV) console.info('Could not load own organization stories:', error);
     });
     return () => { active = false; };
-  }, [user]);
+  }, [storyRefreshKey, user]);
 
   const profile = useMemo(() => ({
     id: user?.id ?? 'new-organization',
@@ -784,11 +787,22 @@ const NGOAccountProfile: React.FC = () => {
     navigate('/');
   };
 
+  const publishFromProfile = async (body: string, image: File | null, socialUrl: string | null) => {
+    try {
+      await publishStory(body, image, socialUrl);
+      setStoryRefreshKey((current) => current + 1);
+      toast.success('História publicada.');
+    } catch (error) {
+      throw new Error(storyErrorMessage(error));
+    }
+  };
+
   if (loading) {
     return <div className='grid min-h-screen place-items-center bg-background'><Loader2 className='animate-spin text-brand-blue' size={36} /></div>;
   }
 
   return (
+    <>
     <div className='min-h-screen bg-background text-brand-ink'>
       <AppBottomNav activeKey='perfil' user={user} />
       <header className='sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur'>
@@ -852,6 +866,8 @@ const NGOAccountProfile: React.FC = () => {
         )}
       </AnimatePresence>
     </div>
+      <StoryComposerFab visible={Boolean(user && profileSaved && !isOnboarding)} canPublish={Boolean(user)} onUnavailable={() => navigate('/ngo/auth')} onPublish={publishFromProfile} />
+    </>
   );
 };
 

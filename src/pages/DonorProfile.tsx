@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { SmoothTextarea } from '@/components/ui/smooth-textarea';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
@@ -33,6 +34,8 @@ import ImpactStatCarousel from '@/components/ui/impact-stat-carousel';
 import { NGO_CATEGORY_ORDER } from '@/data/ngoCategories';
 import { formatPhone, isValidInstagram, isValidOptionalUrl, isValidPhone, normalizePhone } from '@/lib/organizationProfile';
 import { profileImageErrorMessage, uploadProfileAvatar } from '@/lib/profileMedia';
+import StoryComposerFab from '@/components/ui/story-composer-fab';
+import { publishStory, storyErrorMessage } from '@/lib/stories';
 
 const DAY_MS = 86_400_000;
 const EMPTY_DONOR_DETAILS: DonorProfileDetails = {
@@ -225,12 +228,22 @@ const DonorProfile: React.FC = () => {
     navigate('/');
   };
 
+  const publishFromProfile = async (body: string, image: File | null, socialUrl: string | null) => {
+    try {
+      await publishStory(body, image, socialUrl);
+      toast.success('História publicada.');
+    } catch (error) {
+      throw new Error(storyErrorMessage(error));
+    }
+  };
+
   if (loading) {
     return <div className='min-h-screen bg-background grid place-items-center'><Loader2 className='animate-spin text-brand-blue' size={36} /></div>;
   }
 
   const firstName = name.trim().split(' ')[0] || 'você';
   return (
+    <>
     <div className='min-h-screen bg-background pb-24 text-brand-ink md:pb-12'>
       <AppBottomNav activeKey='perfil' user={user} />
       <header className='sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur'>
@@ -306,7 +319,7 @@ const DonorProfile: React.FC = () => {
               <div className='grid gap-4 py-6 md:grid-cols-2'>
                 <label className='text-sm font-bold'>Nome<SmoothInput value={name} onChange={(event) => { setName(event.target.value); setDirty(true); }} className='mt-2 w-full rounded-lg border-2 border-border px-4 py-3 outline-none focus:border-brand-blue' /></label>
                 <label className='text-sm font-bold'>E-mail<SmoothInput type='email' value={email} disabled className='mt-2 w-full rounded-lg border-2 border-border bg-muted px-4 py-3 text-muted-foreground' /></label>
-                <label className='text-sm font-bold md:col-span-2'>Sobre você<textarea value={details.bio} maxLength={500} rows={4} onChange={(event) => { setDetails((current) => ({ ...current, bio: event.target.value })); setDirty(true); }} className='mt-2 w-full resize-y rounded-lg border-2 border-border bg-background px-4 py-3 leading-6 outline-none focus:border-brand-blue' placeholder='Conte um pouco sobre você e sua relação com as causas que acompanha.' /></label>
+                <label className='text-sm font-bold md:col-span-2'>Sobre você<SmoothTextarea value={details.bio} maxLength={500} rows={4} onChange={(event) => { setDetails((current) => ({ ...current, bio: event.target.value })); setDirty(true); }} className='mt-2 w-full resize-y rounded-lg border-2 border-border bg-background px-4 py-3 leading-6 outline-none focus:border-brand-blue' placeholder='Conte um pouco sobre você e sua relação com as causas que acompanha.' /></label>
                 <label className='text-sm font-bold'>Localização<SmoothInput value={details.location} onChange={(event) => { setDetails((current) => ({ ...current, location: event.target.value })); setDirty(true); }} className='mt-2 w-full rounded-lg border-2 border-border px-4 py-3 outline-none focus:border-brand-blue' placeholder='Cidade e estado' /></label>
                 <label className='text-sm font-bold'>Instagram<SmoothInput value={details.instagram} onChange={(event) => { setDetails((current) => ({ ...current, instagram: event.target.value })); setDirty(true); }} className='mt-2 w-full rounded-lg border-2 border-border px-4 py-3 outline-none focus:border-brand-blue' placeholder='@seuperfil' /></label>
                 <label className='text-sm font-bold'>Telefone<SmoothInput type='tel' inputMode='tel' value={details.phone} onChange={(event) => { setDetails((current) => ({ ...current, phone: formatPhone(event.target.value) })); setDirty(true); }} className='mt-2 w-full rounded-lg border-2 border-border px-4 py-3 outline-none focus:border-brand-blue' placeholder='(00) 00000-0000' /></label>
@@ -377,6 +390,8 @@ const DonorProfile: React.FC = () => {
         </div>
       </main>
     </div>
+      <StoryComposerFab visible={Boolean(user)} canPublish={Boolean(user)} onUnavailable={() => navigate('/donor/auth')} onPublish={publishFromProfile} />
+    </>
   );
 };
 

@@ -25,8 +25,8 @@ interface CircularStoryGalleryProps {
   items: CircularStoryMedia[];
 }
 
-const MAX_VISIBLE_STORIES = 10;
-const AUTO_ROTATION_DEGREES_PER_MS = 0.0016;
+const MAX_VISIBLE_STORIES = 8;
+const AUTO_ROTATION_DEGREES_PER_MS = 0.0054;
 const AUTO_RESUME_DELAY_MS = 1_800;
 const ANGULAR_DEAD_ZONE = 0.14;
 const MAX_ANGULAR_STEP = 11;
@@ -157,9 +157,9 @@ const CircularStoryGallery = ({ items }: CircularStoryGalleryProps) => {
                   src={item.url}
                   muted
                   loop
-                  autoPlay
+                  autoPlay={index === activeIndex}
                   playsInline
-                  preload="metadata"
+                  preload={index === activeIndex ? "metadata" : "none"}
                   aria-hidden="true"
                   className="h-full w-full object-cover"
                 />
@@ -173,6 +173,8 @@ const CircularStoryGallery = ({ items }: CircularStoryGalleryProps) => {
                   src={item.url}
                   alt=""
                   draggable={false}
+                  loading={index < 3 ? "eager" : "lazy"}
+                  decoding="async"
                   className="h-full w-full object-cover"
                 />
               )}

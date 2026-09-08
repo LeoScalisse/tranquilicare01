@@ -14,6 +14,7 @@ import {
 import Index from './pages/Index';
 import { matchesDiscoveryOrigin, readDiscoveryOrigin } from '@/lib/discoveryNavigation';
 import ClickSpark from '@/components/ui/click-spark';
+import AppErrorBoundary from '@/components/AppErrorBoundary';
 
 const NGOAuth = lazy(() => import('./pages/NGOAuth'));
 const DonorAuth = lazy(() => import('./pages/DonorAuth'));
@@ -24,6 +25,9 @@ const AuthCallback = lazy(() => import('./pages/AuthCallback'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const VerificationDiscovery = lazy(() => import('./pages/VerificationDiscovery'));
 const DonationIntegrityDiscovery = lazy(() => import('./pages/DonationIntegrityDiscovery'));
+const CreateCampaign = lazy(() => import('./pages/CreateCampaign'));
+const Chats = lazy(() => import('./pages/Chats'));
+const PublicUserProfile = lazy(() => import('./pages/PublicUserProfile'));
 
 interface DiscoveryRouteState {
   backgroundLocation?: Location;
@@ -68,7 +72,10 @@ const AppRoutes = () => {
           <Route path='/donor/auth' element={<DonorAuth />} />
           <Route path='/donor/profile' element={<DonorProfile />} />
           <Route path='/ngo/profile' element={<NGOAccountProfile />} />
+          <Route path='/campaign/new' element={<CreateCampaign />} />
+          <Route path='/chats' element={<Chats />} />
           <Route path='/ong/:ngoId' element={<NGOPublicProfile />} />
+          <Route path='/perfil/:profileId' element={<PublicUserProfile />} />
           <Route path='/auth/callback' element={<AuthCallback />} />
           <Route path='/descobertas/verificacao' element={<VerificationDiscovery />} />
           <Route path='/descobertas/doacao-integral' element={<DonationIntegrityDiscovery />} />
@@ -115,15 +122,18 @@ const AppRoutes = () => {
 };
 
 const App = () => (
+  <AppErrorBoundary>
   <TooltipProvider>
-    <ClickSpark sparkColors={['#38b6ff', '#ffd957', '#ffffff']}>
+    <ClickSpark sparkColors={['#38b6ff', '#ffd957']}>
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <a href='#main-content' className='sr-only fixed left-4 top-4 z-[220] rounded-lg bg-background px-4 py-3 font-bold text-brand-blue shadow-lg focus:not-sr-only'>Pular para o conteúdo</a>
         <AppRoutes />
       </BrowserRouter>
     </ClickSpark>
   </TooltipProvider>
+  </AppErrorBoundary>
 );
 
 export default App;

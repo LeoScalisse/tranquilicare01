@@ -27,7 +27,7 @@ export interface SearchResult {
 export interface NGOPost {
   id: string;
   url: string;
-  type: 'image' | 'video';
+  type: 'image' | 'video' | 'instagram' | 'tiktok' | 'threads' | 'substack';
   timestamp: number;
   caption?: string;
   ngoId?: string;
@@ -42,6 +42,7 @@ export interface ImpactMetric {
   value: number | string;
   label: string;
   unit?: string;
+  impactUnitKey?: string;
   context?: string;
   measurementType?: ImpactMeasurementType;
   source?: string;
