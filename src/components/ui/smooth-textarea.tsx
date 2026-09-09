@@ -5,9 +5,10 @@ import { cn } from '@/lib/utils';
 
 type SmoothTextareaProps = ComponentPropsWithoutRef<'textarea'> & {
   wrapperClassName?: string;
+  showFocusRing?: boolean;
 };
 
-const SmoothTextarea = forwardRef<HTMLTextAreaElement, SmoothTextareaProps>(({ className, wrapperClassName, onFocus, onBlur, ...props }, ref) => {
+const SmoothTextarea = forwardRef<HTMLTextAreaElement, SmoothTextareaProps>(({ className, wrapperClassName, showFocusRing = true, onFocus, onBlur, ...props }, ref) => {
   const [focused, setFocused] = useState(false);
   const reduceMotion = useReducedMotion();
 
@@ -30,12 +31,14 @@ const SmoothTextarea = forwardRef<HTMLTextAreaElement, SmoothTextareaProps>(({ c
           onBlur?.(event);
         }}
       />
-      <motion.span
-        aria-hidden='true'
-        className='pointer-events-none absolute inset-0 rounded-[inherit] ring-2 ring-brand-blue/20'
-        animate={{ opacity: focused ? 1 : 0 }}
-        transition={{ duration: reduceMotion ? 0.01 : 0.18 }}
-      />
+      {showFocusRing && (
+        <motion.span
+          aria-hidden='true'
+          className='pointer-events-none absolute inset-0 rounded-[inherit] ring-2 ring-brand-blue/20'
+          animate={{ opacity: focused ? 1 : 0 }}
+          transition={{ duration: reduceMotion ? 0.01 : 0.18 }}
+        />
+      )}
     </motion.span>
   );
 });

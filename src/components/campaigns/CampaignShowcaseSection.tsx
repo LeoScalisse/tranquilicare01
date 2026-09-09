@@ -55,9 +55,19 @@ const CampaignDisclosureCard: React.FC<{
   const missing = Math.max(0, campaign.goalAmountCents - campaign.raisedAmountCents);
   const cover = campaign.coverUrl || campaign.organizationCoverImage || campaign.organizationImage;
   const timeLabel = remainingLabel(campaign.endsAt);
+  const milestones = [
+    { title: 'Proposta aprovada', completed: true },
+    {
+      title: 'Arrecadação iniciada',
+      completed: campaign.status === 'active' || campaign.status === 'completed',
+    },
+    { title: 'Primeiros apoios recebidos', completed: campaign.raisedAmountCents > 0 },
+    { title: 'Meta alcançada', completed: progress >= 100 },
+  ];
+  const completedMilestones = milestones.filter((milestone) => milestone.completed).length;
   const transition = reduceMotion
-    ? { duration: 0.01 }
-    : { type: 'spring' as const, bounce: 0.08, duration: 0.38 };
+    ? { duration: 0.2 }
+    : { type: 'spring' as const, bounce: 0.2, duration: 0.5 };
 
   const toggleExpanded = () => setExpanded((current) => !current);
 
@@ -76,19 +86,20 @@ const CampaignDisclosureCard: React.FC<{
         }}
         role='button'
         tabIndex={0}
-        className={'relative flex min-h-[220px] w-[86vw] max-w-[440px] shrink-0 cursor-pointer flex-col overflow-hidden border-2 border-brand-ink/10 bg-white shadow-[0_18px_50px_-30px_rgba(13,45,65,0.62)] outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/30 ' + (expanded ? 'rounded-[26px] p-5 sm:p-[22px]' : 'rounded-[20px] p-4')}
+        whileTap={reduceMotion ? undefined : { scale: 0.97, transition: { duration: 0.16 } }}
+        className={'relative flex w-[86vw] max-w-[440px] shrink-0 cursor-pointer flex-col overflow-hidden border-2 border-brand-ink/10 bg-white shadow-[0_18px_50px_-30px_rgba(13,45,65,0.62)] outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/30 ' + (expanded ? 'rounded-[26px] p-5 sm:p-[22px]' : 'min-h-[126px] rounded-[20px] p-3')}
         aria-expanded={expanded}
         aria-label={campaign.title + '. ' + progress + '% da meta. ' + (expanded ? 'Ocultar detalhes' : 'Mostrar detalhes')}
       >
         <div className='relative z-10 flex items-center justify-between gap-2'>
-          <motion.div layout='position' transition={transition} className={'flex min-w-0 items-center gap-2 rounded-3xl py-0.5 pl-1.5 pr-2 ' + (expanded ? 'bg-transparent' : 'bg-secondary/65')}>
+          <motion.div layout='position' transition={transition} className={'flex min-w-0 items-center gap-2 rounded-xl py-0.5 pl-1.5 pr-2 ' + (expanded ? 'bg-transparent' : 'bg-secondary/65')}>
             <motion.img
               layoutId={'campaign-image-' + campaign.id}
               src={cover}
               alt=''
               loading='lazy'
               decoding='async'
-              className={'shrink-0 border-2 border-white object-cover shadow-sm ' + (expanded ? 'h-12 w-12 rounded-2xl' : 'h-10 w-10 rounded-xl')}
+              className={'shrink-0 border-2 border-white object-cover shadow-sm ' + (expanded ? 'h-12 w-12 rounded-2xl' : 'h-8 w-8 rounded-lg')}
             />
             <motion.h3 layout='position' transition={transition} className={'truncate font-display font-semibold text-brand-ink ' + (expanded ? 'text-xl sm:text-2xl' : 'text-base sm:text-lg')}>
               {campaign.title}
@@ -105,7 +116,9 @@ const CampaignDisclosureCard: React.FC<{
                 className='flex shrink-0 items-center gap-2'
               >
                 <motion.div layoutId={'campaign-progress-container-' + campaign.id} className='relative h-2 w-16 overflow-hidden rounded-full bg-secondary sm:w-24'>
-                  <motion.div layoutId={'campaign-progress-fill-' + campaign.id} className='h-full rounded-full bg-brand-blue' style={{ width: Math.max(progress, 2) + '%' }} />
+                  <motion.div layoutId={'campaign-progress-fill-' + campaign.id} className='relative h-full overflow-hidden rounded-full bg-brand-blue' style={{ width: progress + '%' }}>
+                    {!reduceMotion && progress > 0 ? <motion.span className='absolute inset-0 bg-gradient-to-r from-transparent via-white/45 to-transparent' animate={{ transform: ['translateX(-100%)', 'translateX(100%)'] }} transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }} /> : null}
+                  </motion.div>
                 </motion.div>
                 <motion.span layoutId={'campaign-progress-text-' + campaign.id} className='text-sm font-bold text-brand-blue'>
                   {progress}%
@@ -115,30 +128,13 @@ const CampaignDisclosureCard: React.FC<{
           </AnimatePresence>
         </div>
 
-        <AnimatePresence initial={false}>
-          {!expanded && (
-            <motion.div
-              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, transform: 'translateY(6px)' }}
-              animate={{ opacity: 1, transform: 'translateY(0)' }}
-              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, transform: 'translateY(6px)' }}
-              className='mt-5 rounded-2xl border border-brand-ink/5 bg-secondary/40 p-3'
-            >
-              <p className='line-clamp-2 text-sm leading-5 text-muted-foreground'>{campaign.description}</p>
-              <div className='mt-3 flex items-center justify-between border-t border-brand-ink/5 pt-3 text-xs'>
-                <span className='font-semibold text-muted-foreground'>Meta da vaquinha</span>
-                <span className='font-bold text-brand-ink'>{formatMoney(campaign.goalAmountCents)}</span>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
         <AnimatePresence mode='popLayout' initial={false}>
           {!expanded && (
             <motion.div
               initial={reduceMotion ? { opacity: 0 } : { opacity: 0, transform: 'translateY(5px)' }}
               animate={{ opacity: 1, transform: 'translateY(0)' }}
               exit={reduceMotion ? { opacity: 0 } : { opacity: 0, transform: 'translateY(5px)' }}
-              className='mt-auto flex items-center justify-between gap-3 px-1 pt-4 text-xs font-semibold text-muted-foreground'
+              className='mt-auto flex items-center justify-between gap-3 px-1 pt-5 text-xs font-semibold text-muted-foreground'
             >
               <span className='flex min-w-0 items-center gap-1.5 truncate'><Building2 size={15} className='shrink-0' />{campaign.organizationName}</span>
               <span className='flex shrink-0 items-center gap-1.5'><Clock3 size={15} />{timeLabel}</span>
@@ -156,29 +152,47 @@ const CampaignDisclosureCard: React.FC<{
               className='mt-6 origin-top'
             >
               <div className='mb-7 flex w-fit items-center gap-2 rounded-full border border-border bg-secondary/45 px-2.5 py-1.5'>
-                <Target size={18} className='text-brand-blue' />
-                <motion.div layoutId={'campaign-progress-container-' + campaign.id} className='h-2 w-24 overflow-hidden rounded-full bg-secondary sm:w-28'>
-                  <motion.div layoutId={'campaign-progress-fill-' + campaign.id} className='h-full rounded-full bg-brand-blue' style={{ width: Math.max(progress, 2) + '%' }} />
+                <span className='text-xs font-bold text-muted-foreground'>{completedMilestones} de {milestones.length}</span>
+                <motion.div layoutId={'campaign-progress-container-' + campaign.id} className='h-2 w-20 overflow-hidden rounded-full bg-secondary sm:w-28'>
+                  <motion.div layoutId={'campaign-progress-fill-' + campaign.id} className='relative h-full overflow-hidden rounded-full bg-brand-blue' style={{ width: progress + '%' }}>
+                    {!reduceMotion && progress > 0 ? <motion.span className='absolute inset-0 bg-gradient-to-r from-transparent via-white/45 to-transparent' animate={{ transform: ['translateX(-100%)', 'translateX(100%)'] }} transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }} /> : null}
+                  </motion.div>
                 </motion.div>
                 <motion.span layoutId={'campaign-progress-text-' + campaign.id} className='text-sm font-bold text-brand-blue'>{progress}%</motion.span>
               </div>
 
-              <div className='grid gap-2 text-sm'>
-                {[
-                  ['Arrecadado', formatMoney(campaign.raisedAmountCents), campaign.raisedAmountCents > 0],
-                  ['Meta da vaquinha', formatMoney(campaign.goalAmountCents), progress >= 100],
-                  ['Falta arrecadar', formatMoney(missing), missing === 0],
-                ].map(([label, value, completed]) => (
-                  <div key={String(label)} className='flex items-center gap-3 rounded-xl bg-secondary/45 px-3 py-2.5'>
-                    <span className={'grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ' + (completed ? 'border-brand-blue bg-brand-blue' : 'border-brand-ink/15 bg-white')}>
-                      {completed && <Check size={12} className='text-white' strokeWidth={3} />}
+              <div className='relative mb-7 ml-5 grid gap-5 text-sm'>
+                <span aria-hidden='true' className='absolute bottom-3 left-2.5 top-2 w-px bg-brand-ink/15' />
+                {milestones.map((milestone, index) => (
+                  <motion.div key={milestone.title} initial={reduceMotion ? { opacity: 0 } : { opacity: 0, transform: 'translateX(-10px)' }} animate={{ opacity: 1, transform: 'translateX(0)' }} transition={{ delay: reduceMotion ? 0 : 0.06 + index * 0.035 }} className='relative flex items-center gap-3 pl-9'>
+                    <span aria-hidden='true' className='absolute left-2.5 top-1/2 h-px w-7 bg-brand-ink/15' />
+                    <span className={'absolute left-0 grid h-5 w-5 place-items-center rounded-full border-2 ' + (milestone.completed ? 'border-brand-blue bg-brand-blue' : 'border-brand-ink/20 bg-white')}>
+                      {milestone.completed ? <Check size={12} className='text-white' strokeWidth={3} /> : null}
                     </span>
-                    <span className='text-muted-foreground'>{label}: <strong className='text-brand-ink'>{value}</strong></span>
-                  </div>
+                    <span className={milestone.completed ? 'font-semibold text-brand-ink' : 'text-muted-foreground'}>{milestone.title}</span>
+                  </motion.div>
                 ))}
               </div>
 
+              <div className='grid gap-3'>
+                <div className='flex items-center justify-between gap-4 rounded-2xl bg-secondary/45 px-3 py-2.5 text-sm'>
+                  <span className='flex items-center gap-2 font-semibold text-muted-foreground'><Target size={18} /> Meta</span>
+                  <span className='rounded-lg bg-brand-blue/10 px-3 py-1 font-bold text-brand-blue'>{formatMoney(campaign.goalAmountCents)}</span>
+                </div>
+                <div className='flex items-center justify-between gap-4 rounded-2xl bg-secondary/45 px-3 py-2.5 text-sm'>
+                  <span className='flex items-center gap-2 font-semibold text-muted-foreground'><Clock3 size={18} /> Prazo</span>
+                  <span className='rounded-lg bg-brand-yellow/20 px-3 py-1 font-bold text-brand-ink'>{timeLabel}</span>
+                </div>
+              </div>
+
               <p className='mt-5 text-sm leading-6 text-muted-foreground'>{campaign.description}</p>
+              <div className='mt-4 flex flex-wrap items-center gap-2'>
+                <span className='inline-flex items-center gap-2 rounded-full border border-brand-ink/10 bg-white py-1 pl-1.5 pr-3 text-sm font-semibold text-muted-foreground shadow-sm'>
+                  {campaign.organizationImage ? <img src={campaign.organizationImage} alt='' className='h-7 w-7 rounded-full object-cover' /> : <span className='grid h-7 w-7 place-items-center rounded-full bg-secondary'><Building2 size={15} /></span>}
+                  {campaign.organizationName}
+                </span>
+                <span className='text-xs font-semibold text-muted-foreground'>{formatMoney(campaign.raisedAmountCents)} recebido · {formatMoney(missing)} restante</span>
+              </div>
               {organization && campaign.raisedAmountCents > 0 && (
                 <ImpactTranslation organizationId={organization.id} category={organization.category} amountCents={campaign.raisedAmountCents} variant='campaign' />
               )}

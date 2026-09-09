@@ -7,6 +7,7 @@ import {
   type RecommendedContact,
 } from "@/lib/afterDonation";
 import { supabase } from "@/lib/supabase";
+import { loadProductionMetricBaseline } from "@/lib/productionMetrics";
 
 interface MessageRow {
   id: string;
@@ -82,12 +83,15 @@ export const loadDonorRelationships = async (
     }));
   }
 
+  const productionStartedAt = await loadProductionMetricBaseline();
   const { data, error } = await supabase
     .from("donor_relationships")
     .select(
       "id,organization_id,donation_id,donor_profile_id,donor_name,donor_email,donor_avatar_url,amount_cents,donated_at,stage,position,last_contact_at,next_contact_at,is_test,donor_relationship_messages(id,relationship_id,direction,body,sent_at,status)",
     )
     .eq("organization_id", organizationId)
+    .eq("is_test", false)
+    .gte("donated_at", productionStartedAt)
     .order("position", { ascending: true })
     .order("donated_at", { ascending: false });
 
@@ -109,12 +113,15 @@ export const loadRecommendedContacts = async (
     );
   }
 
+  if (relationships.length === 0) return [];
+
   const { data, error } = await supabase
     .from("donor_contact_schedule")
     .select(
       "id,relationship_id,scheduled_for,contact_kind,title,status,donor_relationships(donor_name)",
     )
     .eq("organization_id", organizationId)
+    .in("relationship_id", relationships.map((relationship) => relationship.id))
     .order("scheduled_for", { ascending: true });
 
   if (error) throw new Error(`after-donation-schedule-failed:${error.message}`);

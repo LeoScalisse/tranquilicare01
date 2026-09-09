@@ -36,6 +36,7 @@ const TranquiliCareApp: React.FC = () => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const [currentView, setCurrentView] = useState<View>(View.HOME);
+  const [storiesPreviewActive, setStoriesPreviewActive] = useState(false);
   const [viewingNGO, setViewingNGO] = useState<NGO | null>(null);
   const [user, setUser] = useState<AppUser | null>(getUser);
   const [ngos, setNgos] = useState<NGO[]>([]);
@@ -256,6 +257,10 @@ const TranquiliCareApp: React.FC = () => {
   }, [ngos, user?.email, user?.id]);
   const marketplaceNgos = ngos;
 
+  useEffect(() => {
+    if (currentView !== View.STORIES) setStoriesPreviewActive(false);
+  }, [currentView]);
+
   const renderHome = () => (
     <>
       <ImpactDashboard
@@ -298,6 +303,7 @@ const TranquiliCareApp: React.FC = () => {
             onOpenProfile={(profileId) => navigate('/perfil/' + profileId)}
             canTellStory={Boolean(user)}
             onTellStory={() => navigate(user ? defaultDestForAccount(user.accountType) : '/donor/auth')}
+            onPreviewActiveChange={setStoriesPreviewActive}
           />
         );
       case View.NGO_PROFILE:
@@ -318,6 +324,7 @@ const TranquiliCareApp: React.FC = () => {
         onLogout={handleLogout}
         onDonorLogin={() => navigate('/donor/auth')}
         onChatClick={() => navigate(user ? '/chats' : '/donor/auth?mode=login&redirect=/chats')}
+        previewHidden={currentView === View.STORIES && storiesPreviewActive}
       />
       <main id='main-content' className="animate-fade-in">
         <Suspense fallback={<div className="min-h-[45vh]" aria-label="Carregando conteúdo" />}>

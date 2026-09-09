@@ -26,43 +26,39 @@ const BrandLikeButton: React.FC<BrandLikeButtonProps> = ({ liked, onChange }) =>
       transition={{ duration: reduceMotion ? 0.01 : 0.16, ease: [0.23, 1, 0.32, 1] }}
       className={'relative grid size-10 shrink-0 place-items-center rounded-full bg-transparent transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20 ' + (liked ? 'text-brand-blue' : 'text-muted-foreground hover:text-brand-blue')}
     >
-      <span className='relative grid size-6 place-items-center' aria-hidden='true'>
-        <AnimatePresence mode='popLayout' initial={false}>
-          {liked ? (
-            <motion.img
-              key='brand-heart'
-              src={BRAND_HEART_SRC}
-              alt=''
-              draggable={false}
-              className='size-6 select-none object-contain'
-              initial={{ opacity: 0, transform: reduceMotion ? 'none' : 'scale(0.9)' }}
-              animate={{ opacity: 1, transform: 'scale(1)' }}
-              exit={{ opacity: 0, transform: reduceMotion ? 'none' : 'scale(0.94)' }}
-              transition={iconTransition}
-            />
-          ) : (
-            <motion.span
-              key='outline-heart'
-              className='grid size-6 place-items-center'
-              initial={{ opacity: 0, transform: reduceMotion ? 'none' : 'scale(0.94)' }}
-              animate={{ opacity: 1, transform: 'scale(1)' }}
-              exit={{ opacity: 0, transform: reduceMotion ? 'none' : 'scale(0.94)' }}
-              transition={iconTransition}
-            >
-              <Heart size={19} />
-            </motion.span>
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
+      <span className='relative grid size-7 place-items-center' aria-hidden='true'>
+        <motion.span
+          className='absolute inset-0 grid place-items-center'
+          animate={{ opacity: liked ? 0 : 1, scale: liked ? 0.72 : 1 }}
+          transition={iconTransition}
+        >
+          <Heart size={20} />
+        </motion.span>
+        <motion.img
+          src={BRAND_HEART_SRC}
+          alt=''
+          draggable={false}
+          className='absolute inset-0 size-7 select-none object-contain'
+          animate={{
+            opacity: liked ? 1 : 0,
+            scale: liked ? 1 : 0.58,
+            rotate: reduceMotion || !liked ? 0 : [0, -10, 7, 0],
+          }}
+          transition={reduceMotion ? { duration: 0.01 } : {
+            opacity: { duration: 0.14 },
+            scale: { type: 'spring', stiffness: 430, damping: 19, mass: 0.72 },
+            rotate: { duration: 0.36, ease: [0.22, 1, 0.36, 1] },
+          }}
+        />
+        <AnimatePresence initial={false}>
           {liked && !reduceMotion && (
             <motion.span
               key='heart-feedback-ring'
-              className='pointer-events-none absolute inset-0 rounded-full border border-brand-yellow'
-              initial={{ opacity: 0.7, transform: 'scale(0.72)' }}
-              animate={{ opacity: 0, transform: 'scale(1.45)' }}
+              className='pointer-events-none absolute inset-0 rounded-full border-2 border-brand-yellow'
+              initial={{ opacity: 0.75, scale: 0.64 }}
+              animate={{ opacity: 0, scale: 1.72 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+              transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
             />
           )}
         </AnimatePresence>

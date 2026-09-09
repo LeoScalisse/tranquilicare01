@@ -6,8 +6,7 @@ import {
   useReducedMotion,
   useSpring,
 } from "framer-motion";
-import { Instagram } from "lucide-react";
-
+import SocialStoryEmbed from "@/components/ui/social-story-embed";
 import { normalizeCircularDragDelta } from "@/lib/circularDrag";
 import type { StoryPresentationType } from "@/types/storyPresentation";
 
@@ -24,6 +23,9 @@ export interface CircularStoryMedia {
 interface CircularStoryGalleryProps {
   items: CircularStoryMedia[];
 }
+
+const isSocialStory = (type?: StoryPresentationType) =>
+  type === 'instagram' || type === 'tiktok' || type === 'threads' || type === 'substack';
 
 const MAX_VISIBLE_STORIES = 8;
 const AUTO_ROTATION_DEGREES_PER_MS = 0.0054;
@@ -133,8 +135,9 @@ const CircularStoryGallery = ({ items }: CircularStoryGalleryProps) => {
           } as React.CSSProperties;
 
           return (
-            <motion.button
-              type="button"
+            <motion.div
+              role="button"
+              tabIndex={0}
               key={item.id}
               data-circular-story-card
               data-active={index === activeIndex ? "true" : "false"}
@@ -149,6 +152,12 @@ const CircularStoryGallery = ({ items }: CircularStoryGalleryProps) => {
                 duration: 0.46,
               }}
               onClick={() => selectStory(index)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  selectStory(index);
+                }
+              }}
               aria-label={`Selecionar história de ${item.ngoName}`}
               aria-pressed={index === activeIndex}
             >
@@ -163,11 +172,14 @@ const CircularStoryGallery = ({ items }: CircularStoryGalleryProps) => {
                   aria-hidden="true"
                   className="h-full w-full object-cover"
                 />
-              ) : item.type === "instagram" ? (
-                <span className="circular-story-gallery__instagram" aria-hidden="true">
-                  <Instagram />
-                  <span>Instagram</span>
-                </span>
+              ) : isSocialStory(item.type) ? (
+                <SocialStoryEmbed
+                  src={item.url}
+                  provider={item.type}
+                  title={`Publicação de ${item.ngoName} no ${item.type}`}
+                  compact
+                  interactive={false}
+                />
               ) : (
                 <img
                   src={item.url}
@@ -179,7 +191,7 @@ const CircularStoryGallery = ({ items }: CircularStoryGalleryProps) => {
                 />
               )}
               <span className="circular-story-gallery__card-shade" />
-            </motion.button>
+            </motion.div>
           );
         })}
       </motion.div>

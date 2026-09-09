@@ -35,6 +35,7 @@ interface StoriesProps {
   onOpenProfile?: (profileId: string) => void;
   canTellStory?: boolean;
   onTellStory?: () => void;
+  onPreviewActiveChange?: (active: boolean) => void;
 }
 
 interface StoryItem {
@@ -166,7 +167,7 @@ const StoryFeed: React.FC<StoryFeedProps> = ({
 
             {story.caption && <p className='ml-14 mt-1.5 pr-2 text-[15px] leading-6 text-brand-ink/80'>{story.caption}</p>}
 
-            <button type='button' onClick={() => onOpenStory(story)} className='group relative ml-14 mt-3 block w-[calc(100%_-_3.5rem)] overflow-hidden rounded-[20px] border border-brand-ink/10 bg-secondary text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20'>
+            <div role={story.type === 'image' || story.type === 'video' ? 'button' : undefined} tabIndex={story.type === 'image' || story.type === 'video' ? 0 : undefined} onClick={() => { if (story.type === 'image' || story.type === 'video') onOpenStory(story); }} onKeyDown={(event) => { if ((story.type === 'image' || story.type === 'video') && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onOpenStory(story); } }} className='group relative ml-14 mt-3 block w-[calc(100%_-_3.5rem)] overflow-hidden rounded-[20px] border border-brand-ink/10 bg-secondary text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20'>
               {story.type === 'image' ? (
                 <img src={story.url} alt={story.caption || `História de ${story.ngoName}`} loading='lazy' decoding='async' className='block max-h-[38rem] w-full object-cover' />
               ) : story.type === 'video' ? (
@@ -176,10 +177,10 @@ const StoryFeed: React.FC<StoryFeedProps> = ({
                 </div>
               ) : (
                 <div className='h-[min(620px,74vh)] min-h-[28rem] w-full bg-white'>
-                  <SocialStoryEmbed src={story.url} provider={story.type} title={`Publicação de ${story.ngoName} no ${story.type}`} interactive={false} />
+                  <SocialStoryEmbed src={story.url} provider={story.type} title={`Publicação de ${story.ngoName} no ${story.type}`} />
                 </div>
               )}
-            </button>
+            </div>
 
             {story.attribution && <a href={story.attribution.href} target='_blank' rel='noreferrer' className='ml-14 mt-2 block w-[calc(100%_-_3.5rem)] truncate text-xs font-semibold text-brand-blue underline-offset-4 hover:underline'>{story.attribution.label}</a>}
 
@@ -197,7 +198,7 @@ const StoryFeed: React.FC<StoryFeedProps> = ({
   );
 };
 
-const Stories: React.FC<StoriesProps> = ({ onOpenNGO, onOpenProfile, canTellStory = false, onTellStory }) => {
+const Stories: React.FC<StoriesProps> = ({ onOpenNGO, onOpenProfile, canTellStory = false, onTellStory, onPreviewActiveChange }) => {
   const [discoveryLane, setDiscoveryLane] = useState<DiscoveryLane>('for-you');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeStoryId, setActiveStoryId] = useState<string | null>(null);
@@ -271,6 +272,14 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, onOpenProfile, canTellStor
     });
   }, [availableStories, discoveryLane, savedIds, searchQuery]);
 
+  useEffect(() => {
+    if (!activeStory) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [activeStory]);
   const openStory = (story: StoryItem) => setActiveStoryId(story.id);
   const move = (direction: -1 | 1) => {
     if (activeIndex < 0 || !availableStories.length) return;
@@ -372,6 +381,7 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, onOpenProfile, canTellStor
         contentPreview
         restingOverlay={<ScrollIdleCue active={expandProgress < 0.08} />}
         onProgressChange={setExpandProgress}
+        onActiveChange={onPreviewActiveChange}
         startWidth={48}
         startHeight={48}
         startShape='circle'

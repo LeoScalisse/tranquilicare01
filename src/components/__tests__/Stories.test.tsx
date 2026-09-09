@@ -20,6 +20,33 @@ const storyMocks = vi.hoisted(() => ({
   deleteOwnStory: vi.fn().mockResolvedValue(undefined),
 }));
 
+const chatMocks = vi.hoisted(() => ({
+  listChatConversations: vi.fn().mockResolvedValue([{
+    conversationId: 'conversation-1',
+    profileId: 'profile-1',
+    displayName: 'Maria Silva',
+    avatarUrl: null,
+    accountType: 'donor' as const,
+    lastMessage: 'Olá',
+    lastMessageAt: '2026-09-08T12:00:00.000Z',
+    unreadCount: 0,
+    donorTier: 'new_donor' as const,
+    approvedDonationCount: 1,
+  }]),
+  sendChatMessage: vi.fn().mockResolvedValue({
+    id: 'message-1',
+    conversationId: 'conversation-1',
+    senderProfileId: 'sender-1',
+    body: 'História',
+    sentAt: '2026-09-08T12:00:01.000Z',
+  }),
+}));
+
+vi.mock('@/lib/chat', () => ({
+  listChatConversations: chatMocks.listChatConversations,
+  sendChatMessage: chatMocks.sendChatMessage,
+  getChatErrorMessage: () => 'Não foi possível concluir agora.',
+}));
 vi.mock('@/lib/stories', () => ({
   ...storyMocks,
   storyErrorMessage: () => 'Não foi possível publicar.',
@@ -58,6 +85,8 @@ describe('Stories', () => {
     storyMocks.setStoryLiked.mockClear();
     storyMocks.publishStory.mockClear();
     storyMocks.deleteOwnStory.mockClear();
+    chatMocks.listChatConversations.mockClear();
+    chatMocks.sendChatMessage.mockClear();
   });
 
   afterEach(() => {
@@ -96,18 +125,19 @@ describe('Stories', () => {
     expect(container.querySelectorAll('article')).toHaveLength(initialCount);
   });
 
-  it('shows local videos first and defers social embeds until the story is opened', async () => {
+  it('shows local videos first and renders social posts directly in the feed and circular preview', async () => {
     const { container } = render(<Stories onOpenNGO={vi.fn()} />);
     await waitFor(() => expect(container.querySelectorAll('article').length).toBeGreaterThan(4));
     const articles = container.querySelectorAll('article');
     expect(articles[0].querySelector('video')?.getAttribute('src')).toContain('tranquilicare_1786385739');
     expect(articles[1].querySelector('video')?.getAttribute('src')).toContain('tranquilicare_1786723077');
-    expect(articles[2].querySelector('iframe')).toBeNull();
-    expect(articles[3].querySelector('iframe')).toBeNull();
-    expect(screen.getAllByText('Ver publicação incorporada').length).toBeGreaterThan(1);
+    expect(articles[2].querySelector('iframe')?.getAttribute('src')).toContain('/embed/');
+    expect(Array.from(articles).filter((article) => article.querySelector('iframe')).length).toBeGreaterThan(1);
+    expect(screen.queryByText('Ver publicação incorporada')).toBeNull();
     const circularCards = container.querySelectorAll('[data-circular-story-card]');
     expect(circularCards[0].querySelector('video')?.getAttribute('src')).toContain('tranquilicare_1786385739');
     expect(circularCards[1].querySelector('video')?.getAttribute('src')).toContain('tranquilicare_1786723077');
+    expect(circularCards[2].querySelector('iframe')).not.toBeNull();
   });
   it('opens the draggable publisher and publishes a real organization story', async () => {
     const user = userEvent.setup();
@@ -122,7 +152,7 @@ describe('Stories', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'O que aconteceu por aí?' })).toBeNull());
   });
 
-  it('renders sharing in a viewport portal and restores the button two seconds after copy', async () => {
+  it('renders sharing in a viewport portal and restores the button after a completed copy', async () => {
     const user = userEvent.setup();
     render(<Stories onOpenNGO={vi.fn()} />);
     await waitFor(() => expect(screen.getAllByRole('article', { hidden: true }).length).toBeGreaterThan(0));
@@ -131,12 +161,27 @@ describe('Stories', () => {
     const shareMenu = await screen.findByRole('menu', { name: 'Compartilhar história por', hidden: true });
     expect(shareMenu.className).toContain('fixed');
     await user.click(within(shareMenu).getByRole('menuitem', { name: /Instagram/i, hidden: true }));
-    await waitFor(() => expect(screen.getByText('Compartilhamento preparado')).not.toBeNull());
-    await act(async () => { await new Promise((resolve) => window.setTimeout(resolve, 2100)); });
-    expect(screen.queryByText('Compartilhamento preparado')).toBeNull();
+    await waitFor(() => expect(screen.getByText('Compartilhamento concluído')).not.toBeNull());
+    await act(async () => { await new Promise((resolve) => window.setTimeout(resolve, 1500)); });
+    expect(screen.queryByText('Compartilhamento concluído')).toBeNull();
     expect(within(screen.getAllByRole('article', { hidden: true })[0]).getByRole('button', { name: 'Compartilhar', hidden: true })).not.toBeNull();
   });
 
+  it('sends a story to a recent TranquiliCare conversation through the real chat action', async () => {
+    const user = userEvent.setup();
+    render(<Stories onOpenNGO={vi.fn()} />);
+    await waitFor(() => expect(screen.getAllByRole('article', { hidden: true }).length).toBeGreaterThan(0));
+
+    const firstStory = screen.getAllByRole('article', { hidden: true })[0];
+    fireEvent.click(within(firstStory).getByRole('button', { name: 'Compartilhar', hidden: true }));
+    const shareMenu = await screen.findByRole('menu', { name: 'Compartilhar história por', hidden: true });
+    await user.click(within(shareMenu).getByRole('menuitem', { name: /TranquiliCare/i, hidden: true }));
+
+    await screen.findByRole('dialog', { name: 'Compartilhar com contato recente', hidden: true });
+    await user.click(await screen.findByRole('button', { name: /Maria Silva/i, hidden: true }));
+    await waitFor(() => expect(chatMocks.sendChatMessage).toHaveBeenCalledWith('conversation-1', expect.stringContaining('#story-')));
+    expect(screen.getByText('História enviada para Maria Silva')).not.toBeNull();
+  });
   it('allows a signed-in donor to publish a story too', async () => {
     const user = userEvent.setup();
     render(<Stories onOpenNGO={vi.fn()} canTellStory />);
@@ -175,6 +220,10 @@ describe('Stories', () => {
     expect(within(firstStory).getByRole('button', { name: 'Remover curtida', hidden: true })).not.toBeNull();
     expect(within(firstStory).getByRole('button', { name: 'Remover curtida', hidden: true }).querySelector('img')?.getAttribute('src')).toBe('/tranquilicare-heart.png');
     expect(storyMocks.setStoryLiked).toHaveBeenCalledOnce();
+
+    fireEvent.click(within(firstStory).getByRole('button', { name: 'Remover curtida', hidden: true }));
+    expect(within(firstStory).getByRole('button', { name: 'Curtir história', hidden: true })).not.toBeNull();
+    expect(storyMocks.setStoryLiked).toHaveBeenCalledTimes(2);
 
     fireEvent.click(within(firstStory).getByRole('button', { name: 'Salvar história', hidden: true }));
     expect(within(firstStory).getByRole('button', { name: 'Remover dos salvos', hidden: true })).not.toBeNull();

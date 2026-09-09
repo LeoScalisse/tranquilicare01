@@ -15,6 +15,7 @@ interface HeaderProps {
   onLogout?: () => void;
   onDonorLogin?: () => void;
   onChatClick?: () => void;
+  previewHidden?: boolean;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -26,6 +27,7 @@ const Header: React.FC<HeaderProps> = ({
   onLogout,
   onDonorLogin,
   onChatClick,
+  previewHidden = false,
 }) => {
   const isLoggedIn = Boolean(currentUserEmail);
   const navItemClass = (view: View) => `
@@ -46,7 +48,7 @@ const Header: React.FC<HeaderProps> = ({
   });
 
   return (
-    <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/70">
+    <header aria-hidden={previewHidden} inert={previewHidden ? true : undefined} className={`sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-xl ${previewHidden ? 'invisible pointer-events-none' : ''}`}>
       <div className="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between">
         <div
           className="flex items-center gap-2.5 cursor-pointer group"

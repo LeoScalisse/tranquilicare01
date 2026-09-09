@@ -44,6 +44,7 @@ interface ScrollExpandProps extends Omit<
   surround?: ReactNode;
   restingOverlay?: ReactNode;
   onProgressChange?: (progress: number) => void;
+  onActiveChange?: (active: boolean) => void;
   children?: ReactNode;
   className?: string;
   style?: CSSProperties;
@@ -73,6 +74,7 @@ const ScrollExpand = ({
   surround,
   restingOverlay,
   onProgressChange,
+  onActiveChange,
   children,
   className = "",
   style,
@@ -105,6 +107,7 @@ const ScrollExpand = ({
     contentPreview,
     startShape,
     onProgressChange,
+    onActiveChange,
   });
 
   propsRef.current = {
@@ -121,6 +124,7 @@ const ScrollExpand = ({
     contentPreview,
     startShape,
     onProgressChange,
+    onActiveChange,
   };
 
   const applyProgress = useCallback((progress: number) => {
@@ -254,6 +258,7 @@ const ScrollExpand = ({
     let expansionDistance = 0;
     let contentScrollDistance = 0;
     let running = false;
+    let previewActive = false;
 
     const measure = () => {
       const config = propsRef.current;
@@ -309,6 +314,18 @@ const ScrollExpand = ({
       }
     };
 
+    const syncActiveState = () => {
+      const config = propsRef.current;
+      const trackRect = track.getBoundingClientRect();
+      const nextActive = Boolean(
+        config.contentPreview
+        && target >= 0.56
+        && trackRect.bottom > stageHeight + 1
+      );
+      if (nextActive === previewActive) return;
+      previewActive = nextActive;
+      config.onActiveChange?.(nextActive);
+    };
     const tick = () => {
       const config = propsRef.current;
       const follow =
@@ -331,6 +348,7 @@ const ScrollExpand = ({
     const onScroll = () => {
       target = readProgress();
       syncContentScroll();
+      syncActiveState();
       if (propsRef.current.smoothing <= 0 || reduceMotion) {
         current = target;
         applyProgress(current);
@@ -345,12 +363,14 @@ const ScrollExpand = ({
       current = target;
       applyProgress(current);
       syncContentScroll();
+      syncActiveState();
     };
 
     measure();
     target = readProgress();
     current = target;
     applyProgress(current);
+    syncActiveState();
 
     const scroller = useWindowScroll ? window : root;
     scroller.addEventListener("scroll", onScroll, { passive: true });
@@ -379,6 +399,7 @@ const ScrollExpand = ({
       window.removeEventListener("resize", onResize);
       resizeObserver?.disconnect();
       mutationObserver?.disconnect();
+      if (previewActive) propsRef.current.onActiveChange?.(false);
     };
   }, [applyProgress, useWindowScroll]);
 

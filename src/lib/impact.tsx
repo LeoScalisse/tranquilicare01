@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import type { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { loadProductionMetricBaseline } from './productionMetrics';
 
 /**
  * Shared donation-impact primitives used by both the home dashboard
@@ -236,34 +238,7 @@ export const useDonationImpact = (
       )
       .subscribe();
 
-    const donationChannel = userId
-      ? supabase
-          .channel(`${channelKey.current}-personal`)
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'donations',
-            },
-            (payload) => {
-              const next = payload.new as DonationDatabaseRow | undefined;
-              const previous = payload.old as Partial<DonationDatabaseRow> | undefined;
-
-              if (payload.eventType === 'DELETE') {
-                if (previous?.id) setRows((current) => current.filter((row) => row.id !== previous.id));
-                return;
-              }
-              if (!next?.id) return;
-              if (next.status !== 'succeeded') {
-                setRows((current) => current.filter((row) => row.id !== next.id));
-                return;
-              }
-              setRows((current) => upsertDonation(current, donationFromDatabase(next, userEmail)));
-            },
-          )
-          .subscribe()
-      : null;
+    let donationChannel: RealtimeChannel | null = null;
 
     void supabase
       .from('platform_impact_stats')
@@ -296,22 +271,52 @@ export const useDonationImpact = (
         setDashboardStatsLoaded(true);
       });
     if (userId) {
-      void supabase
-        .from('donations')
-        .select('id, donor_id, donor_profile_id, ngo_id, organization_id, amount_cents, created_at, provider_action_id, status, is_test')
-        .eq('status', 'succeeded')
-        .order('created_at', { ascending: false })
-        .then(({ data, error }) => {
+      void loadProductionMetricBaseline()
+        .then((productionStartedAt) => {
           if (!active) return;
-          if (error) {
-            console.error('Could not load personal donation history:', error);
+          donationChannel = supabase
+            .channel(`${channelKey.current}-personal`)
+            .on(
+              'postgres_changes',
+              { event: '*', schema: 'public', table: 'donations' },
+              (payload) => {
+                const next = payload.new as DonationDatabaseRow | undefined;
+                const previous = payload.old as Partial<DonationDatabaseRow> | undefined;
+
+                if (payload.eventType === 'DELETE') {
+                  if (previous?.id) setRows((current) => current.filter((row) => row.id !== previous.id));
+                  return;
+                }
+                if (!next?.id) return;
+                if (next.status !== 'succeeded' || next.is_test || next.created_at < productionStartedAt) {
+                  setRows((current) => current.filter((row) => row.id !== next.id));
+                  return;
+                }
+                setRows((current) => upsertDonation(current, donationFromDatabase(next, userEmail)));
+              },
+            )
+            .subscribe();
+
+          return supabase
+            .from('donations')
+            .select('id, donor_id, donor_profile_id, ngo_id, organization_id, amount_cents, created_at, provider_action_id, status, is_test')
+            .eq('status', 'succeeded')
+            .eq('is_test', false)
+            .gte('created_at', productionStartedAt)
+            .order('created_at', { ascending: false });
+        })
+        .then((result) => {
+          if (!active || !result) return;
+          if (result.error) {
+            console.error('Could not load personal donation history:', result.error);
             return;
           }
           setRows(
-            ((data ?? []) as DonationDatabaseRow[]).map((row) =>
-              donationFromDatabase(row, userEmail),
-            ),
+            ((result.data ?? []) as DonationDatabaseRow[]).map((row) => donationFromDatabase(row, userEmail)),
           );
+        })
+        .catch((error) => {
+          if (active) console.error('Could not load production donation history:', error);
         });
     }
 
