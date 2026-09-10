@@ -26,7 +26,8 @@ describe('Shared route navigation', () => {
   it.each(['/chats','/ngo/profile','/donor/profile','/campaign/new','/perfil/example','/ong/example','/donor/auth','/descobertas/verificacao','/missing'])('keeps destinations and only one mobile menu on %s', path => {
     render(<MemoryRouter initialEntries={[path]}><Screen /></MemoryRouter>);
     const desktop = within(screen.getByRole('navigation', { name: 'Navegação principal no computador' }));
-    for (const label of ['Início','Histórias','Chat','Entrar']) expect(desktop.getByRole('button', {name:label})).toBeTruthy();
+    for (const label of ['Histórias','Chat','Entrar']) expect(desktop.getByRole('button', {name:label})).toBeTruthy();
+    expect(desktop.queryByRole('button', {name:'Início'})).toBeNull();
     expect(screen.getAllByRole('navigation', {name:'Navegação principal'})).toHaveLength(1);
   });
   it('opens stories directly from the chat and marks the current section', () => {
@@ -36,6 +37,11 @@ describe('Shared route navigation', () => {
     expect(desktop.getByRole('button', {name:'Histórias'}).className).toContain('tc-button-secondary');
     fireEvent.click(desktop.getByRole('button', {name:'Histórias'}));
     expect(screen.getByTestId('location').textContent).toBe('/?view=stories');
+  });
+  it('returns to the home page through the logo', () => {
+    render(<MemoryRouter initialEntries={['/chats']}><Screen /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', {name:'TranquiliCare — início'}));
+    expect(screen.getByTestId('location').textContent).toBe('/');
   });
   it('uses the primary blue pattern for the active stories button', () => {
     render(<Header currentView={View.STORIES} setCurrentView={vi.fn()} />);

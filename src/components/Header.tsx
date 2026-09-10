@@ -1,7 +1,7 @@
 import React from 'react';
 import { View } from '../types';
 import { BrandedText } from '../utils';
-import { Heart, HandHeart, MessageCircle, UserCircle, LogOut, LogIn } from 'lucide-react';
+import { HandHeart, MessageCircle, UserCircle, LogOut, LogIn } from 'lucide-react';
 import CosmosNav from './CosmosNav';
 import { buildMobileNavItems, type MobileNavKey } from './mobileNavItems';
 import logo from '@/assets/logo.png';
@@ -68,7 +68,6 @@ const Header: React.FC<HeaderProps> = ({
         </button>
 
         <nav aria-label='Navegação principal no computador' className="hidden md:flex items-center gap-2">
-          <button type='button' onClick={() => setCurrentView(View.HOME)} className={navItemClass('home')} aria-current={selectedKey === 'home' ? 'page' : undefined}><Heart size={18} />Início</button>
           <button
             onClick={() => setCurrentView(View.STORIES)}
             className={navItemClass('historias')}
