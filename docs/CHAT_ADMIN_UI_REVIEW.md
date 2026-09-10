@@ -16,7 +16,7 @@ As migrações `20260910140000`, `20260910141000` e `20260910142000` foram aplic
 
 Validação no banco: um participante consegue ler a mensagem existente; uma conta fora da conversa vê zero mensagens; a organização interna não é pública. As funções passaram no lint do Supabase.
 
-Nenhuma conta recebeu acesso Admin. A lista privada de administradores não pode ser editada pelo navegador; os relatórios negam acesso no servidor até o provisionamento autorizado. A revisão automática exige confirmação explícita da conta e do escopo antes dessa atribuição.
+A conta TranquiliCare foi provisionada como administradora após confirmação explícita do usuário. A operação conferiu o identificador e o e-mail da conta antes da atribuição. A lista privada de administradores não pode ser editada pelo navegador; os relatórios negam acesso no servidor às demais contas.
 
 ## Verificação
 
@@ -25,4 +25,4 @@ Nenhuma conta recebeu acesso Admin. A lista privada de administradores não pode
 - Revisão no Edge em 390 e 1280 pixels: sem erros de JavaScript nem transbordamento da página. Relatórios foram verificados com dados de teste locais, sem habilitar acesso de produção.
 - As heurísticas foram aplicadas com estados de carregamento/erro/vazio, linguagem clara, retorno e nova tentativa, padrões visuais reutilizados, autorização no servidor, rótulos visíveis, teclado/toque, conteúdo pertinente e explicação do escopo das métricas.
 
-O commit é local. O envio para a main do GitHub aguarda a confirmação do destino exigida pela revisão automática.
+O usuário autorizou o envio dos commits para a main de `LeoScalisse/tranquilicare01`.
