@@ -146,9 +146,11 @@ describe('Stories', () => {
     const composer = screen.getByRole('dialog', { name: 'O que aconteceu por aí?' });
     const input = within(composer).getByRole('textbox', { name: 'Escreva sua história' });
     await user.type(input, 'Hoje abrimos um novo espaço de acolhimento.');
+    await user.click(within(composer).getByRole('button', { name: 'Categoria da história' }));
+    await user.click(await screen.findByRole('option', { name: 'Educação' }));
     await user.click(within(composer).getByRole('button', { name: 'Publicar' }));
 
-    await waitFor(() => expect(storyMocks.publishStory).toHaveBeenCalledWith('Hoje abrimos um novo espaço de acolhimento.', null, null));
+    await waitFor(() => expect(storyMocks.publishStory).toHaveBeenCalledWith('Hoje abrimos um novo espaço de acolhimento.', null, null, 'educacao'));
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'O que aconteceu por aí?' })).toBeNull());
   });
 
@@ -189,7 +191,22 @@ describe('Stories', () => {
     const composer = screen.getByRole('dialog', { name: 'O que aconteceu por aí?' });
     await user.type(within(composer).getByRole('textbox', { name: 'Escreva sua história' }), 'Quero compartilhar este momento com a comunidade.');
     await user.click(within(composer).getByRole('button', { name: 'Publicar' }));
-    await waitFor(() => expect(storyMocks.publishStory).toHaveBeenCalledWith('Quero compartilhar este momento com a comunidade.', null, null));
+    await waitFor(() => expect(storyMocks.publishStory).toHaveBeenCalledWith('Quero compartilhar este momento com a comunidade.', null, null, null));
+  });
+
+  it('keeps text-only stories compact and shows the selected category', async () => {
+    storyMocks.loadPublishedStories.mockResolvedValueOnce([{
+      id: 'text-only', url: '', type: 'image', caption: 'Um gesto de cuidado.', category: 'pets',
+      timestamp: Date.now(), ngoId: null, authorProfileId: 'donor-1', ngoName: 'Ana', ngoImage: '/avatar.png', persisted: true,
+    }]);
+    const { container } = render(<Stories onOpenNGO={vi.fn()} />);
+    await waitFor(() => expect(container.querySelector('#story-text-only')).not.toBeNull());
+    const article = container.querySelector('#story-text-only')!;
+    expect(article.getAttribute('data-category')).toBe('pets');
+    expect(article.textContent).toContain('Um gesto de cuidado.');
+    expect(article.querySelector('[role="button"]')).toBeNull();
+    expect(article.querySelector('video')).toBeNull();
+    expect(article.querySelector('img[src=""]')).toBeNull();
   });
 
   it('identifies a founder organization beside its name', async () => {

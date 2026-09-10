@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Building2 } from 'lucide-react';
 
 import founderSeal from '@/assets/founder-ngo-seal.png';
 import FounderCarousel, { type FounderCarouselSlide } from '@/components/ui/founder-carousel';
@@ -25,58 +25,21 @@ const FounderOrganizationsSection = memo(function FounderOrganizationsSection({
     return {
       id: ngo.id,
       label: ngo.name,
+      preview: <>
+        {background || ngo.image ? <img src={background || ngo.image} alt='' loading='lazy' decoding='async' draggable={false} className={`h-full w-full ${background ? 'object-cover' : 'object-contain p-5'}`} /> : <div className='grid h-full place-items-center text-brand-blue'><Building2 size={48} aria-hidden='true' /></div>}
+        <span className='pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/45 to-transparent' aria-hidden='true' />
+        {ngo.image && <img src={ngo.image} alt='' draggable={false} className='pointer-events-none absolute left-4 top-4 h-11 w-11 rounded-2xl border border-white/80 bg-white object-contain p-1' />}
+      </>,
       content: (
-        <motion.button
-          type='button'
-          onClick={() => onOpen(ngo)}
-          whileTap={reduceMotion ? undefined : { scale: 0.99 }}
-          transition={{ duration: 0.16 }}
-          className='group relative h-full w-full overflow-hidden rounded-[28px] bg-brand-ink text-left text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-yellow/70 focus-visible:ring-offset-4'
-          aria-label={`Conhecer ${ngo.name}`}
-        >
-          {background ? (
-            <img src={background} alt='' loading='lazy' decoding='async' className='absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.025]' />
-          ) : (
-            <span className='absolute inset-0 bg-brand-blue' aria-hidden='true' />
-          )}
-          <span className='absolute inset-0 bg-brand-ink/75' aria-hidden='true' />
+        <article className='h-full'>
+          <div className='flex h-full min-w-0 flex-col items-start p-5 sm:p-6 lg:p-7'>
+            <span className='flex items-center gap-2 text-xs font-semibold text-brand-ink'><img src={founderSeal} alt='Selo de ONG fundadora' className='h-6 w-6' />ONG fundadora</span>
+            <h3 className='mt-4 line-clamp-2 font-display text-2xl font-semibold leading-tight text-brand-ink'>{ngo.name}</h3>
+            <p className='mt-3 line-clamp-4 text-sm leading-6 text-muted-foreground'>{ngo.description}</p>
+            <motion.button type='button' aria-label={`Conhecer ${ngo.name}`} onClick={() => onOpen(ngo)} whileTap={reduceMotion ? undefined : { scale: 0.98 }} className='mt-auto inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-yellow px-4 text-sm font-semibold text-brand-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/30'>Conhecer esta ONG<ArrowUpRight size={17} aria-hidden='true' /></motion.button>
+          </div>
 
-          <span className='relative z-10 flex h-full max-w-[92%] flex-col justify-between p-6 sm:max-w-[72%] sm:p-8'>
-            <span className='flex items-center gap-3'>
-              <span className='grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-[18px] border border-white/70 bg-white p-1 shadow-lg sm:h-16 sm:w-16'>
-                <img
-                  src={ngo.image}
-                  alt=''
-                  decoding='async'
-                  className='h-full w-full rounded-[14px] object-cover'
-                />
-              </span>
-              <span className='min-w-0'>
-                <span className='flex items-center gap-2 text-xs font-bold uppercase tracking-[0.12em] text-brand-yellow'>
-                  <img
-                    src={founderSeal}
-                    alt='Selo de ONG fundadora'
-                    className='h-7 w-7 shrink-0 object-contain'
-                  />
-                  ONG fundadora
-                </span>
-                <span className='mt-1 block truncate font-display text-2xl font-semibold sm:text-3xl'>
-                  {ngo.name}
-                </span>
-              </span>
-            </span>
-
-            <span>
-              <span className='block max-w-lg text-sm font-semibold leading-6 text-white sm:text-base'>
-                {ngo.description}
-              </span>
-              <span className='mt-5 inline-flex max-w-full items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-black text-brand-blue shadow-sm transition-transform duration-150 group-hover:translate-x-1'>
-                <span className='truncate'>Conhecer {ngo.name}</span>
-                <ArrowUpRight className='h-4 w-4 shrink-0' />
-              </span>
-            </span>
-          </span>
-        </motion.button>
+        </article>
       ),
     };
   }), [ngos, onOpen, reduceMotion]);
@@ -86,7 +49,7 @@ const FounderOrganizationsSection = memo(function FounderOrganizationsSection({
       aria-labelledby='founder-organizations-title'
       className='mx-auto w-full max-w-[1400px]'
     >
-      <div className='founder-section-vibrant relative overflow-hidden rounded-[30px] px-3 py-7 sm:px-6 md:rounded-[38px] md:py-9'>
+      <div className='relative bg-secondary/40 overflow-hidden rounded-[30px] px-3 py-7 sm:px-6 md:rounded-[38px] md:py-9'>
         <div className='relative z-10 px-2 sm:px-4'>
           <div className='founder-section-badge inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em]'>
             <img src={founderSeal} alt='' className='h-5 w-5 object-contain' />

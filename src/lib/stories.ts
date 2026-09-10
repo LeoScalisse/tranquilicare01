@@ -1,3 +1,4 @@
+import { ngoCategories } from '@/data/ngoCategories';
 import { supabase } from '@/lib/supabase';
 import { resolveStorySocialEmbed, type StorySocialProvider } from '@/lib/storySocialEmbed';
 
@@ -8,6 +9,7 @@ const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 export interface PublishedStory {
+  category?: string | null;
   id: string;
   url: string;
   type: 'image' | 'video' | StorySocialProvider;
@@ -129,7 +131,7 @@ export const loadPublishedStories = async (): Promise<PublishedStory[]> => {
 
   const { data: storyRows, error: storyError } = await supabase
     .from('stories')
-    .select('id, organization_id, author_profile_id, body, published_at')
+    .select('id, organization_id, author_profile_id, body, category, published_at')
     .eq('status', 'published')
     .lte('published_at', new Date().toISOString())
     .order('published_at', { ascending: false })
@@ -190,10 +192,11 @@ export const loadPublishedStories = async (): Promise<PublishedStory[]> => {
     const author = story.author_profile_id ? authorById.get(story.author_profile_id as string) : null;
     if (!organization && !author) return [];
     const asset = firstAssetByStory.get(story.id as string);
-    return [Promise.resolve(asset ? signedMediaUrl(asset) : organization?.cover_image_url || organization?.avatar_url || author?.avatar_url || '')
+    return [Promise.resolve(asset ? signedMediaUrl(asset) : '')
       .then((url): PublishedStory => ({
         id: story.id as string,
-        url: url || '/images/tranquilicare-heart-transparent.png',
+        url,
+      category: story.category as string | null,
         type: asset?.media_type === 'video' ? 'video' : asset?.media_type === 'document' && ['instagram', 'tiktok', 'threads', 'substack'].includes(String(asset.provider)) ? asset.provider as StorySocialProvider : 'image',
         caption: String(story.body ?? '').trim(),
         timestamp: new Date(story.published_at as string).getTime(),
@@ -220,7 +223,7 @@ export const loadOwnOrganizationPublishedStories = async (
 
   const { data: storyRows, error: storyError } = await supabase
     .from('stories')
-    .select('id, body, published_at')
+    .select('id, body, category, published_at')
     .eq('organization_id', organizationId)
     .eq('status', 'published')
     .order('published_at', { ascending: false })
@@ -256,10 +259,11 @@ export const loadOwnOrganizationPublishedStories = async (
 
   return Promise.all(storyRows.map(async (story): Promise<PublishedStory> => {
     const asset = firstAssetByStory.get(story.id as string);
-    const url = asset ? await signedMediaUrl(asset) : organization.avatarUrl;
+    const url = asset ? await signedMediaUrl(asset) : '';
     return {
       id: story.id as string,
-      url: url || '/images/tranquilicare-heart-transparent.png',
+      url,
+      category: story.category as string | null,
       type: asset?.media_type === 'video' ? 'video' : asset?.media_type === 'document' && ['instagram', 'tiktok', 'threads', 'substack'].includes(String(asset.provider)) ? asset.provider as StorySocialProvider : 'image',
       caption: String(story.body ?? '').trim(),
       timestamp: new Date(story.published_at as string).getTime(),
@@ -294,8 +298,9 @@ export const loadStoryViewerState = async (): Promise<StoryViewerState> => {
   };
 };
 
-export const publishStory = async (body: string, imageFile: File | null, socialUrl: string | null = null) => {
+export const publishStory = async (body: string, imageFile: File | null, socialUrl: string | null = null, category: string | null = null) => {
   if (!supabase) throw new Error('backend-unavailable');
+  if (category && !ngoCategories.some((item) => item.id === category)) throw new Error('invalid-story-category');
   const content = body.trim();
   if (!content) throw new Error('story-empty');
   if (content.length > 5000) throw new Error('story-too-long');
@@ -320,6 +325,7 @@ export const publishStory = async (body: string, imageFile: File | null, socialU
     organization_id: organizationId,
     author_profile_id: identity.id,
     body: content,
+    category,
     title: '',
     status: 'draft',
   });
@@ -442,6 +448,7 @@ export const storyErrorMessage = (error: unknown) => {
   if (code === 'unsupported-image') return 'Use uma imagem JPEG, PNG ou WEBP.';
   if (code === 'image-too-large') return 'A imagem original pode ter até 20 MB.';
   if (code === 'invalid-image') return 'Não foi possível ler essa imagem.';
+  if (code === 'invalid-story-category') return 'Escolha uma das categorias disponíveis ou publique sem categoria.';
   if (code === 'story-empty') return 'Escreva algo antes de publicar.';
   if (code === 'invalid-social-url') return 'Cole um link público válido do Instagram, TikTok, Threads ou Substack.';
   if (code === 'story-media-conflict') return 'Escolha uma foto ou uma publicação externa por história.';

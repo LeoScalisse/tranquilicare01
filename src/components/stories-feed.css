@@ -1,0 +1,8 @@
+/* Category colors follow the existing category seals and chips. */
+.story-feed-card[data-category] { background-image: radial-gradient(ellipse at 100% 0%, var(--story-tint), transparent 65%); }
+.story-feed-card[data-category="educacao"] { --story-tint: #cfe2ff80; }
+.story-feed-card[data-category="saude"] { --story-tint: #cdeedc80; }
+.story-feed-card[data-category="saude-mental"] { --story-tint: #ffe89a80; }
+.story-feed-card[data-category="social"] { --story-tint: #e0cef680; }
+.story-feed-card[data-category="pets"] { --story-tint: #ffd4bd80; }
+.story-feed-card[data-category="ambiente"] { --story-tint: #ceeac880; }

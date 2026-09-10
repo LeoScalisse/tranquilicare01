@@ -1,3 +1,4 @@
+import { ngoCategories } from '@/data/ngoCategories';
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
@@ -5,22 +6,25 @@ import { CheckCircle2, ImagePlus, Link2, LoaderCircle, PenLine, Send, Trash2, X 
 import { resolveStorySocialEmbed, storySocialUrlError } from '@/lib/storySocialEmbed';
 import { SmoothInput } from '@/components/ui/smooth-input';
 import { SmoothTextarea } from '@/components/ui/smooth-textarea';
+import { CategoryDisclosure } from '@/components/ui/category-disclosure';
 
 interface StoryComposerFabProps {
   visible: boolean;
   canPublish: boolean;
   onUnavailable: () => void;
-  onPublish: (body: string, image: File | null, socialUrl: string | null) => Promise<void>;
+  onPublish: (body: string, image: File | null, socialUrl: string | null, category: string | null) => Promise<void>;
 }
 
 const PANEL_WIDTH = 440;
 const PANEL_HEIGHT = 560;
 const GAP = 14;
+const STORY_CATEGORIES = [{ id: '', label: 'TranquiliCare', tone: 'brand' as const }, ...ngoCategories];
 
 const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish, onUnavailable, onPublish }) => {
   const reduceMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState('');
+  const [category, setCategory] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState('');
   const [showSocialInput, setShowSocialInput] = useState(false);
@@ -65,7 +69,7 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
   useEffect(() => {
     if (!open) return undefined;
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !publishing) setOpen(false);
+      if (event.key === 'Escape' && !event.defaultPrevented && !publishing) setOpen(false);
     };
     document.addEventListener('keydown', closeOnEscape);
     return () => document.removeEventListener('keydown', closeOnEscape);
@@ -99,8 +103,9 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
     setPublishing(true);
     setError('');
     try {
-      await onPublish(draft, imageFile, showSocialInput ? socialUrl.trim() || null : null);
+      await onPublish(draft, imageFile, showSocialInput ? socialUrl.trim() || null : null, category);
       setDraft('');
+      setCategory(null);
       setImageFile(null);
       setSocialUrl('');
       setShowSocialInput(false);
@@ -142,6 +147,18 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
                 <label htmlFor='floating-story-composer' className='sr-only'>Escreva sua história</label>
                 <SmoothTextarea id='floating-story-composer' autoFocus value={draft} onChange={(event) => setDraft(event.target.value)} maxLength={5000} rows={5} placeholder='Conte um momento, uma conquista ou um novo capítulo da causa.' className='w-full resize-none bg-transparent text-base leading-7 text-brand-ink outline-none placeholder:text-muted-foreground' />
 
+                <fieldset disabled={publishing} className='mt-4'>
+                  <legend className='text-sm font-semibold'>Categoria da história</legend>
+                  <p className='mt-1 text-xs text-muted-foreground'>Ajude as pessoas a encontrar esta história. Use TranquiliCare para uma publicação geral.</p>
+                  <CategoryDisclosure
+                    id='story-cause-category'
+                    items={STORY_CATEGORIES}
+                    value={category ?? ''}
+                    onChange={(value) => setCategory(value || null)}
+                    disabled={publishing}
+                    aria-label='Categoria da história'
+                  />
+                </fieldset>
                 {previewUrl ? (
                   <div className='relative mt-3 overflow-hidden rounded-[20px] bg-secondary'>
                     <img src={previewUrl} alt='Prévia da foto escolhida' className='max-h-44 w-full object-cover' />
@@ -150,10 +167,10 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
                 ) : null}
                 {!previewUrl && (
                   <div className='mt-3 grid grid-cols-2 gap-3'>
-                    <button type='button' onClick={() => fileInputRef.current?.click()} className='flex aspect-square min-h-28 flex-col items-center justify-center gap-2 rounded-[20px] border border-dashed border-brand-blue/35 bg-brand-blue/[0.045] px-3 text-center text-sm font-bold text-brand-blue transition hover:border-brand-blue hover:bg-brand-blue/[0.08] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20'>
+                    <button type='button' onClick={() => fileInputRef.current?.click()} className='flex min-h-20 flex-col items-center justify-center gap-2 rounded-[20px] border border-dashed border-brand-blue/35 bg-brand-blue/[0.045] px-3 text-center text-sm font-bold text-brand-blue transition hover:border-brand-blue hover:bg-brand-blue/[0.08] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20'>
                       <ImagePlus size={23} /> Adicionar foto
                     </button>
-                    <button type='button' aria-expanded={showSocialInput} onClick={() => { setShowSocialInput((current) => !current); setError(''); window.setTimeout(() => socialInputRef.current?.focus(), 40); }} className={`flex aspect-square min-h-28 flex-col items-center justify-center gap-2 rounded-[20px] border px-3 text-center text-sm font-bold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20 ${showSocialInput ? 'border-brand-blue bg-brand-blue/10 text-brand-blue' : 'border-dashed border-brand-blue/35 bg-brand-blue/[0.045] text-brand-blue hover:border-brand-blue hover:bg-brand-blue/[0.08]'}`}>
+                    <button type='button' aria-expanded={showSocialInput} onClick={() => { setShowSocialInput((current) => !current); setError(''); window.setTimeout(() => socialInputRef.current?.focus(), 40); }} className={`flex min-h-20 flex-col items-center justify-center gap-2 rounded-[20px] border px-3 text-center text-sm font-bold transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20 ${showSocialInput ? 'border-brand-blue bg-brand-blue/10 text-brand-blue' : 'border-dashed border-brand-blue/35 bg-brand-blue/[0.045] text-brand-blue hover:border-brand-blue hover:bg-brand-blue/[0.08]'}`}>
                       <Link2 size={23} /> Adicionar post
                     </button>
                   </div>

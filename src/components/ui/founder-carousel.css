@@ -1,0 +1,63 @@
+.founder-carousel-viewport {
+  overflow: hidden;
+  touch-action: pan-y;
+  user-select: none;
+}
+.founder-carousel-stage { position: relative; height: 424px; }
+.founder-carousel-panel {
+  position: absolute;
+  inset: 0 auto 0 12%;
+  width: 60%;
+  border: 1px solid hsl(var(--border));
+  border-radius: 24px;
+  background: hsl(var(--background));
+}
+.founder-carousel-copy { position: absolute; top: 0; bottom: 0; left: 12%; width: 36%; }
+.founder-carousel-photo { position: absolute; top: 40px; height: 344px; width: 18%; overflow: hidden; background: hsl(var(--secondary)); }
+.founder-carousel-photo[data-slot='-1'] { left: -7%; }
+.founder-carousel-photo[data-slot='0'] { left: 48%; top: 0; width: 24%; height: 424px; z-index: 2; }
+.founder-carousel-photo[data-slot='1'] { left: 73%; }
+.founder-carousel-photo[data-slot='2'] { left: 92%; }
+.founder-carousel[data-count='2'] .founder-carousel-panel { left: 0; width: 77%; }
+.founder-carousel[data-count='2'] .founder-carousel-copy { left: 0; width: 43%; }
+.founder-carousel[data-count='2'] .founder-carousel-photo[data-slot='0'] { left: 43%; width: 34%; }
+.founder-carousel[data-count='2'] .founder-carousel-photo[data-slot='-1'] { left: -23%; width: 22%; }
+.founder-carousel[data-count='2'] .founder-carousel-photo[data-slot='1'] { left: 78%; width: 22%; }
+.founder-carousel[data-count='1'] .founder-carousel-panel { left: 0; width: 100%; }
+.founder-carousel[data-count='1'] .founder-carousel-copy { left: 0; width: 55%; }
+.founder-carousel[data-count='1'] .founder-carousel-photo[data-slot='0'] { left: 55%; width: 45%; }
+.founder-carousel-arrow { transition: background-color 160ms ease, transform 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+@media (hover: hover) and (pointer: fine) {
+  .founder-carousel-arrow:hover { background: hsl(var(--secondary)); transform: translateY(-2px); }
+  .founder-carousel-preview:hover { background: rgb(255 255 255 / 0.08); }
+}
+@media (min-width: 640px) and (max-width: 1023px) {
+  .founder-carousel[data-count] .founder-carousel-panel { left: 0; width: 80%; }
+  .founder-carousel[data-count] .founder-carousel-copy { left: 0; width: 48%; }
+  .founder-carousel[data-count] .founder-carousel-photo[data-slot='0'] { left: 48%; width: 32%; }
+  .founder-carousel[data-count] .founder-carousel-photo[data-slot='-1'] { left: -25%; width: 24%; }
+  .founder-carousel[data-count] .founder-carousel-photo[data-slot='1'] { left: 81%; width: 24%; }
+  .founder-carousel[data-count] .founder-carousel-photo[data-slot='2'] { left: 106%; }
+  .founder-carousel-photo[data-slot='-1'] .founder-carousel-preview,
+  .founder-carousel-photo[data-slot='2'] .founder-carousel-preview { visibility: hidden; }
+  .founder-carousel[data-count='1'] .founder-carousel-panel { width: 100%; }
+  .founder-carousel[data-count='1'] .founder-carousel-photo[data-slot='0'] { width: 52%; }
+}
+@media (max-width: 639px) {
+  .founder-carousel-stage { height: 560px; }
+  .founder-carousel[data-count] .founder-carousel-panel { left: 0; width: calc(100% - 24px); }
+  .founder-carousel[data-count] .founder-carousel-copy { left: 0; top: 224px; width: calc(100% - 24px); }
+  .founder-carousel[data-count] .founder-carousel-photo { top: 24px; height: 176px; width: calc(100% - 24px); }
+  .founder-carousel[data-count] .founder-carousel-photo[data-slot='0'] { left: 0; top: 0; height: 224px; width: calc(100% - 24px); }
+  .founder-carousel[data-count] .founder-carousel-photo[data-slot='-1'] { left: calc(-100% + 12px); }
+  .founder-carousel[data-count] .founder-carousel-photo[data-slot='1'] { left: calc(100% - 12px); width: calc(100% - 24px); }
+  .founder-carousel[data-count] .founder-carousel-photo[data-slot='2'] { left: calc(200% - 24px); }
+  .founder-carousel-photo:not([data-slot='0']) .founder-carousel-preview { visibility: hidden; }
+  .founder-carousel[data-count='1'] .founder-carousel-panel,
+  .founder-carousel[data-count='1'] .founder-carousel-copy,
+  .founder-carousel[data-count='1'] .founder-carousel-photo[data-slot='0'] { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .founder-carousel-arrow { transition: none; }
+  .founder-carousel-arrow:hover { transform: none; }
+}

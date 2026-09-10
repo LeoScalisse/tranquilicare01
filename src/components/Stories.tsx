@@ -1,3 +1,6 @@
+import StoryBody from '@/components/ui/story-body';
+import { ngoCategories } from '@/data/ngoCategories';
+import './stories-feed.css';
 import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Bookmark, ChevronLeft, ChevronRight, LoaderCircle, Play, Search, X } from 'lucide-react';
@@ -39,6 +42,7 @@ interface StoriesProps {
 }
 
 interface StoryItem {
+  category?: string | null;
   id: string;
   url: string;
   type: StoryPresentationType;
@@ -114,7 +118,7 @@ interface StoryFeedProps {
   emptyText: string;
 }
 
-const StoryFeed: React.FC<StoryFeedProps> = ({
+export const StoryFeed: React.FC<StoryFeedProps> = ({
   stories,
   savedIds,
   likedIds,
@@ -133,8 +137,9 @@ const StoryFeed: React.FC<StoryFeedProps> = ({
   if (!stories.length) return <p className='py-16 text-center text-sm text-muted-foreground'>{emptyText}</p>;
 
   return (
-    <div className='divide-y divide-brand-ink/10 overflow-hidden rounded-[24px] border border-brand-ink/10 bg-background'>
+    <div className='space-y-4'>
       {stories.map((story) => {
+        const category = ngoCategories.find((item) => item.id === story.category);
         const saved = savedIds.has(story.id);
         const liked = likedIds.has(story.id);
         const canOpenAuthor = Boolean(story.ngoId || story.authorProfileId);
@@ -147,7 +152,8 @@ const StoryFeed: React.FC<StoryFeedProps> = ({
           <article
             id={`story-${story.id}`}
             key={story.id}
-            className='px-3 py-5 sm:px-5'
+            data-category={category?.id}
+            className='story-feed-card rounded-[24px] border border-brand-ink/10 bg-background px-4 py-5 sm:px-5'
           >
             <header className='flex items-start gap-3'>
               <button type='button' disabled={!canOpenAuthor} onClick={openAuthor} className='shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20 disabled:cursor-default' aria-label={canOpenAuthor ? 'Abrir perfil de ' + story.ngoName : undefined}>
@@ -165,9 +171,10 @@ const StoryFeed: React.FC<StoryFeedProps> = ({
               </div>
             </header>
 
-            {story.caption && <p className='ml-14 mt-1.5 pr-2 text-[15px] leading-6 text-brand-ink/80'>{story.caption}</p>}
+            {category && <span className={`ml-0 mt-3 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold sm:ml-14 ${category.theme.chipBg} ${category.theme.chipText}`}><img src={category.sealSrc} alt='' className='h-5 w-5 object-contain' />{category.label}</span>}
+            <StoryBody text={story.caption} />
 
-            <div role={story.type === 'image' || story.type === 'video' ? 'button' : undefined} tabIndex={story.type === 'image' || story.type === 'video' ? 0 : undefined} onClick={() => { if (story.type === 'image' || story.type === 'video') onOpenStory(story); }} onKeyDown={(event) => { if ((story.type === 'image' || story.type === 'video') && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onOpenStory(story); } }} className='group relative ml-14 mt-3 block w-[calc(100%_-_3.5rem)] overflow-hidden rounded-[20px] border border-brand-ink/10 bg-secondary text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20'>
+            {story.url && <div role={story.type === 'image' || story.type === 'video' ? 'button' : undefined} tabIndex={story.type === 'image' || story.type === 'video' ? 0 : undefined} onClick={() => { if (story.type === 'image' || story.type === 'video') onOpenStory(story); }} onKeyDown={(event) => { if ((story.type === 'image' || story.type === 'video') && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onOpenStory(story); } }} className='group relative ml-14 mt-3 block w-[calc(100%_-_3.5rem)] overflow-hidden rounded-[20px] border border-brand-ink/10 bg-secondary text-left focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20'>
               {story.type === 'image' ? (
                 <img src={story.url} alt={story.caption || `História de ${story.ngoName}`} loading='lazy' decoding='async' className='block max-h-[38rem] w-full object-cover' />
               ) : story.type === 'video' ? (
@@ -180,7 +187,7 @@ const StoryFeed: React.FC<StoryFeedProps> = ({
                   <SocialStoryEmbed src={story.url} provider={story.type} title={`Publicação de ${story.ngoName} no ${story.type}`} />
                 </div>
               )}
-            </div>
+            </div>}
 
             {story.attribution && <a href={story.attribution.href} target='_blank' rel='noreferrer' className='ml-14 mt-2 block w-[calc(100%_-_3.5rem)] truncate text-xs font-semibold text-brand-blue underline-offset-4 hover:underline'>{story.attribution.label}</a>}
 
@@ -355,9 +362,9 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, onOpenProfile, canTellStor
     setReportedIds((current) => new Set(current).add(story.id));
   };
 
-  const handlePublish = async (body: string, image: File | null, socialUrl: string | null) => {
+  const handlePublish = async (body: string, image: File | null, socialUrl: string | null, category: string | null = null) => {
     try {
-      await publishStory(body, image, socialUrl);
+      await publishStory(body, image, socialUrl, category);
       await refreshStories();
       toast.success('História publicada.');
     } catch (error) {
@@ -390,7 +397,7 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, onOpenProfile, canTellStor
         smoothing={0.055}
         overlayScrim={0}
         useWindowScroll
-        surround={<CircularStoryGallery items={availableStories} />}
+        surround={<CircularStoryGallery items={availableStories.filter((story) => Boolean(story.url))} />}
         aria-label='Prévia circular das histórias'
       >
       <div className='h-full w-full overflow-y-hidden bg-background text-brand-ink'>
@@ -439,8 +446,8 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, onOpenProfile, canTellStor
             <button type='button' onClick={() => setActiveStoryId(null)} className='absolute right-4 top-8 grid h-10 w-10 place-items-center rounded-full bg-background text-brand-blue' aria-label='Fechar história'><X size={19} /></button>
             {availableStories.length > 1 && <><button type='button' onClick={(event) => { event.stopPropagation(); move(-1); }} className='absolute left-3 z-10 grid h-10 w-10 place-items-center rounded-full bg-background/15 text-white backdrop-blur md:left-8' aria-label='História anterior'><ChevronLeft /></button><button type='button' onClick={(event) => { event.stopPropagation(); move(1); }} className='absolute right-3 z-10 grid h-10 w-10 place-items-center rounded-full bg-background/15 text-white backdrop-blur md:right-8' aria-label='Próxima história'><ChevronRight /></button></>}
             <motion.div key={activeStory.id} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className='relative h-[78vh] w-full max-w-md overflow-hidden rounded-[26px] bg-black shadow-2xl' onClick={(event) => event.stopPropagation()}>
-              {activeStory.type === 'image' ? <img src={activeStory.url} alt='' className='h-full w-full object-contain' /> : activeStory.type === 'video' ? <video src={activeStory.url} className='h-full w-full object-contain' controls autoPlay playsInline /> : <SocialStoryEmbed src={activeStory.url} provider={activeStory.type} title={`Publicação de ${activeStory.ngoName} no ${activeStory.type}`} className='bg-white' />}
-              <div className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-5 pt-20 text-white ${['instagram', 'tiktok', 'threads', 'substack'].includes(activeStory.type) ? 'pointer-events-none' : ''}`}>
+              {!activeStory.url ? <div className='h-full overflow-y-auto bg-background p-6'><h2 className='mb-4 font-semibold'>{activeStory.ngoName}</h2><p className='whitespace-pre-wrap break-words leading-7'>{activeStory.caption}</p></div> : activeStory.type === 'image' ? <img src={activeStory.url} alt='' className='h-full w-full object-contain' /> : activeStory.type === 'video' ? <video src={activeStory.url} className='h-full w-full object-contain' controls autoPlay playsInline /> : <SocialStoryEmbed src={activeStory.url} provider={activeStory.type} title={`Publicação de ${activeStory.ngoName} no ${activeStory.type}`} className='bg-white' />}
+              <div hidden={!activeStory.url} className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-5 pt-20 text-white ${['instagram', 'tiktok', 'threads', 'substack'].includes(activeStory.type) ? 'pointer-events-none' : ''}`}>
                 <button type='button' disabled={!activeStory.ngoId && !activeStory.authorProfileId} onClick={() => activeStory.ngoId ? onOpenNGO(activeStory.ngoId) : activeStory.authorProfileId && onOpenProfile?.(activeStory.authorProfileId)} className='flex items-center gap-3 text-left disabled:cursor-default'><img src={activeStory.ngoImage} alt='' className='h-11 w-11 rounded-full border-2 border-white object-cover' /><span><span className='flex flex-wrap items-center gap-2 font-bold'>{activeStory.ngoName}{activeStory.isFounder && <img src={founderSeal} alt='ONG fundadora' className='h-5 w-5 object-contain' />}</span><span className='mt-1 block text-sm text-white/75'>{activeStory.caption}</span></span></button>
               </div>
             </motion.div>
