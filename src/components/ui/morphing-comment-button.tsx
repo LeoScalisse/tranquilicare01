@@ -466,7 +466,7 @@ export const MorphingCommentButton: React.FC<MorphingCommentButtonProps> = ({
                         closeComments();
                         onExpandedChange(true);
                       }}
-                      className='rounded-lg bg-brand-blue px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-blue/90'
+                      className='tc-button-3d text-white rounded-xl px-4 py-2 text-sm font-bold transition-colors'
                     >
                       Comentar
                     </button>

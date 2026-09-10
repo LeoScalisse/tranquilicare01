@@ -8,7 +8,6 @@ import {
 import {
   ArrowUpRight,
   Building2,
-  CalendarDays,
   Check,
   Clock3,
   HandHeart,
@@ -217,26 +216,6 @@ const CampaignDisclosureCard: React.FC<{
   );
 };
 
-const EmptyCampaignCard: React.FC<{ onCreate: () => void }> = ({ onCreate }) => (
-  <article className='flex min-h-[220px] w-[86vw] max-w-[440px] shrink-0 flex-col rounded-[20px] border-2 border-dashed border-brand-blue/20 bg-white/95 p-4 shadow-[0_18px_50px_-30px_rgba(13,45,65,0.52)]'>
-    <div className='flex items-center gap-2'>
-      <span className='grid h-10 w-10 place-items-center rounded-xl bg-brand-blue text-white'><Plus size={20} /></span>
-      <h3 className='font-display text-base font-semibold text-brand-ink sm:text-lg'>Sua causa pode aparecer aqui</h3>
-    </div>
-    <div className='mt-5 rounded-2xl bg-secondary/50 p-3'>
-      <p className='text-sm leading-5 text-muted-foreground'>Conte uma história, defina a meta e envie a proposta para análise do TranquiliCare.</p>
-      <div className='mt-3 h-2 overflow-hidden rounded-full bg-secondary'><span className='block h-full w-[8%] rounded-full bg-brand-yellow' /></div>
-    </div>
-    <div className='mt-auto flex items-center justify-between pt-4 text-xs font-semibold text-muted-foreground'>
-      <span>Proposta analisada antes de publicar</span>
-      <CalendarDays size={15} />
-    </div>
-    <button type='button' onClick={onCreate} className='mt-4 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-blue px-4 text-sm font-bold text-white transition-transform duration-150 hover:-translate-y-0.5 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-yellow/70'>
-      Criar minha vaquinha <ArrowUpRight size={16} />
-    </button>
-  </article>
-);
-
 const CowSpot = ({ className }: { className: string }) => (
   <span aria-hidden='true' className={'pointer-events-none absolute bg-black ' + className} />
 );
@@ -300,7 +279,7 @@ const CampaignShowcaseSection: React.FC<CampaignShowcaseSectionProps> = ({
             <h2 id='campaigns-title' className='font-display text-xl font-semibold text-brand-ink md:text-2xl'>Vaquinhas</h2>
             <p className='mt-1 text-sm text-muted-foreground'>Campanhas com um objetivo e um tempo para acontecer.</p>
           </div>
-          <button type='button' onClick={onCreate} className='inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-bold text-brand-blue shadow-sm transition-transform duration-150 hover:-translate-y-0.5 active:scale-[0.97] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-yellow/70'>
+          <button type='button' onClick={onCreate} className='ml-auto tc-button-3d text-white rounded-xl inline-flex min-h-11 items-center justify-center gap-2 px-4 text-sm font-bold transition-transform duration-150 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-yellow/70'>
             <Plus size={17} />Criar vaquinha
           </button>
         </div>
@@ -314,7 +293,7 @@ const CampaignShowcaseSection: React.FC<CampaignShowcaseSectionProps> = ({
           <div className='flex min-h-[220px] max-w-[440px] flex-col items-center justify-center rounded-[20px] bg-white/95 p-6 text-center shadow-sm' role='alert'>
             <p className='font-semibold text-brand-ink'>Não foi possível carregar as vaquinhas.</p>
             <p className='mt-1 text-sm text-muted-foreground'>Verifique sua conexão e tente novamente.</p>
-            <button type='button' onClick={loadCampaigns} className='mt-4 min-h-11 rounded-xl bg-brand-blue px-4 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-yellow/70'>Tentar novamente</button>
+            <button type='button' onClick={loadCampaigns} className='tc-button-3d text-white rounded-xl mt-4 min-h-11 px-4 text-sm font-bold focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-yellow/70'>Tentar novamente</button>
           </div>
         ) : (
           <div className='-mx-4 flex snap-x snap-mandatory items-start gap-4 overflow-x-auto px-4 pb-3 no-scrollbar'>
@@ -327,7 +306,7 @@ const CampaignShowcaseSection: React.FC<CampaignShowcaseSectionProps> = ({
                     onOpen={ngo ? () => onOpenOrganization(ngo) : undefined}
                   />
                 ))
-              : <EmptyCampaignCard onCreate={onCreate} />}
+              : <p className='rounded-xl bg-white/95 px-4 py-5 text-sm text-muted-foreground'>As vaquinhas publicadas aparecerão aqui.</p>}
           </div>
         )}
       </div>

@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase';
 import type { NGO } from '@/types';
 import { demoDataEnabled } from '@/lib/demoData';
 import { loadPublishedStories } from '@/lib/stories';
+import { INTERNAL_ORGANIZATION_ID } from '@/lib/platformAdmin';
 
 const stringArray = (value: unknown): string[] => Array.isArray(value)
   ? value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean)
@@ -73,7 +74,7 @@ export const ngoFromUser = (user: AppUser): NGO | null => {
 };
 
 export const loadMarketplaceNgos = async (viewer?: AppUser | null): Promise<NGO[]> => {
-  const ownerNgo = viewer ? ngoFromUser(viewer) : null;
+  const ownerNgo = viewer && viewer.id !== INTERNAL_ORGANIZATION_ID ? ngoFromUser(viewer) : null;
   if (!supabase) {
     const fixtures = demoDataEnabled ? demoNgos : [];
     return ownerNgo
@@ -84,7 +85,7 @@ export const loadMarketplaceNgos = async (viewer?: AppUser | null): Promise<NGO[
   let publicNgos: NGO[];
   try {
     const repository = new SupabaseOrganizationRepository(supabase);
-    publicNgos = (await repository.listPublic()).map(rowToNgo);
+    publicNgos = (await repository.listPublic()).filter((row) => row.id !== INTERNAL_ORGANIZATION_ID).map(rowToNgo);
   } catch (error) {
     console.error('Could not load public organizations:', error);
     const fixtures = demoDataEnabled ? demoNgos : [];

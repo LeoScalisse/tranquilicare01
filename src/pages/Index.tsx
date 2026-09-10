@@ -6,11 +6,6 @@ import { getUser, onAuthChange, authReady, signOut, defaultDestForAccount, AppUs
 import Header from '../components/Header';
 import ImpactDashboard from '../components/ImpactDashboard';
 import Marketplace from '../components/Marketplace';
-import {
-  isTranquiliCarePrototypeAccount,
-  isTranquiliCarePrototypeOrganization,
-  TRANQUILICARE_FOUNDER_NGO,
-} from '@/data/tranquilicarePrototype';
 import logo from '@/assets/logo.png';
 import { toast } from 'sonner';
 import { waitForDonationConfirmation } from '@/lib/donations';
@@ -247,14 +242,7 @@ const TranquiliCareApp: React.FC = () => {
     ? ngos.find((ngo) => ngo.id === confirmedDonation.ngo_id) ?? null
     : null;
   const confirmedNgoName = confirmedNgo?.name ?? 'esta causa';
-  const founderNgos = useMemo<NGO[]>(() => {
-    const prototypeFounder = ngos.find((ngo) => (
-      isTranquiliCarePrototypeOrganization(ngo)
-      || (isTranquiliCarePrototypeAccount(user?.email) && ngo.id === user?.id)
-    )) ?? TRANQUILICARE_FOUNDER_NGO;
-    const redeemedFounders = ngos.filter((ngo) => ngo.isFounder && ngo.id !== prototypeFounder.id);
-    return [prototypeFounder, ...redeemedFounders];
-  }, [ngos, user?.email, user?.id]);
+  const founderNgos = useMemo<NGO[]>(() => ngos.filter((ngo) => ngo.isFounder), [ngos]);
   const marketplaceNgos = ngos;
 
   useEffect(() => {
@@ -323,7 +311,7 @@ const TranquiliCareApp: React.FC = () => {
         onProfileClick={handleProfileClick}
         onLogout={handleLogout}
         onDonorLogin={() => navigate('/donor/auth')}
-        onChatClick={() => navigate(user ? '/chats' : '/donor/auth?mode=login&redirect=/chats')}
+        onChatClick={() => navigate('/chats')}
         previewHidden={currentView === View.STORIES && storiesPreviewActive}
       />
       <main id='main-content' className="animate-fade-in">

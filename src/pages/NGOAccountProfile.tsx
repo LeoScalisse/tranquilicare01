@@ -270,7 +270,7 @@ const ProfileFields: React.FC<ProfileFieldsProps> = ({
         <button
           type='button'
           onClick={() => onDetailsChange({ objectives: [...details.objectives, ''] })}
-          className='inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-bold text-brand-blue transition-colors hover:bg-brand-blue/10'
+          className='tc-button-secondary rounded-xl inline-flex items-center gap-1.5 px-3 py-2 text-sm font-bold transition-colors'
         >
           <Plus size={16} /> Adicionar objetivo
         </button>

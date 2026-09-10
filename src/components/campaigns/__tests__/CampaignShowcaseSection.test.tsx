@@ -31,6 +31,16 @@ const campaign: PublicCampaign = {
 };
 
 describe('CampaignShowcaseSection', () => {
+  it('keeps only the header action to create a campaign when the list is empty', async () => {
+    vi.mocked(loadPublicCampaigns).mockResolvedValue([]);
+    const onCreate = vi.fn();
+    render(<CampaignShowcaseSection ngos={[]} onCreate={onCreate} onOpenOrganization={vi.fn()} />);
+    await screen.findByText('As vaquinhas publicadas aparecerão aqui.');
+    expect(screen.queryByText('Sua causa pode aparecer aqui')).toBeNull();
+    expect(screen.getAllByRole('button', { name: /Criar.*vaquinha/i })).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: /Criar vaquinha/i }));
+    expect(onCreate).toHaveBeenCalledTimes(1);
+  });
   it('expands a compact campaign into real progress stages', async () => {
     vi.mocked(loadPublicCampaigns).mockResolvedValue([campaign]);
     render(

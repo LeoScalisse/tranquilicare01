@@ -119,10 +119,11 @@ export const listChatMessages = async (conversationId: string): Promise<ChatMess
     .from('chat_messages')
     .select('id, conversation_id, sender_profile_id, body, sent_at')
     .eq('conversation_id', conversationId)
-    .order('sent_at', { ascending: true })
+    .order('sent_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(300);
   if (error) throw error;
-  return ((data ?? []) as MessageRow[]).map(mapMessage);
+  return ((data ?? []) as MessageRow[]).reverse().map(mapMessage);
 };
 
 export const sendChatMessage = async (conversationId: string, body: string): Promise<ChatMessage> => {
@@ -200,4 +201,4 @@ export const getChatErrorMessage = (error: unknown): string => {
   if (message.includes('invalid_message')) return 'Escreva uma mensagem com até 4.000 caracteres.';
   if (message.includes('chat_unavailable')) return 'O chat precisa da conexão com o TranquiliCare para funcionar.';
   return 'Não foi possível concluir agora. Verifique sua conexão e tente novamente.';
-};
+};

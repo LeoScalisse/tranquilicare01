@@ -193,7 +193,7 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
 
               <footer className='flex items-center justify-end gap-3 border-t border-brand-ink/10 px-5 py-4 sm:px-6'>
                 {draft.length > 4500 && <span className='mr-auto text-xs text-muted-foreground'>{draft.length}/5000</span>}
-                <button type='submit' disabled={publishing || !draft.trim()} className='inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-blue px-5 text-sm font-bold text-white shadow-[0_8px_20px_rgba(55,181,247,0.28)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0'>{publishing ? <LoaderCircle size={17} className='animate-spin' /> : <Send size={16} />}{publishing ? 'Publicando' : 'Publicar'}</button>
+                <button type='submit' disabled={publishing || !draft.trim()} className='tc-button-3d text-white rounded-xl inline-flex min-h-11 items-center gap-2 px-5 text-sm font-bold transition disabled:cursor-not-allowed disabled:opacity-55 disabled:hover:translate-y-0'>{publishing ? <LoaderCircle size={17} className='animate-spin' /> : <Send size={16} />}{publishing ? 'Publicando' : 'Publicar'}</button>
               </footer>
             </form>
           </motion.div>

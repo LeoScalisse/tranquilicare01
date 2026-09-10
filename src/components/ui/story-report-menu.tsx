@@ -77,7 +77,7 @@ const StoryReportMenu: React.FC<StoryReportMenuProps> = ({ canReport, canDelete 
                 <label htmlFor='story-report-reason' className='font-display text-base font-semibold text-brand-ink'>Conte o motivo da denúncia</label>
                 <SmoothTextarea id='story-report-reason' value={reason} onChange={(event) => setReason(event.target.value)} rows={4} maxLength={1000} autoFocus placeholder='O que precisa ser analisado?' className='mt-3 w-full resize-none rounded-[14px] border border-brand-ink/15 bg-secondary/45 px-3 py-2.5 text-sm leading-5 outline-none transition focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10' />
                 {error && <p role='alert' className='mt-2 text-xs font-semibold text-red-600'>{error}</p>}
-                <button type='submit' disabled={submitting} className='mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full bg-brand-ink px-4 text-sm font-bold text-white transition hover:bg-brand-blue disabled:cursor-wait disabled:opacity-65'>{submitting ? <LoaderCircle size={16} className='animate-spin' /> : <Send size={15} />}Enviar denúncia</button>
+                <button type='submit' disabled={submitting} className='tc-button-3d text-white rounded-xl mt-3 inline-flex min-h-10 w-full items-center justify-center gap-2 px-4 text-sm font-bold transition disabled:cursor-wait disabled:opacity-65'>{submitting ? <LoaderCircle size={16} className='animate-spin' /> : <Send size={15} />}Enviar denúncia</button>
               </motion.form>
             )}
           </AnimatePresence>

@@ -209,6 +209,27 @@
     filter: saturate(0.65);
   }
 
+  .tc-button-secondary {
+    color: hsl(var(--brand-blue-deep));
+    background: linear-gradient(180deg, #fff, #ecfbff);
+    border: 1px solid #bceaff;
+    box-shadow: 0 3px 8px rgba(15,116,163,.12), inset 0 1px 0 #fff;
+    transition: transform var(--motion-fast) var(--motion-ease-out), box-shadow var(--motion-fast) var(--motion-ease-out);
+    touch-action: manipulation;
+  }
+  .tc-button-secondary:active:not(:disabled) { transform: translateY(1px); }
+  .tc-button-secondary:disabled { cursor: not-allowed; opacity: .5; }
+  .tc-button-secondary:focus-visible, .tc-button-3d:focus-visible {
+    outline: 2px solid hsl(var(--brand-blue)); outline-offset: 4px;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .tc-button-secondary:hover:not(:disabled) { box-shadow: 0 5px 12px rgba(15,116,163,.18), inset 0 1px 0 #fff; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tc-button-secondary { transition: none; }
+    .tc-button-secondary:active:not(:disabled) { transform: none; }
+  }
+
   .tc-button-3d.tc-button-3d-yellow {
     background-color: hsl(var(--brand-yellow)) !important;
     box-shadow:

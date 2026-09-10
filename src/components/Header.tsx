@@ -48,7 +48,7 @@ const Header: React.FC<HeaderProps> = ({
   });
 
   return (
-    <header aria-hidden={previewHidden} inert={previewHidden ? true : undefined} className={`sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-xl ${previewHidden ? 'invisible pointer-events-none' : ''}`}>
+    <header aria-hidden={previewHidden} {...(previewHidden ? { inert: '' } : {})} className={`sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-xl ${previewHidden ? 'invisible pointer-events-none' : ''}`}>
       <div className="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between">
         <div
           className="flex items-center gap-2.5 cursor-pointer group"
@@ -75,7 +75,7 @@ const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={onChatClick}
-            className='tc-motion-control flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold text-muted-foreground transition-[color,background-color,transform] hover:bg-brand-blue/10 hover:text-brand-ink'
+            className='tc-button-secondary rounded-xl tc-motion-control flex items-center gap-2 px-5 py-2.5 text-sm font-bold transition-[color,background-color,transform]'
           >
             <MessageCircle size={18} />
             Chat
@@ -85,7 +85,7 @@ const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center gap-1.5 pl-3 ml-1 border-l border-border">
               <button
                 onClick={onProfileClick}
-                className="tc-motion-control flex items-center gap-2 px-4 py-2.5 rounded-full bg-secondary text-brand-ink hover:bg-brand-blue/10 font-bold text-sm transition-[color,background-color,box-shadow,transform]"
+                className="tc-button-secondary rounded-xl tc-motion-control flex items-center gap-2 px-4 py-2.5 font-bold text-sm transition-[color,background-color,box-shadow,transform]"
               >
                 <UserCircle size={18} className="text-brand-blue" />
                 <span>{accountType === 'ngo' ? 'Perfil da ONG' : 'Meu perfil'}</span>

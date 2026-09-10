@@ -99,8 +99,8 @@ const ROLE: Record<Side, RoleConfig> = {
     Icon: Building2,
     iconWrap: 'bg-brand-yellow/25',
     kickerText: 'text-brand-ink/70',
-    submitBg: 'tc-button-3d-yellow',
-    submitText: 'text-brand-ink',
+    submitBg: 'bg-brand-blue shadow-brand-blue/25',
+    submitText: 'text-white',
     titles: { login: 'Bem-vinda de volta.', signup: 'Crie o acesso da sua organização' },
     subs: {
       login: 'Sua comunidade continua esperando por você.',
@@ -682,7 +682,7 @@ const AuthForm: React.FC<AuthFormProps> = ({
               type='button'
               onClick={() => goAfterAuth(pendingDestination)}
               disabled={handoffLoading}
-              className={`tc-button-3d btn-shine mt-8 inline-flex min-h-12 items-center gap-2 rounded-2xl px-7 font-bold disabled:opacity-60 ${role === 'ngo' ? 'tc-button-3d-yellow text-brand-ink' : 'text-white'}`}
+              className='tc-button-3d btn-shine mt-8 inline-flex min-h-12 items-center gap-2 rounded-xl px-7 font-bold text-white disabled:opacity-60'
             >
               {handoffLoading ? <Loader2 size={18} className='animate-spin' /> : null}
               {role === 'ngo' ? 'Continuar' : 'Personalizar meu perfil'}
@@ -714,7 +714,7 @@ const AuthForm: React.FC<AuthFormProps> = ({
         type="button"
         onClick={handleGoogle}
         disabled={googleLoading}
-        className="tc-motion-control w-full flex items-center justify-center gap-3 py-3.5 rounded-2xl border-2 border-border bg-background font-bold text-brand-ink shadow-sm hover:border-brand-blue/40 hover:-translate-y-0.5 transition-[border-color,box-shadow,transform,opacity] disabled:opacity-50 disabled:hover:translate-y-0"
+        className="tc-button-secondary rounded-xl tc-motion-control w-full flex items-center justify-center gap-3 py-3.5 font-bold transition-[border-color,box-shadow,transform,opacity] disabled:opacity-50 disabled:hover:translate-y-0"
       >
         {googleLoading ? <Loader2 size={19} className="animate-spin text-brand-blue" /> : <GoogleG />}
         Continuar com Google
@@ -1088,7 +1088,7 @@ const AuthSwitch: React.FC<AuthSwitchProps> = ({ initialSide }) => {
     isLoggedIn: false,
     onHome: () => navigate('/'),
     onStories: () => navigate('/?view=stories'),
-    onChat: () => navigate('/donor/auth?mode=login&redirect=/chats'),
+    onChat: () => navigate('/chats'),
     onPerfil: () => {
       setSide('donor');
       setOpenStage(null);

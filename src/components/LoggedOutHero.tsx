@@ -9,7 +9,6 @@ import { loadCommunitySphereProfiles, type CommunitySphereProfile } from '@/lib/
 import { formatBRL, useCountUp } from '@/lib/impact';
 import SphereImageGrid, { SphereImage } from './ui/img-sphere';
 import SealRolodex from './discovery/SealRolodex';
-import CommunitySculpture from './discovery/CommunitySculpture';
 import './discovery/community-motion.css';
 import { useSectionReveal } from '@/hooks/use-section-reveal';
 
@@ -170,7 +169,7 @@ const LoggedOutHero: React.FC<LoggedOutHeroProps> = ({
               <button
                 type='button'
                 onClick={onStories}
-                className='inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-semibold text-brand-ink transition-colors hover:bg-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue'
+                className='tc-button-secondary rounded-xl inline-flex min-h-12 items-center justify-center gap-2 px-6 py-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue'
               >
                 <Images size={18} />
                 Conhecer histórias
@@ -200,15 +199,14 @@ const LoggedOutHero: React.FC<LoggedOutHeroProps> = ({
             transition={{
               duration: 0.28,
             }}
-            className='community-visual relative mx-auto w-full max-w-[520px]'
+            className='relative mx-auto w-full max-w-[520px]'
           >
-            <CommunitySculpture />
             <SphereImageGrid
               images={sphereImages}
               onImageSelect={() => onStories()}
               appearance='transparent'
               showHint={false}
-              autoRotate={false}
+              autoRotate={!reduceMotion && communityProfiles.length > 1}
               autoRotateSpeed={0.055}
               maxSize={520}
             />

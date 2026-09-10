@@ -38,7 +38,7 @@ const FounderOrganizationsSection = memo(function FounderOrganizationsSection({
             <span className='flex items-center gap-2 text-xs font-semibold text-brand-ink'><img src={founderSeal} alt='Selo de ONG fundadora' className='h-6 w-6' />ONG fundadora</span>
             <h3 className='mt-4 line-clamp-2 font-display text-2xl font-semibold leading-tight text-brand-ink'>{ngo.name}</h3>
             <p className='mt-3 line-clamp-4 text-sm leading-6 text-muted-foreground'>{ngo.description}</p>
-            <motion.button type='button' aria-label={`Conhecer ${ngo.name}`} onClick={() => onOpen(ngo)} whileTap={reduceMotion ? undefined : { scale: 0.98 }} className='mt-auto inline-flex min-h-11 items-center gap-2 rounded-full bg-brand-yellow px-4 text-sm font-semibold text-brand-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/30'>Conhecer esta ONG<ArrowUpRight size={17} aria-hidden='true' /></motion.button>
+            <motion.button type='button' aria-label={`Conhecer ${ngo.name}`} onClick={() => onOpen(ngo)} whileTap={reduceMotion ? undefined : { scale: 0.98 }} className='tc-button-3d mt-auto inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/30'>Conhecer esta ONG<ArrowUpRight size={17} aria-hidden='true' /></motion.button>
           </div>
 
         </article>

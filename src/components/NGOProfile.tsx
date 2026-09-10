@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import AdminPanel from '@/components/admin/AdminPanel';
+import { getPlatformAdminAccess } from '@/lib/platformAdmin';
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { flushSync } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -66,7 +68,7 @@ import {
   isTranquiliCarePrototypeOrganization,
 } from "@/data/tranquilicarePrototype";
 
-type ProfileTab = "causa" | "historias" | "impacto" | "after_donation";
+type ProfileTab = "causa" | "historias" | "impacto" | "after_donation" | "admin";
 
 type DonationCheckoutStage =
   | "amount"
@@ -108,6 +110,19 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   const location = useLocation();
   const reduceMotion = useReducedMotion();
   const currentDonor = getUser();
+  const [adminAccess, setAdminAccess] = useState<{ profileId: string; allowed: boolean } | null>(null);
+  const canSeeAdmin = ownerMode && adminAccess?.profileId === currentDonor?.id && adminAccess?.allowed === true;
+  useEffect(() => {
+    let active = true;
+    const profileId = currentDonor?.id;
+    if (!ownerMode || !profileId) { setAdminAccess(null); return; }
+    const check = () => { void getPlatformAdminAccess().then(allowed => {
+      if (active) setAdminAccess({profileId, allowed});
+    }).catch(() => { if (active) setAdminAccess(null); }); };
+    check();
+    window.addEventListener('focus', check);
+    return () => { active = false; window.removeEventListener('focus', check); };
+  }, [ownerMode, currentDonor?.id]);
   const isPrototypeDonationTarget =
     !import.meta.env.PROD && isTranquiliCarePrototypeOrganization(ngo);
   const isTranquiliCarePrototype =
@@ -122,6 +137,9 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
     isPublicPrototypeDemo ? "after_donation" : "causa",
   );
   const [showContactModal, setShowContactModal] = useState(false);
+  useEffect(() => {
+    if (activeTab === 'admin' && !canSeeAdmin) setActiveTab('causa');
+  }, [activeTab, canSeeAdmin]);
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showDonationModal, setShowDonationModal] = useState(false);
   const [donationAmount, setDonationAmount] = useState<number | null>(null);
@@ -381,6 +399,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
     { id: "causa", label: "A Causa" },
     { id: "historias", label: "Histórias" },
     { id: "impacto", label: "Impacto" },
+    ...(canSeeAdmin ? [{ id: 'admin' as const, label: 'Admin' }] : []),
     ...(canSeeAfterDonation
       ? [{
         id: "after_donation" as const,
@@ -516,9 +535,9 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
               type='button'
               onClick={() => {
                 const target = '/chats?organization=' + ngo.id;
-                navigate(currentDonor ? target : '/donor/auth?mode=login&redirect=' + encodeURIComponent(target));
+                navigate(target);
               }}
-              className='flex w-full items-center gap-3 rounded-lg bg-brand-blue p-3 text-left font-semibold text-white shadow-[0_8px_20px_rgba(55,181,247,0.2)] transition-colors hover:bg-brand-blue/90'
+              className='tc-button-3d text-white rounded-xl flex w-full items-center gap-3 p-3 text-left font-semibold transition-colors'
             >
               <MessageCircle size={19} />
               <span className='min-w-0 flex-1'>Conversar no TranquiliCare</span>
@@ -948,6 +967,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
             />
           )}
           {activeTab === "impacto" && <NGOImpactTab ngo={ngo} />}
+          {activeTab === 'admin' && canSeeAdmin && <AdminPanel />}
           {activeTab === "after_donation" && canSeeAfterDonation && (
             <AfterDonationWorkspace
               organizationId={ngo.id}

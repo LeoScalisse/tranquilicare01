@@ -257,14 +257,15 @@ const Marketplace: React.FC<MarketplaceProps> = ({
   });
 
   const EmptyState = () => (
-    <div className="py-16 flex flex-col items-center">
-      <div className="bg-background border border-border rounded-3xl p-10 max-w-2xl text-center shadow-sm">
+    <div className="py-16 flex flex-col items-center" role="status">
+      <div className="px-6 py-8 max-w-lg text-center">
         <p className="font-display text-xl font-semibold text-brand-ink mb-1">
           Não encontramos nenhuma causa por aqui.
         </p>
         <p className="text-muted-foreground text-sm">
-          Tente outro termo ou explore uma categoria.
+          Tente outro nome ou volte a descobrir todas as causas.
         </p>
+        <button type="button" onClick={() => { setSearchTerm(""); setSelectedCategory("Todas"); }} className="tc-button-secondary rounded-xl mt-5 min-h-11 px-5 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue">Ver todas as causas</button>
       </div>
     </div>
   );

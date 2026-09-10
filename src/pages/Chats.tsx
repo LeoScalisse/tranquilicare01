@@ -22,6 +22,7 @@ import {
 import logo from '@/assets/logo.png';
 import { SmoothInput } from '@/components/ui/smooth-input';
 import { SmoothTextarea } from '@/components/ui/smooth-textarea';
+import { Button } from '@/components/ui/button';
 
 const initials = (name: string) => name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || 'TC';
 
@@ -72,6 +73,10 @@ const Chats: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('conversation'));
   const [loadingConversations, setLoadingConversations] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [messageError, setMessageError] = useState<string | null>(null);
+  const [messageRetry, setMessageRetry] = useState(0);
+  const selectedIdRef = useRef(selectedId);
+  selectedIdRef.current = selectedId;
   const [showNewChat, setShowNewChat] = useState(false);
   const [contactQuery, setContactQuery] = useState('');
   const [contactResults, setContactResults] = useState<ChatUser[]>([]);
@@ -111,6 +116,8 @@ const Chats: React.FC = () => {
   useEffect(() => {
     if (!authHydrated || !user) { if (authHydrated) setLoadingConversations(false); return; }
     void refreshConversations();
+    const timer = window.setInterval(() => { if (!document.hidden) void refreshConversations(); }, 5000);
+    return () => window.clearInterval(timer);
   }, [authHydrated, refreshConversations, user]);
 
   useEffect(() => {
@@ -139,16 +146,34 @@ const Chats: React.FC = () => {
   useEffect(() => {
     if (!selectedId || !user) { setMessages([]); return; }
     let active = true;
+    let refreshing = false;
+    setMessages([]);
     setLoadingMessages(true);
-    setError(null);
-    void listChatMessages(selectedId)
-      .then((next) => { if (active) setMessages(next); })
-      .catch((cause) => { if (active) setError(getChatErrorMessage(cause)); })
-      .finally(() => { if (active) setLoadingMessages(false); });
-    void markChatRead(selectedId).then(refreshConversations).catch(() => undefined);
-    return () => { active = false; };
-
-  }, [refreshConversations, selectedId, user]);
+    setMessageError(null);
+    const refresh = async () => {
+      if (refreshing || document.hidden) return;
+      refreshing = true;
+      try {
+        const next = await listChatMessages(selectedId);
+        if (!active) return;
+        setMessages(current => {
+          const merged = new Map([...next, ...current.filter(item => item.conversationId === selectedId)].map(item => [item.id, item]));
+          const ordered = [...merged.values()].sort((a, b) => a.sentAt.localeCompare(b.sentAt) || a.id.localeCompare(b.id));
+          return ordered.length === current.length && ordered.every((item, index) => item.id === current[index].id) ? current : ordered;
+        });
+        setMessageError(null);
+        await markChatRead(selectedId);
+        if (active) void refreshConversations();
+      } catch (cause) { if (active) setMessageError(getChatErrorMessage(cause)); }
+      finally { refreshing = false; if (active) setLoadingMessages(false); }
+    };
+    void refresh();
+    const timer = window.setInterval(() => void refresh(), 5000);
+    const wake = () => void refresh();
+    window.addEventListener('focus', wake);
+    document.addEventListener('visibilitychange', wake);
+    return () => { active = false; window.clearInterval(timer); window.removeEventListener('focus', wake); document.removeEventListener('visibilitychange', wake); };
+  }, [refreshConversations, selectedId, user, messageRetry]);
 
   useEffect(() => {
     if (!user) return undefined;
@@ -208,7 +233,7 @@ const Chats: React.FC = () => {
     setError(null);
     try {
       const message = await sendChatMessage(selectedId, preservedDraft);
-      setMessages((current) => current.some((item) => item.id === message.id) ? current : [...current, message]);
+      if (selectedIdRef.current === message.conversationId) setMessages((current) => current.some((item) => item.id === message.id) ? current : [...current, message]);
       await refreshConversations();
     } catch (cause) {
       setDraft(preservedDraft);
@@ -223,9 +248,11 @@ const Chats: React.FC = () => {
       <main id='main-content' className='grid min-h-screen place-items-center bg-[#f6f8fb] px-5 pb-24'>
         <section className='w-full max-w-md rounded-[28px] border border-border bg-background p-8 text-center shadow-sm'>
           <img src={logo} alt='' className='mx-auto mb-5 h-14 w-14 rounded-2xl' />
-          <h1 className='text-2xl font-bold text-brand-ink'>Suas conversas ficam protegidas</h1>
-          <p className='mt-2 text-sm leading-6 text-muted-foreground'>Entre na sua conta para conversar com doadores e ONGs do TranquiliCare.</p>
-          <button onClick={() => navigate('/donor/auth?mode=login&redirect=/chats')} className='mt-6 h-12 w-full rounded-2xl bg-brand-blue font-bold text-white shadow-[0_8px_22px_rgba(55,181,247,0.25)]'>Entrar para conversar</button>
+          <h1 className='text-2xl font-bold text-brand-ink'>Boas conversas aproximam pessoas e causas</h1>
+          <p className='mt-4 text-sm leading-6 text-muted-foreground'>Entre na sua conta para conversar com doadores e conhecer pessoas que acreditam no mesmo sonho que você.</p>
+          <p className='mt-3 text-sm leading-6 text-muted-foreground'>Receba novidades das suas ONGs favoritas e acompanhe o que seu apoio torna possível para elas e para o mundo.</p>
+          <Button onClick={() => navigate('/donor/auth?mode=login&redirect=' + encodeURIComponent('/chats' + (searchParams.size ? '?' + searchParams.toString() : '')))} className='mt-6 h-12 w-full'>Entrar para conversar</Button>
+          <Button variant='secondary' onClick={() => navigate('/')} className='mt-4 h-12 w-full'>Continuar explorando</Button>
         </section>
         <AppBottomNav activeKey='chat' user={null} />
       </main>
@@ -279,7 +306,7 @@ const Chats: React.FC = () => {
               )) : <EmptySearch query={contactQuery} />
             ) : loadingConversations ? <ListSkeleton /> : conversations.length === 0 ? (
               <div className='grid h-full place-items-center px-8 text-center'>
-                <div><span className='mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-brand-blue/10 text-brand-blue'><MessageCircle size={26} /></span><h2 className='mt-4 font-bold text-brand-ink'>Suas conversas começam aqui</h2><p className='mt-1 text-sm leading-5 text-muted-foreground'>Fale diretamente com pessoas e ONGs da comunidade.</p><button onClick={() => setShowNewChat(true)} className='mt-5 rounded-xl bg-brand-blue px-4 py-2.5 text-sm font-bold text-white'>Nova conversa</button></div>
+                <div><span className='mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-brand-blue/10 text-brand-blue'><MessageCircle size={26} /></span><h2 className='mt-4 font-bold text-brand-ink'>Suas conversas começam aqui</h2><p className='mt-1 text-sm leading-5 text-muted-foreground'>Fale diretamente com pessoas e ONGs da comunidade.</p><button onClick={() => setShowNewChat(true)} className='tc-button-3d text-white rounded-xl mt-5 px-4 py-2.5 text-sm font-bold'>Nova conversa</button></div>
               </div>
             ) : conversations.map((conversation) => (
               <button key={conversation.conversationId} onClick={(event) => { if ((event.target as Element).closest('[data-chat-avatar]')) { openContactProfile(conversation); return; } selectConversation(conversation.conversationId); }} className={`flex w-full items-start gap-3 border-b border-black/[0.04] px-4 py-3.5 text-left transition-colors hover:bg-brand-blue/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-brand-blue/30 ${selectedId === conversation.conversationId ? 'bg-brand-blue/[0.08]' : ''}`}>
@@ -300,8 +327,9 @@ const Chats: React.FC = () => {
                 <div className='ml-auto'><ContactTier conversation={selectedConversation} /></div>
               </div>
 
+              {messageError && <div role='alert' className='border-b border-border bg-white px-5 py-3 text-sm'><p>{messageError}</p><Button variant='secondary' className='mt-2' onClick={() => setMessageRetry(value => value + 1)}>Tentar carregar mensagens novamente</Button></div>}
               <div className='min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-8' aria-live='polite' aria-busy={loadingMessages}>
-                {loadingMessages ? <MessageSkeleton /> : messages.length === 0 ? <div className='grid h-full place-items-center text-center'><div><button type='button' onClick={() => openContactProfile(selectedConversation)} className='mx-auto block w-fit rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20' aria-label={'Abrir perfil de ' + selectedConversation.displayName}><Avatar user={selectedConversation} size='lg' /></button><h3 className='mt-3 font-bold text-brand-ink'>{selectedConversation.displayName}</h3><p className='mt-1 text-sm text-muted-foreground'>Envie uma mensagem para iniciar a conversa.</p></div></div> : (
+                {loadingMessages ? <MessageSkeleton /> : messageError && messages.length === 0 ? <p className='py-8 text-center text-sm text-muted-foreground'>As mensagens aparecerão quando a conexão for restabelecida.</p> : messages.length === 0 ? <div className='grid h-full place-items-center text-center'><div><button type='button' onClick={() => openContactProfile(selectedConversation)} className='mx-auto block w-fit rounded-full focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20' aria-label={'Abrir perfil de ' + selectedConversation.displayName}><Avatar user={selectedConversation} size='lg' /></button><h3 className='mt-3 font-bold text-brand-ink'>{selectedConversation.displayName}</h3><p className='mt-1 text-sm text-muted-foreground'>Envie uma mensagem para iniciar a conversa.</p></div></div> : (
                   <div className='mx-auto flex max-w-3xl flex-col gap-2.5'>
                     {messages.map((message) => {
                       const mine = message.senderProfileId === user?.id;
@@ -335,4 +363,4 @@ const ListSkeleton = () => <div className='space-y-1 p-3' aria-label='Carregando
 const MessageSkeleton = () => <div className='mx-auto max-w-3xl animate-pulse space-y-4' aria-label='Carregando mensagens'><div className='h-14 w-2/3 rounded-[20px] bg-white' /><div className='ml-auto h-20 w-3/5 rounded-[20px] bg-brand-blue/15' /><div className='h-12 w-1/2 rounded-[20px] bg-white' /></div>;
 const EmptySearch = ({ query }: { query: string }) => <div className='px-8 py-12 text-center'><Search className='mx-auto text-slate-300' size={28} /><p className='mt-3 text-sm font-semibold text-brand-ink'>{query ? 'Nenhum perfil encontrado' : 'Encontre alguém para conversar'}</p><p className='mt-1 text-xs leading-5 text-muted-foreground'>{query ? 'Confira o nome e tente novamente.' : 'Busque pelo nome de uma pessoa ou ONG.'}</p></div>;
 
-export default Chats;
+export default Chats;
