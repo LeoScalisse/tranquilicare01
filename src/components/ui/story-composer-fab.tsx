@@ -20,6 +20,17 @@ const PANEL_HEIGHT = 560;
 const GAP = 14;
 const STORY_CATEGORIES = [{ id: '', label: 'TranquiliCare' }, ...ngoCategories];
 
+const getPanelPosition = (rect: Pick<DOMRect, 'top' | 'right' | 'bottom'>) => {
+  const width = Math.min(PANEL_WIDTH, window.innerWidth - GAP * 2);
+  const height = Math.min(PANEL_HEIGHT, window.innerHeight - GAP * 2);
+  const above = rect.top >= height + GAP;
+  return {
+    left: Math.min(Math.max(GAP, rect.right - width), window.innerWidth - width - GAP),
+    top: above ? rect.top - height - GAP : Math.min(window.innerHeight - height - GAP, rect.bottom + GAP),
+    above,
+  };
+};
+
 const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish, onUnavailable, onPublish }) => {
   const reduceMotion = useReducedMotion();
   const [open, setOpen] = useState(false);
@@ -36,6 +47,7 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
   const fileInputRef = useRef<HTMLInputElement>(null);
   const socialInputRef = useRef<HTMLInputElement>(null);
   const draggedRef = useRef(false);
+  const anchorRectRef = useRef<DOMRect | null>(null);
 
   useEffect(() => {
     if (!imageFile) {
@@ -50,16 +62,9 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
   useEffect(() => {
     if (!open) return undefined;
     const positionPanel = () => {
-      const rect = triggerRef.current?.getBoundingClientRect();
+      const rect = anchorRectRef.current;
       if (!rect) return;
-      const width = Math.min(PANEL_WIDTH, window.innerWidth - GAP * 2);
-      const height = Math.min(PANEL_HEIGHT, window.innerHeight - GAP * 2);
-      const above = rect.top >= height + GAP;
-      setPanelPosition({
-        left: Math.min(Math.max(GAP, rect.right - width), window.innerWidth - width - GAP),
-        top: above ? rect.top - height - GAP : Math.min(window.innerHeight - height - GAP, rect.bottom + GAP),
-        above,
-      });
+      setPanelPosition(getPanelPosition(rect));
     };
     positionPanel();
     window.addEventListener('resize', positionPanel);
@@ -84,7 +89,16 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
       onUnavailable();
       return;
     }
-    setOpen((current) => !current);
+    if (open) {
+      setOpen(false);
+    } else {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (rect) {
+        anchorRectRef.current = rect;
+        setPanelPosition(getPanelPosition(rect));
+      }
+      setOpen(true);
+    }
     setError('');
   };
 

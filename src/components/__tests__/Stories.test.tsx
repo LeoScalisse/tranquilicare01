@@ -142,8 +142,15 @@ describe('Stories', () => {
   it('opens the draggable publisher and publishes a real organization story', async () => {
     const user = userEvent.setup();
     render(<Stories onOpenNGO={vi.fn()} canTellStory />);
-    await user.click(screen.getByRole('button', { name: 'Criar nova história' }));
+    const trigger = screen.getByRole('button', { name: 'Criar nova história' });
+    vi.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({
+      bottom: 744, height: 64, left: 896, right: 960, top: 680, width: 64, x: 896, y: 680,
+      toJSON: () => ({}),
+    });
+    await user.click(trigger);
     const composer = screen.getByRole('dialog', { name: 'O que aconteceu por aí?' });
+    expect(composer.style.left).toBe('520px');
+    expect(composer.style.top).toBe('106px');
     const input = within(composer).getByRole('textbox', { name: 'Escreva sua história' });
     await user.type(input, 'Hoje abrimos um novo espaço de acolhimento.');
     await user.click(within(composer).getByRole('button', { name: 'Categoria da história' }));

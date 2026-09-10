@@ -7,6 +7,7 @@ const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
 const MAX_OUTPUT_EDGE = 2048;
 const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const LOCAL_STORY_LIKES_KEY = 'tc-story-likes';
 
 export interface PublishedStory {
   category?: string | null;
@@ -43,10 +44,27 @@ interface PublicStoryAuthor {
   avatar_url: string | null;
 }
 
+const loadLocalStoryLikes = () => {
+  if (typeof window === 'undefined') return new Set<string>();
+  try {
+    const value = JSON.parse(window.localStorage.getItem(LOCAL_STORY_LIKES_KEY) ?? '[]');
+    return new Set(Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : []);
+  } catch {
+    return new Set<string>();
+  }
+};
+
+const setLocalStoryLiked = (storyId: string, liked: boolean) => {
+  if (typeof window === 'undefined') return;
+  const ids = loadLocalStoryLikes();
+  if (liked) ids.add(storyId); else ids.delete(storyId);
+  window.localStorage.setItem(LOCAL_STORY_LIKES_KEY, JSON.stringify([...ids]));
+};
+
 const emptyViewerState = (): StoryViewerState => ({
   currentProfileId: null,
   savedStoryIds: new Set(),
-  likedStoryIds: new Set(),
+  likedStoryIds: loadLocalStoryLikes(),
   reportedStoryIds: new Set(),
   followedOrganizationIds: new Set(),
 });
@@ -292,7 +310,10 @@ export const loadStoryViewerState = async (): Promise<StoryViewerState> => {
   return {
     currentProfileId: identity.user.id,
     savedStoryIds: new Set((saves.data ?? []).map((row) => row.story_id as string)),
-    likedStoryIds: new Set((likes.data ?? []).map((row) => row.story_id as string)),
+    likedStoryIds: new Set([
+      ...loadLocalStoryLikes(),
+      ...(likes.data ?? []).map((row) => row.story_id as string),
+    ]),
     reportedStoryIds: new Set((reports.data ?? []).map((row) => row.story_id as string)),
     followedOrganizationIds: new Set((follows.data ?? []).map((row) => row.organization_id as string)),
   };
@@ -424,13 +445,23 @@ export const setStorySaved = async (storyId: string, saved: boolean) => {
 };
 
 export const setStoryLiked = async (storyId: string, liked: boolean) => {
-  if (!supabase || !isPersistedStoryId(storyId)) return;
+  if (!isPersistedStoryId(storyId)) {
+    setLocalStoryLiked(storyId, liked);
+    return;
+  }
+  if (!supabase) throw new Error('backend-unavailable');
   const identity = await requireIdentity();
+  const { data: rpcResult, error: rpcError } = await supabase.rpc('set_story_like', {
+    target_story_id: storyId,
+    should_like: liked,
+  });
+  if (!rpcError && rpcResult === liked) return;
+
   const operation = liked
     ? supabase.from('story_likes').insert({ profile_id: identity.id, story_id: storyId })
     : supabase.from('story_likes').delete().eq('profile_id', identity.id).eq('story_id', storyId);
-  const { error } = await operation;
-  if (error && error.code !== '23505') throw error;
+  const { error: tableError } = await operation;
+  if (tableError && tableError.code !== '23505') throw tableError;
 };
 export const reportStory = async (storyId: string, reason: string) => {
   if (!supabase || !isPersistedStoryId(storyId)) return;
