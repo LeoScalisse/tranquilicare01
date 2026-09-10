@@ -261,7 +261,7 @@ const Chats: React.FC = () => {
 
   return (
     <main id='main-content' className='min-h-screen bg-[#f4f6f9] pb-24 md:pb-0'>
-      <header className='sticky top-0 z-30 border-b border-black/5 bg-background/90 px-4 py-3 backdrop-blur-xl md:px-6'>
+      <header className='sticky top-0 z-30 border-b border-black/5 bg-background/90 px-4 py-3 backdrop-blur-xl md:hidden'>
         <div className='mx-auto flex max-w-7xl items-center justify-between'>
           <button onClick={() => navigate('/')} className='flex items-center gap-2 rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20' aria-label='Voltar ao início'>
             <img src={logo} alt='' className='h-9 w-9 rounded-xl' />
@@ -274,7 +274,7 @@ const Chats: React.FC = () => {
 
       {error && <div className='fixed right-4 top-20 z-50 w-[calc(100%-2rem)] max-w-sm'><AlertToast variant='error' title='Não foi possível concluir' description={error} onClose={() => setError(null)} /></div>}
 
-      <div className='mx-auto grid h-[calc(100dvh-64px)] max-w-7xl overflow-hidden border-x border-black/5 bg-background md:grid-cols-[360px_1fr]'>
+      <div className='mx-auto grid h-[calc(100dvh-64px)] max-w-7xl overflow-hidden border-x border-black/5 bg-background md:h-[calc(100dvh-81px)] md:grid-cols-[360px_1fr]'>
         <aside className={`${selectedId ? 'hidden md:flex' : 'flex'} min-w-0 flex-col border-r border-black/5 bg-white`} aria-label='Lista de conversas'>
           <div className='border-b border-black/5 p-4'>
             <div className='flex items-center justify-between'>

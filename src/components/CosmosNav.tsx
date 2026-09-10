@@ -1,5 +1,6 @@
 import React from "react";
 import { createPortal } from "react-dom";
+import { NavigationContext } from './NavigationContext';
 import {
   AnimatePresence,
   LayoutGroup,
@@ -18,6 +19,7 @@ export interface CosmosNavItem {
 
 interface CosmosNavProps {
   items: CosmosNavItem[];
+  global?: boolean;
 }
 
 const navMorph: Transition = {
@@ -31,11 +33,13 @@ const instant: Transition = { duration: 0.01 };
  * travels with the active item, so the interaction communicates location
  * without permanently taking up the entire bottom bar.
  */
-const CosmosNav: React.FC<CosmosNavProps> = ({ items }) => {
+const CosmosNav: React.FC<CosmosNavProps> = ({ items, global = false }) => {
   const reduceMotion = useReducedMotion() ?? false;
+  const managed = React.useContext(NavigationContext);
+  if (managed && !global) return null;
   if (typeof document === "undefined") return null;
 
-  const activeKey = items.find((item) => item.active)?.key ?? items[0]?.key;
+  const activeKey = items.find((item) => item.active)?.key;
 
   return createPortal(
     <nav

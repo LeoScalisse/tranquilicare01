@@ -1,9 +1,9 @@
 import React from 'react';
 import { View } from '../types';
 import { BrandedText } from '../utils';
-import { HandHeart, MessageCircle, UserCircle, LogOut, LogIn } from 'lucide-react';
+import { Heart, HandHeart, MessageCircle, UserCircle, LogOut, LogIn } from 'lucide-react';
 import CosmosNav from './CosmosNav';
-import { buildMobileNavItems } from './mobileNavItems';
+import { buildMobileNavItems, type MobileNavKey } from './mobileNavItems';
 import logo from '@/assets/logo.png';
 
 interface HeaderProps {
@@ -16,6 +16,8 @@ interface HeaderProps {
   onDonorLogin?: () => void;
   onChatClick?: () => void;
   previewHidden?: boolean;
+  activeKey?: MobileNavKey | null;
+  showMobile?: boolean;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -28,13 +30,14 @@ const Header: React.FC<HeaderProps> = ({
   onDonorLogin,
   onChatClick,
   previewHidden = false,
+  activeKey,
+  showMobile = true,
 }) => {
   const isLoggedIn = Boolean(currentUserEmail);
-  const navItemClass = (view: View) => `
-    tc-motion-control flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm transition-[color,background-color,box-shadow,transform]
-    ${currentView === view
-      ? 'bg-brand-yellow text-brand-ink shadow-lg shadow-brand-yellow/25'
-      : 'text-muted-foreground hover:bg-brand-blue/10 hover:text-brand-ink'}
+  const selectedKey = activeKey === undefined ? (currentView === View.HOME ? 'home' : currentView === View.STORIES ? 'historias' : null) : activeKey;
+  const navItemClass = (key: MobileNavKey) => `
+    tc-motion-control flex min-h-11 items-center gap-2 px-3 lg:px-5 py-2.5 rounded-xl font-bold text-sm
+    ${selectedKey === key ? 'tc-button-3d text-white' : 'tc-button-secondary'}
   `;
 
   const mobileNavItems = buildMobileNavItems({
@@ -48,10 +51,10 @@ const Header: React.FC<HeaderProps> = ({
   });
 
   return (
-    <header aria-hidden={previewHidden} {...(previewHidden ? { inert: '' } : {})} className={`sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-xl ${previewHidden ? 'invisible pointer-events-none' : ''}`}>
-      <div className="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between">
-        <div
-          className="flex items-center gap-2.5 cursor-pointer group"
+    <header data-app-header aria-hidden={previewHidden} {...(previewHidden ? { inert: '' } : {})} className={`sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-xl ${previewHidden ? 'invisible pointer-events-none' : ''}`}>
+      <div className="max-w-6xl mx-auto h-20 px-4 flex items-center justify-between gap-3">
+        <button type='button' aria-label='TranquiliCare — início'
+          className="flex shrink-0 items-center gap-2.5 group rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-blue"
           onClick={() => setCurrentView(View.HOME)}
         >
           <img
@@ -59,15 +62,17 @@ const Header: React.FC<HeaderProps> = ({
             alt="TranquiliCare"
             className="tc-motion-control w-10 h-10 rounded-xl shadow-md transition-[transform,box-shadow] group-hover:shadow-brand-blue/40 group-hover:-rotate-3"
           />
-          <h1 className="font-display text-xl font-semibold tracking-tight text-brand-ink">
+          <span className="font-display text-xl font-semibold tracking-tight text-brand-ink md:hidden lg:inline">
             Tranquili<span className="text-brand-blue">Care</span>
-          </h1>
-        </div>
+          </span>
+        </button>
 
-        <nav className="hidden md:flex items-center gap-2">
+        <nav aria-label='Navegação principal no computador' className="hidden md:flex items-center gap-2">
+          <button type='button' onClick={() => setCurrentView(View.HOME)} className={navItemClass('home')} aria-current={selectedKey === 'home' ? 'page' : undefined}><Heart size={18} />Início</button>
           <button
             onClick={() => setCurrentView(View.STORIES)}
-            className={navItemClass(View.STORIES)}
+            className={navItemClass('historias')}
+            aria-current={selectedKey === 'historias' ? 'page' : undefined}
           >
             <HandHeart size={18} />
             <BrandedText text="Histórias" />
@@ -75,7 +80,8 @@ const Header: React.FC<HeaderProps> = ({
 
           <button
             onClick={onChatClick}
-            className='tc-button-secondary rounded-xl tc-motion-control flex items-center gap-2 px-5 py-2.5 text-sm font-bold transition-[color,background-color,transform]'
+            className={navItemClass('chat')}
+            aria-current={selectedKey === 'chat' ? 'page' : undefined}
           >
             <MessageCircle size={18} />
             Chat
@@ -85,7 +91,8 @@ const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center gap-1.5 pl-3 ml-1 border-l border-border">
               <button
                 onClick={onProfileClick}
-                className="tc-button-secondary rounded-xl tc-motion-control flex items-center gap-2 px-4 py-2.5 font-bold text-sm transition-[color,background-color,box-shadow,transform]"
+                className={navItemClass('perfil')}
+                aria-current={selectedKey === 'perfil' ? 'page' : undefined}
               >
                 <UserCircle size={18} className="text-brand-blue" />
                 <span>{accountType === 'ngo' ? 'Perfil da ONG' : 'Meu perfil'}</span>
@@ -101,7 +108,7 @@ const Header: React.FC<HeaderProps> = ({
           ) : (
             <button
               onClick={onDonorLogin}
-              className="tc-button-3d btn-shine ml-1 flex h-12 items-center justify-center gap-2 rounded-full px-5 text-sm font-bold text-white"
+              className="tc-button-3d btn-shine ml-1 flex min-h-11 items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold text-white"
               title="Entrar"
             >
               <LogIn size={18} strokeWidth={2.6} />
@@ -112,7 +119,7 @@ const Header: React.FC<HeaderProps> = ({
 
       </div>
 
-      <CosmosNav items={mobileNavItems} />
+      {showMobile && <CosmosNav items={mobileNavItems} />}
     </header>
   );
 };

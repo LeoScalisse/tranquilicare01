@@ -775,3 +775,8 @@ html[data-tc-auth-handoff-vt='active']::view-transition-new(root) {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+@media (min-width: 768px) {
+  .route-page > :is(main, div) > header.sticky { top: 81px; }
+  .route-page > :is(main, div).min-h-screen { min-height: calc(100dvh - 81px); }
+}

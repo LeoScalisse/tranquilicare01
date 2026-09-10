@@ -15,6 +15,7 @@ import Index from './pages/Index';
 import { matchesDiscoveryOrigin, readDiscoveryOrigin } from '@/lib/discoveryNavigation';
 import ClickSpark from '@/components/ui/click-spark';
 import AppErrorBoundary from '@/components/AppErrorBoundary';
+import RouteNavigation from '@/components/RouteNavigation';
 
 const NGOAuth = lazy(() => import('./pages/NGOAuth'));
 const DonorAuth = lazy(() => import('./pages/DonorAuth'));
@@ -65,6 +66,7 @@ const AppRoutes = () => {
 
   return (
     <>
+      <RouteNavigation location={backgroundLocation ?? location}>
       <Suspense fallback={<DiscoveryLoading />}>
         <Routes location={backgroundLocation ?? location}>
           <Route path='/' element={<Index />} />
@@ -82,6 +84,7 @@ const AppRoutes = () => {
           <Route path='*' element={<NotFound />} />
         </Routes>
       </Suspense>
+      </RouteNavigation>
 
       <AnimatePresence>
         {backgroundLocation && (

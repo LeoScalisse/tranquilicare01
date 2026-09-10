@@ -7,9 +7,10 @@ import { buildMobileNavItems, MobileNavKey } from './mobileNavItems';
 interface AppBottomNavProps {
   activeKey: MobileNavKey | null;
   user: AppUser | null;
+  global?: boolean;
 }
 
-const AppBottomNav: React.FC<AppBottomNavProps> = ({ activeKey, user }) => {
+const AppBottomNav: React.FC<AppBottomNavProps> = ({ activeKey, user, global = false }) => {
   const navigate = useNavigate();
   const items = buildMobileNavItems({
     activeKey,
@@ -20,7 +21,7 @@ const AppBottomNav: React.FC<AppBottomNavProps> = ({ activeKey, user }) => {
     onPerfil: () => navigate(user ? defaultDestForAccount(user.accountType) : '/donor/auth'),
   });
 
-  return <CosmosNav items={items} />;
+  return <CosmosNav items={items} global={global} />;
 };
 
 export default AppBottomNav;
