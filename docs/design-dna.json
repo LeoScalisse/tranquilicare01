@@ -1,0 +1,407 @@
+{
+  "meta": {
+    "name": "TranquiliCare",
+    "description": "DNA das áreas refinadas, extraído dos tokens e componentes atuais.",
+    "source_references": [
+      "docs/BRAND_CORE.md",
+      ".impeccable.md",
+      "tailwind.config.ts",
+      "src/index.css"
+    ],
+    "created_at": "2026-09-10"
+  },
+  "design_system": {
+    "color": {
+      "palette_type": "Azul luminoso e amarelo",
+      "primary": {
+        "hex": "#38b6ff",
+        "role": "Ações"
+      },
+      "secondary": {
+        "hex": "#ffde59",
+        "role": "Pertencimento"
+      },
+      "accent": {
+        "hex": "#38b6ff",
+        "role": "Foco"
+      },
+      "neutral": {
+        "scale": [
+          "#ffffff",
+          "#f8fdff",
+          "hsl(213 45% 14%)"
+        ],
+        "usage": "Superfícies claras e texto profundo"
+      },
+      "semantic": {
+        "success": "Tema existente",
+        "warning": "Tema existente",
+        "error": "hsl(var(--destructive))",
+        "info": "#38b6ff"
+      },
+      "surface": {
+        "background": "hsl(188.18 100% 95.69%)",
+        "card": "#f8fdff",
+        "elevated": "#ffffff"
+      },
+      "contrast_strategy": "Texto profundo em fundos claros; proteção escura sobre fotos"
+    },
+    "typography": {
+      "type_scale": {
+        "display": {
+          "size": "56.8px",
+          "weight": 600,
+          "line_height": 1.08,
+          "tracking": "-0.025em"
+        },
+        "heading_1": {
+          "size": "36–56.8px",
+          "weight": 600,
+          "line_height": 1.08,
+          "tracking": "-0.025em"
+        },
+        "heading_2": {
+          "size": "30–36px",
+          "weight": 600,
+          "line_height": 1.25,
+          "tracking": "normal"
+        },
+        "heading_3": {
+          "size": "20–24px",
+          "weight": 600,
+          "line_height": 1.25,
+          "tracking": "normal"
+        },
+        "body": {
+          "size": "16–18px",
+          "weight": 400,
+          "line_height": 1.75,
+          "tracking": "normal"
+        },
+        "body_small": {
+          "size": "14px",
+          "weight": 400,
+          "line_height": 1.7,
+          "tracking": "normal"
+        },
+        "caption": {
+          "size": "12px",
+          "weight": 600,
+          "line_height": 1.33,
+          "tracking": "normal"
+        },
+        "overline": {
+          "size": "10–12px",
+          "weight": 700,
+          "line_height": 1.33,
+          "tracking": "normal"
+        }
+      },
+      "font_families": {
+        "heading": "Albert Sans, Inter, sans-serif",
+        "body": "Inter, Segoe UI, sans-serif",
+        "mono": "Monospace do sistema"
+      },
+      "font_style_notes": "Famílias existentes; números tabulares"
+    },
+    "spacing": {
+      "base_unit": "4px",
+      "scale": [
+        4,
+        8,
+        12,
+        16,
+        20,
+        24,
+        32,
+        48,
+        64,
+        80
+      ],
+      "content_density": "Confortável",
+      "section_rhythm": "48px entre seções"
+    },
+    "layout": {
+      "grid_system": "CSS Grid e trilhas existentes",
+      "max_content_width": "1152px; fundadoras até 1400px",
+      "columns": "1 no celular, 2 na abertura desktop",
+      "gutter": "20–24px",
+      "breakpoints": {
+        "sm": 640,
+        "md": 768,
+        "lg": 1024,
+        "xl": 1280
+      },
+      "alignment_tendency": "Texto à esquerda"
+    },
+    "shape": {
+      "border_radius": {
+        "small": "12px",
+        "medium": "20–26px",
+        "large": "30–38px",
+        "pill": "9999px"
+      },
+      "border_usage": "Claras e finas",
+      "divider_style": "Token border"
+    },
+    "elevation": {
+      "shadow_style": "Azul suave e reflexo interno",
+      "levels": {
+        "low": "0 12px 32px -28px #174a6f55",
+        "medium": "0 18px 40px -26px rgba(17,54,79,.62)",
+        "high": "0 24px 64px -52px #176fa655"
+      },
+      "depth_cues": "Luz e pequena inclinação"
+    },
+    "iconography": {
+      "style": "Lucide e selos originais",
+      "stroke_weight": "2px",
+      "size_scale": [
+        16,
+        18,
+        24
+      ],
+      "preferred_set": "lucide-react"
+    },
+    "motion": {
+      "easing": "power3.out e springs amortecidas",
+      "duration_scale": {
+        "micro": "120–200ms",
+        "normal": "280–500ms",
+        "macro": "2400ms na entrada 3D"
+      },
+      "entrance_pattern": "Blocos semânticos, stagger 65ms",
+      "exit_pattern": "Descarte e saídas existentes",
+      "philosophy": "Orientação e continuidade; sem loops novos"
+    },
+    "components": {
+      "button_style": "Alvos 44–48px e foco visível",
+      "input_style": "SmoothInput e SmoothTextarea",
+      "card_style": "Fotos, borda iluminada e inclinação até 2,5 graus",
+      "navigation_pattern": "Descobrir causas e conhecer histórias",
+      "modal_style": "Existente",
+      "list_style": "Histórias verticais; carrosséis manuais",
+      "component_notes": "Reutilizar MarketplaceCard, FounderCarousel e SphereImageGrid"
+    }
+  },
+  "design_style": {
+    "aesthetic": {
+      "mood": "Acolhimento e confiança",
+      "visual_metaphor": "Ponte entre pessoas e causas",
+      "era_influence": "Produto contemporâneo",
+      "genre": "Comunidade",
+      "personality_traits": [
+        "Acolhedora",
+        "Confiável",
+        "Esperançosa"
+      ],
+      "adjectives": [
+        "Luminosa",
+        "Fluida",
+        "Legível"
+      ]
+    },
+    "visual_language": {
+      "complexity": "Baixa na navegação",
+      "ornamentation": "Concentrada na abertura",
+      "whitespace_usage": "Respiro",
+      "visual_weight_distribution": "Texto e pessoas antes dos efeitos",
+      "focal_strategy": "Título e ação",
+      "contrast_level": "Forte no conteúdo",
+      "texture_usage": "Fotografias e materiais lisos"
+    },
+    "composition": {
+      "hierarchy_method": "Escala e espaço",
+      "balance_type": "Assimetria equilibrada",
+      "flow_direction": "Vertical no celular",
+      "grouping_strategy": "Proximidade",
+      "negative_space_role": "Reduzir carga cognitiva"
+    },
+    "imagery": {
+      "photo_treatment": "Enquadramentos existentes",
+      "illustration_style": "Cuidado em volume azul e amarelo",
+      "graphic_elements": "Coração, aro e selos",
+      "pattern_usage": "Ondas discretas",
+      "image_shape": "Retângulos arredondados e perfis circulares"
+    },
+    "interaction_feel": {
+      "feedback_style": "Imediato",
+      "hover_behavior": "Inclinação com retorno suave",
+      "transition_personality": "Calma",
+      "loading_style": "Marca estática durante o carregamento",
+      "microinteraction_density": "Moderada nos controles"
+    },
+    "brand_voice_in_ui": {
+      "tone": "Humano",
+      "formality": "Clara sem burocracia",
+      "cta_style": "Verbos de descoberta",
+      "empty_state_approach": "Próximo passo real",
+      "error_tone": "Explica e permite recuperar"
+    }
+  },
+  "visual_effects": {
+    "overview": {
+      "fallback_strategy": "Imagem original estática",
+      "effect_intensity": "Moderada na abertura",
+      "performance_tier": "Um canvas, DPR até 1,5, sob demanda",
+      "primary_technology": [
+        "Three.js",
+        "GSAP",
+        "Framer Motion",
+        "CSS"
+      ]
+    },
+    "background_effects": {
+      "type": "Luz e ondas",
+      "description": "Azul suave",
+      "technology": "CSS e Three.js",
+      "params": {
+        "color_palette": [
+          "#d6efff",
+          "#8bd7f6"
+        ],
+        "speed": "Entrada 2,4s",
+        "density": "Uma superfície",
+        "opacity": 0.42,
+        "blend_mode": "normal"
+      }
+    },
+    "particle_systems": {
+      "enabled": false,
+      "type": "none",
+      "description": "Sem partículas",
+      "technology": "none",
+      "params": {
+        "count": 0,
+        "shape": "none",
+        "size_range": [
+          0,
+          0
+        ],
+        "movement_pattern": "none",
+        "color_behavior": "none",
+        "interaction": "none",
+        "spawn_area": "none"
+      }
+    },
+    "3d_elements": {
+      "enabled": true,
+      "type": "Coração e aro",
+      "description": "Decorativo; conteúdo em HTML",
+      "technology": "Three.js",
+      "params": {
+        "renderer": "WebGLRenderer",
+        "lighting": "RoomEnvironment e luzes de estúdio",
+        "camera": "PerspectiveCamera 35 graus",
+        "materials": "Azul clearcoat e amarelo",
+        "geometry": "ExtrudeGeometry, TorusGeometry, PlaneGeometry",
+        "post_processing": "ACES sem passes extras",
+        "interaction_model": "Pequena rotação pelo mouse"
+      }
+    },
+    "shader_effects": {
+      "enabled": false,
+      "type": "none",
+      "description": "Materiais padrão",
+      "technology": "none",
+      "params": {
+        "uniforms": [],
+        "vertex_manipulation": "Ondas na CPU",
+        "fragment_output": "Materiais padrão",
+        "noise_type": "none",
+        "distortion": "none"
+      }
+    },
+    "scroll_effects": {
+      "parallax": {
+        "enabled": false,
+        "layers": 0,
+        "depth_range": [
+          0,
+          0
+        ],
+        "speed_curve": "none"
+      },
+      "scroll_triggered_animations": {
+        "enabled": true,
+        "trigger_points": "12% visível",
+        "animation_type": "Opacidade e 8–16px de deslocamento",
+        "scrub_behavior": "Uma vez por montagem"
+      },
+      "scroll_morphing": {
+        "enabled": false,
+        "description": "Sem morph"
+      }
+    },
+    "text_effects": {
+      "type": "Entrada por bloco",
+      "description": "Sem fragmentar palavras",
+      "technology": "GSAP",
+      "params": {
+        "split_strategy": "HTML semântico",
+        "animation_per_unit": "Opacidade e translateY",
+        "stagger": "65ms",
+        "effect_style": "power3.out"
+      }
+    },
+    "cursor_effects": {
+      "enabled": false,
+      "type": "none",
+      "description": "Cursor nativo",
+      "params": {
+        "shape": "Nativa",
+        "size": "Nativo",
+        "blend_mode": "normal",
+        "trail": "none",
+        "interaction_zone": "Cards e cena"
+      }
+    },
+    "image_effects": {
+      "type": "Inclinação",
+      "description": "Ponteiro preciso",
+      "technology": "Framer Motion",
+      "params": {
+        "filter_pipeline": "Existente",
+        "hover_transform": "Até 2,5 graus",
+        "reveal_animation": "Sem ocultar imagens aguardando JS",
+        "distortion_type": "none"
+      }
+    },
+    "glassmorphism_neumorphism": {
+      "enabled": true,
+      "style": "Reflexo discreto",
+      "params": {
+        "blur_radius": "Sem blur adicional",
+        "transparency": "Bordas translúcidas",
+        "border_treatment": "1px branco",
+        "shadow_type": "Azul e inset branco",
+        "light_source_angle": "Superior esquerdo"
+      }
+    },
+    "canvas_drawings": {
+      "enabled": true,
+      "type": "Cena WebGL",
+      "description": "Um canvas",
+      "technology": "Three.js",
+      "params": {
+        "draw_method": "WebGL2",
+        "animation_loop": "Finita; depois sob demanda",
+        "color_scheme": "Azul e amarelo",
+        "responsiveness": "ResizeObserver e DPR limitado",
+        "interaction": "Mouse; sem capturar toque"
+      }
+    },
+    "svg_animations": {
+      "enabled": false,
+      "type": "none",
+      "description": "Nenhuma animação SVG nova",
+      "params": {
+        "animation_method": "none",
+        "path_morphing": false,
+        "stroke_animation": false,
+        "filter_effects": "none"
+      }
+    },
+    "composite_notes": "Movimento reduzido e economia de dados evitam o 3D. Fontes e licenças em MOTION_DESIGN_SOURCES.md. Sem dados fictícios."
+  }
+}

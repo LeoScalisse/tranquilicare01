@@ -1,4 +1,15 @@
 /* Category colors follow the existing category seals and chips. */
+.story-feed-card {
+  box-shadow: 0 12px 32px -28px #174a6f55, inset 0 1px 0 #ffffffcc;
+  background-color: #f8fdff;
+}
+.story-feed-card footer button { -webkit-tap-highlight-color: transparent; }
+@media (max-width: 639px) {
+  .story-feed-card > [role='button'], .story-feed-card > a, .story-feed-card > footer {
+    margin-left: 0;
+    width: 100%;
+  }
+}
 .story-feed-card[data-category] { background-image: radial-gradient(ellipse at 100% 0%, var(--story-tint), transparent 65%); }
 .story-feed-card[data-category="educacao"] { --story-tint: #cfe2ff80; }
 .story-feed-card[data-category="saude"] { --story-tint: #cdeedc80; }

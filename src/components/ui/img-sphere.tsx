@@ -49,6 +49,7 @@ const SphereImageGrid: React.FC<SphereImageGridProps> = ({
   const movedRef = useRef(false);
   const pointerRef = useRef({ x: 0, y: 0 });
   const velocityRef = useRef({ x: 0, y: 0 });
+  const wakeRef = useRef<() => void>(() => {});
 
   const positions = useMemo(() => images.map((_, index) => {
     const offset = 2 / Math.max(images.length, 1);
@@ -70,7 +71,11 @@ const SphereImageGrid: React.FC<SphereImageGridProps> = ({
 
   useEffect(() => {
     const media = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const updatePreference = () => { reduceMotionRef.current = media.matches; };
+    const updatePreference = () => {
+      reduceMotionRef.current = media.matches;
+      if (media.matches) velocityRef.current = { x: 0, y: 0 };
+      wakeRef.current();
+    };
     updatePreference();
     media.addEventListener?.('change', updatePreference);
     return () => media.removeEventListener?.('change', updatePreference);
@@ -78,30 +83,55 @@ const SphereImageGrid: React.FC<SphereImageGridProps> = ({
 
   useEffect(() => {
     let frame = 0;
-    const tick = () => {
+    let visible = true;
+    let lastTime = 0;
+    const wake = () => {
+      if (!frame && visible && !document.hidden) frame = requestAnimationFrame(tick);
+    };
+    const tick = (time: number) => {
+      frame = 0;
+      if (!visible || document.hidden) return;
+      const step = lastTime ? Math.min((time - lastTime) / 16.667, 2) : 1;
+      lastTime = time;
       if (!draggingRef.current) {
-        velocityRef.current.x *= 0.93;
-        velocityRef.current.y *= 0.93;
+        const friction = Math.pow(0.93, step);
+        velocityRef.current.x *= friction;
+        velocityRef.current.y *= friction;
         const autoVelocity = autoRotate && !reduceMotionRef.current ? autoRotateSpeed : 0;
+        if (Math.abs(velocityRef.current.x) + Math.abs(velocityRef.current.y) < 0.01 && !autoVelocity) return;
         setRotation((current) => advanceSphereRotation(current, {
-          x: velocityRef.current.x,
-          y: velocityRef.current.y + autoVelocity,
+          x: velocityRef.current.x * step,
+          y: (velocityRef.current.y + autoVelocity) * step,
         }));
       }
-      frame = requestAnimationFrame(tick);
+      wake();
     };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    const visibility = () => {
+      lastTime = 0;
+      if (!visible || document.hidden) { cancelAnimationFrame(frame); frame = 0; }
+      else wake();
+    };
+    const observer = typeof IntersectionObserver === 'undefined' ? undefined
+      : new IntersectionObserver(([entry]) => { visible = entry.isIntersecting; visibility(); });
+    if (containerRef.current) observer?.observe(containerRef.current);
+    document.addEventListener('visibilitychange', visibility);
+    wakeRef.current = wake;
+    wake();
+    return () => {
+      cancelAnimationFrame(frame); observer?.disconnect();
+      document.removeEventListener('visibilitychange', visibility);
+      wakeRef.current = () => {};
+    };
   }, [autoRotate, autoRotateSpeed]);
 
   const rotatePoint = useCallback((point: Point3D): Point3D => rotateSpherePoint(point, rotation), [rotation]);
 
   const beginDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
     draggingRef.current = true;
     movedRef.current = false;
     velocityRef.current = { x: 0, y: 0 };
     pointerRef.current = { x: event.clientX, y: event.clientY };
-    event.currentTarget.setPointerCapture(event.pointerId);
   };
 
   const drag = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -109,6 +139,7 @@ const SphereImageGrid: React.FC<SphereImageGridProps> = ({
     const deltaX = event.clientX - pointerRef.current.x;
     const deltaY = event.clientY - pointerRef.current.y;
     if (Math.abs(deltaX) + Math.abs(deltaY) > 3) movedRef.current = true;
+    if (movedRef.current && !event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.setPointerCapture(event.pointerId);
     const nextVelocity = { x: -deltaY * 0.18, y: deltaX * 0.18 };
     velocityRef.current = nextVelocity;
     setRotation((current) => advanceSphereRotation(current, nextVelocity));
@@ -117,6 +148,8 @@ const SphereImageGrid: React.FC<SphereImageGridProps> = ({
 
   const endDrag = () => {
     draggingRef.current = false;
+    if (reduceMotionRef.current) velocityRef.current = { x: 0, y: 0 };
+    wakeRef.current();
     window.setTimeout(() => { movedRef.current = false; }, 0);
   };
 
@@ -127,7 +160,7 @@ const SphereImageGrid: React.FC<SphereImageGridProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`relative mx-auto w-full touch-none select-none overflow-hidden ${
+      className={`relative mx-auto w-full touch-pan-y select-none overflow-hidden ${
         isTransparent ? 'bg-transparent' : 'rounded-lg bg-[#070809]'
       } ${className}`}
       style={{ height: size, maxWidth: maxSize }}
@@ -135,6 +168,8 @@ const SphereImageGrid: React.FC<SphereImageGridProps> = ({
       onPointerMove={drag}
       onPointerUp={endDrag}
       onPointerCancel={endDrag}
+      onLostPointerCapture={endDrag}
+      onPointerLeave={(event) => { if (!event.currentTarget.hasPointerCapture(event.pointerId)) endDrag(); }}
       aria-label='Esfera de histórias interativa'
     >
       {images.map((image, index) => {

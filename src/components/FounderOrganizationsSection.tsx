@@ -5,6 +5,7 @@ import { ArrowUpRight, Building2 } from 'lucide-react';
 import founderSeal from '@/assets/founder-ngo-seal.png';
 import FounderCarousel, { type FounderCarouselSlide } from '@/components/ui/founder-carousel';
 import type { NGO } from '@/types';
+import { useSectionReveal } from '@/hooks/use-section-reveal';
 
 interface FounderOrganizationsSectionProps {
   ngos: NGO[];
@@ -16,6 +17,7 @@ const FounderOrganizationsSection = memo(function FounderOrganizationsSection({
   onOpen,
 }: FounderOrganizationsSectionProps) {
   const reduceMotion = useReducedMotion();
+  const sectionRef = useSectionReveal();
 
   const slides = useMemo<FounderCarouselSlide[]>(() => ngos.map((ngo) => {
     const background = ngo.coverImage
@@ -46,11 +48,12 @@ const FounderOrganizationsSection = memo(function FounderOrganizationsSection({
 
   return (
     <section
+      ref={sectionRef}
       aria-labelledby='founder-organizations-title'
       className='mx-auto w-full max-w-[1400px]'
     >
-      <div className='relative bg-secondary/40 overflow-hidden rounded-[30px] px-3 py-7 sm:px-6 md:rounded-[38px] md:py-9'>
-        <div className='relative z-10 px-2 sm:px-4'>
+      <div className='relative overflow-hidden rounded-[30px] border border-white/80 bg-gradient-to-br from-white/80 to-secondary/50 px-3 py-7 shadow-[0_24px_64px_-52px_#176fa655] sm:px-6 md:rounded-[38px] md:py-9'>
+        <div data-reveal className='relative z-10 px-2 sm:px-4'>
           <div className='founder-section-badge inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em]'>
             <img src={founderSeal} alt='' className='h-5 w-5 object-contain' />
             ONGs fundadoras

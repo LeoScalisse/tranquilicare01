@@ -1,4 +1,7 @@
 import React from 'react';
+import { motion } from 'framer-motion';
+import { useCardDepth } from '@/hooks/use-card-depth';
+import '@/components/discovery/community-motion.css';
 import { BadgeCheck, Sparkles } from 'lucide-react';
 
 import LoveHeart from '@/components/ui/love-heart';
@@ -24,6 +27,7 @@ const MarketplaceCard: React.FC<MarketplaceCardProps> = ({
   preview = false,
   className = '',
 }) => {
+  const depth = useCardDepth(preview);
   const sortedStories = [...(ngo.posts ?? [])].sort((a, b) => b.timestamp - a.timestamp);
   const featuredStory = sortedStories[0];
   const backgroundImage = ngo.coverImage || featuredStory?.url || '';
@@ -32,9 +36,10 @@ const MarketplaceCard: React.FC<MarketplaceCardProps> = ({
   const cardLogo = ngo.marketplaceLogo || ngo.image;
 
   return (
-    <article
+    <motion.article
+      {...depth}
       data-testid={preview ? 'marketplace-card-preview' : undefined}
-      className={`group relative isolate aspect-[4/5] self-start overflow-hidden rounded-[26px] bg-[linear-gradient(145deg,#dff6fb,#89cfe8)] shadow-[0_18px_40px_-26px_rgba(17,54,79,0.62)] transition-transform duration-300 hover:-translate-y-1 focus-within:ring-2 focus-within:ring-brand-blue/50 ${className}`}
+      className={`cause-depth-card group relative isolate aspect-[4/5] self-start overflow-hidden rounded-[26px] bg-[linear-gradient(145deg,#dff6fb,#89cfe8)] shadow-[0_18px_40px_-26px_rgba(17,54,79,0.62)] focus-within:ring-2 focus-within:ring-brand-blue/50 ${className}`}
     >
       {!preview && (
         <button type='button' onClick={() => onOpen(ngo)} className='absolute inset-0 z-10 rounded-[26px] focus:outline-none' aria-label={`Conhecer a causa ${ngo.name}`} />
@@ -94,7 +99,7 @@ const MarketplaceCard: React.FC<MarketplaceCardProps> = ({
           </p>
         )}
       </div>
-    </article>
+    </motion.article>
   );
 };
 
