@@ -11,6 +11,7 @@ interface AppleEdgeGlowProps {
   intensity?: GlowIntensity;
   /** Checkout progress, clockwise: right, bottom, left, then top. */
   stage?: 0 | 1 | 2 | 3 | 4;
+  palette?: "brand" | "ocean";
   className?: string;
 }
 
@@ -47,6 +48,7 @@ export const AppleEdgeGlow: React.FC<AppleEdgeGlowProps> = ({
   intensity = "xl",
   stage = 0,
   className,
+  palette = "brand",
 }) => {
   const reduceMotion = useReducedMotion();
 
@@ -55,6 +57,7 @@ export const AppleEdgeGlow: React.FC<AppleEdgeGlowProps> = ({
   return createPortal(
     <motion.div
       aria-hidden="true"
+      data-palette={palette}
       data-intensity={intensity}
       data-stage={stage}
       data-complete={stage === 4 ? "true" : undefined}
@@ -85,11 +88,11 @@ export const AppleEdgeGlow: React.FC<AppleEdgeGlowProps> = ({
                 transform,
               }}
               transition={{
-                duration: reduceMotion ? 0.18 : 1.15,
+                duration: reduceMotion ? 0 : 0.7,
                 ease: [0.77, 0, 0.175, 1],
               }}
             >
-              <span className="apple-edge-glow__edge-fill" />
+              <span className="apple-edge-glow__edge-fill" /><span className="apple-edge-glow__core" />
             </motion.span>
           );
         })}

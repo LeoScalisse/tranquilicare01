@@ -37,6 +37,7 @@ export interface NgoProfileDetails {
 }
 
 export interface DonorProfileDetails {
+  answers?: import('./profilePrompts').ProfileAnswers;
   bio: string;
   location: string;
   instagram: string;

@@ -1,276 +1,49 @@
+/* Web interpretation of Aurora's anchored color field, soft wash and settling intro.
+   Reference: https://github.com/tornikegomareli/Aurora (SwiftUI/Metal, not a web dependency).
+   Retains TranquiliCare's clockwise, backend-driven checkout stages. */
 .apple-edge-glow {
-  --apple-glow-depth: 26px;
-  --apple-glow-scale: 1;
-  --apple-glow-blur: 4px;
-  --apple-glow-ambient-blur: 11px;
+  --apple-glow-depth: 24px;
+  --glow-blue: #2899f8;
+  --glow-cyan: #49e2ff;
+  --glow-deep: #147cb9;
+  --glow-highlight: #ffe677;
   position: fixed;
-  z-index: 115;
   inset: 0;
+  z-index: 115;
   overflow: hidden;
   pointer-events: none;
   isolation: isolate;
 }
-
-.apple-edge-glow[data-stage="2"] {
-  --apple-glow-scale: 1.12;
-}
-
-.apple-edge-glow[data-stage="3"] {
-  --apple-glow-scale: 1.24;
-}
-
-.apple-edge-glow[data-stage="4"] {
-  --apple-glow-scale: 1.46;
-}
-
-.apple-edge-glow[data-intensity="sm"] {
-  --apple-glow-depth: 12px;
-  --apple-glow-blur: 4px;
-  --apple-glow-ambient-blur: 8px;
-}
-
-.apple-edge-glow[data-intensity="md"] {
-  --apple-glow-depth: 14px;
-  --apple-glow-blur: 4.5px;
-  --apple-glow-ambient-blur: 9px;
-}
-
-.apple-edge-glow[data-intensity="lg"] {
-  --apple-glow-depth: 24px;
-  --apple-glow-blur: 5px;
-  --apple-glow-ambient-blur: 10px;
-}
-
-.apple-edge-glow__surface {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-}
-
-.apple-edge-glow__edge {
-  position: absolute;
-  display: block;
-  will-change: transform, opacity;
-}
-
+.apple-edge-glow[data-palette="ocean"] { --glow-highlight: #a4f4ef; --glow-deep: #1266b5; }
+.apple-edge-glow[data-intensity="sm"] { --apple-glow-depth: 12px; }
+.apple-edge-glow[data-intensity="md"] { --apple-glow-depth: 16px; }
+.apple-edge-glow[data-intensity="lg"] { --apple-glow-depth: 20px; }
+.apple-edge-glow__surface { position: absolute; inset: 0; overflow: hidden; }
+.apple-edge-glow__edge { position: absolute; display: block; }
+.apple-edge-glow__edge--right, .apple-edge-glow__edge--left { top: -3%; bottom: -3%; width: var(--apple-glow-depth); }
+.apple-edge-glow__edge--right { right: -6px; --edge-direction: to left; --field-direction: 180deg; }
+.apple-edge-glow__edge--left { left: -6px; --edge-direction: to right; --field-direction: 0deg; }
+.apple-edge-glow__edge--top, .apple-edge-glow__edge--bottom { left: -3%; right: -3%; height: var(--apple-glow-depth); }
+.apple-edge-glow__edge--top { top: -6px; --edge-direction: to bottom; --field-direction: 90deg; }
+.apple-edge-glow__edge--bottom { bottom: -6px; --edge-direction: to top; --field-direction: 270deg; }
+.apple-edge-glow__edge-fill, .apple-edge-glow__core { position: absolute; inset: 0; display: block; background: linear-gradient(var(--field-direction), var(--glow-deep) 0%, var(--glow-blue) 22%, var(--glow-cyan) 48%, var(--glow-highlight) 64%, var(--glow-cyan) 74%, var(--glow-blue) 100%); }
 .apple-edge-glow__edge-fill {
-  position: absolute;
-  inset: 0;
-  display: block;
-  filter: blur(var(--apple-glow-blur)) saturate(1.42) brightness(1.12);
-  mix-blend-mode: screen;
-  transition: transform 620ms cubic-bezier(0.77, 0, 0.175, 1);
-  will-change: transform, opacity, background-position, filter;
-  animation: apple-edge-light-flow 18s linear infinite alternate;
+  filter: blur(5px);
+  mask-image: linear-gradient(var(--edge-direction), #000 0%, #0009 36%, transparent 100%);
 }
-
 .apple-edge-glow__edge-fill::before {
+  content: '';
   position: absolute;
-  inset: -7px;
-  background: inherit;
-  content: "";
-  filter: blur(var(--apple-glow-ambient-blur));
-  opacity: 0.62;
-  animation: apple-edge-ambient-drift 10s cubic-bezier(0.77, 0, 0.175, 1) infinite alternate;
-  will-change: transform, opacity;
+  inset: -30%;
+  background: radial-gradient(ellipse at 30% 35%, var(--glow-cyan), transparent 60%), radial-gradient(ellipse at 65% 70%, var(--glow-blue), transparent 55%);
+  filter: blur(7px);
+  opacity: .65;
 }
-
-.apple-edge-glow__edge--right,
-.apple-edge-glow__edge--left {
-  top: -8%;
-  bottom: -8%;
-  width: var(--apple-glow-depth);
-}
-
-.apple-edge-glow__edge--right {
-  right: calc(var(--apple-glow-depth) * -0.38);
-}
-
-.apple-edge-glow__edge--right .apple-edge-glow__edge-fill {
-  transform: scaleX(var(--apple-glow-scale));
-  transform-origin: right center;
-  background-size: 100% 210%;
-  background-image:
-    radial-gradient(
-      ellipse 170% 32% at 100% 10%,
-      rgb(255 241 112 / 0.92),
-      transparent 72%
-    ),
-    radial-gradient(
-      ellipse 180% 38% at 100% 42%,
-      rgb(73 226 255 / 0.96),
-      transparent 74%
-    ),
-    radial-gradient(
-      ellipse 175% 38% at 100% 75%,
-      rgb(40 153 248 / 0.94),
-      transparent 74%
-    ),
-    linear-gradient(
-      to left,
-      rgb(222 253 255 / 0.92) 0%,
-      rgb(62 211 255 / 0.48) 48%,
-      transparent 100%
-    );
-}
-
-.apple-edge-glow__edge--left {
-  left: calc(var(--apple-glow-depth) * -0.38);
-}
-
-.apple-edge-glow__edge--left .apple-edge-glow__edge-fill {
-  transform: scaleX(var(--apple-glow-scale));
-  transform-origin: left center;
-  background-size: 100% 210%;
-  background-image:
-    radial-gradient(
-      ellipse 170% 32% at 0% 12%,
-      rgb(255 245 153 / 0.9),
-      transparent 72%
-    ),
-    radial-gradient(
-      ellipse 180% 38% at 0% 46%,
-      rgb(255 222 78 / 0.88),
-      transparent 74%
-    ),
-    radial-gradient(
-      ellipse 175% 38% at 0% 78%,
-      rgb(73 226 255 / 0.94),
-      transparent 74%
-    ),
-    linear-gradient(
-      to right,
-      rgb(234 254 255 / 0.9) 0%,
-      rgb(68 207 255 / 0.45) 48%,
-      transparent 100%
-    );
-  animation-direction: alternate-reverse;
-}
-
-.apple-edge-glow__edge--top,
-.apple-edge-glow__edge--bottom {
-  right: -8%;
-  left: -8%;
-  height: var(--apple-glow-depth);
-}
-
-.apple-edge-glow__edge--bottom {
-  bottom: calc(var(--apple-glow-depth) * -0.38);
-}
-
-.apple-edge-glow__edge--bottom .apple-edge-glow__edge-fill {
-  transform: scaleY(var(--apple-glow-scale));
-  transform-origin: center bottom;
-  background-size: 210% 100%;
-  background-image:
-    radial-gradient(
-      ellipse 32% 170% at 10% 100%,
-      rgb(255 242 112 / 0.9),
-      transparent 72%
-    ),
-    radial-gradient(
-      ellipse 40% 180% at 42% 100%,
-      rgb(70 226 255 / 0.96),
-      transparent 74%
-    ),
-    radial-gradient(
-      ellipse 40% 175% at 76% 100%,
-      rgb(37 151 247 / 0.94),
-      transparent 74%
-    ),
-    linear-gradient(
-      to top,
-      rgb(220 253 255 / 0.92) 0%,
-      rgb(54 207 255 / 0.48) 48%,
-      transparent 100%
-    );
-  animation-direction: alternate-reverse;
-}
-
-.apple-edge-glow__edge--top {
-  top: calc(var(--apple-glow-depth) * -0.38);
-}
-
-.apple-edge-glow__edge--top .apple-edge-glow__edge-fill {
-  transform: scaleY(var(--apple-glow-scale));
-  transform-origin: center top;
-  background-size: 210% 100%;
-  background-image:
-    radial-gradient(
-      ellipse 32% 170% at 9% 0%,
-      rgb(255 242 112 / 0.9),
-      transparent 72%
-    ),
-    radial-gradient(
-      ellipse 40% 180% at 42% 0%,
-      rgb(255 253 220 / 0.9),
-      transparent 74%
-    ),
-    radial-gradient(
-      ellipse 40% 175% at 76% 0%,
-      rgb(66 220 255 / 0.96),
-      transparent 74%
-    ),
-    linear-gradient(
-      to bottom,
-      rgb(227 254 255 / 0.92) 0%,
-      rgb(53 201 255 / 0.46) 48%,
-      transparent 100%
-    );
-}
-
-.apple-edge-glow[data-complete="true"] .apple-edge-glow__edge-fill {
-  filter: blur(var(--apple-glow-blur)) saturate(1.32) brightness(1.12);
-}
-
-@keyframes apple-edge-light-flow {
-  0% {
-    background-position: 0% 10%;
-  }
-
-  50% {
-    background-position: 50% 58%;
-  }
-
-  100% {
-    background-position: 100% 90%;
-  }
-}
-
-@keyframes apple-edge-ambient-drift {
-  0% {
-    opacity: 0.4;
-    transform: translate3d(-3%, -2%, 0) scale(1.02);
-  }
-
-  100% {
-    opacity: 0.58;
-    transform: translate3d(3%, 2%, 0) scale(1.08);
-  }
-}
-
-@media (max-width: 640px) {
-  .apple-edge-glow {
-    --apple-glow-depth: 14px;
-    --apple-glow-blur: 4.5px;
-    --apple-glow-ambient-blur: 9px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .apple-edge-glow__edge-fill,
-  .apple-edge-glow__edge-fill::before {
-    animation: none;
-  }
-
-  .apple-edge-glow__edge-fill {
-    transition: opacity 0.18s ease-out;
-  }
-}
-
-@media (prefers-reduced-transparency: reduce) {
-  .apple-edge-glow__edge-fill::before {
-    opacity: 0.28;
-    filter: blur(7px);
-  }
-}
+.apple-edge-glow__core { mask-image: linear-gradient(var(--edge-direction), transparent 4px, #000 6px, #000b 8px, transparent 11px); }
+/* Each newly revealed edge has one brief bloom, then rests. No idle paint loop. */
+.apple-edge-glow__edge[data-active="true"] .apple-edge-glow__edge-fill::before { animation: aurora-settle 900ms ease-out both; }
+@keyframes aurora-settle { 0% { transform: scale(1); opacity: .3; } 30% { transform: scale(1.15); opacity: .9; } 100% { transform: scale(1); opacity: .5; } }
+@media (max-width: 640px) { .apple-edge-glow { --apple-glow-depth: 17px; } }
+@media (prefers-reduced-motion: reduce) { .apple-edge-glow__edge[data-active="true"] .apple-edge-glow__edge-fill::before { animation: none; } }
+@media (prefers-reduced-transparency: reduce) { .apple-edge-glow__edge-fill { opacity: .45; } }
+@media (forced-colors: active) { .apple-edge-glow { display: none; } }

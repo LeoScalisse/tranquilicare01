@@ -86,7 +86,7 @@ const CampaignDisclosureCard: React.FC<{
         role='button'
         tabIndex={0}
         whileTap={reduceMotion ? undefined : { scale: 0.97, transition: { duration: 0.16 } }}
-        className={'relative flex w-[86vw] max-w-[440px] shrink-0 cursor-pointer flex-col overflow-hidden border-2 border-brand-ink/10 bg-white shadow-[0_18px_50px_-30px_rgba(13,45,65,0.62)] outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/30 ' + (expanded ? 'rounded-[26px] p-5 sm:p-[22px]' : 'min-h-[126px] rounded-[20px] p-3')}
+        className={'relative flex w-[82vw] max-w-[420px] shrink-0 cursor-pointer flex-col overflow-hidden border-2 border-brand-ink/10 bg-white shadow-[0_18px_50px_-30px_rgba(13,45,65,0.62)] outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/30 ' + (expanded ? 'rounded-[26px] p-5 sm:p-[22px]' : 'min-h-[126px] rounded-[20px] p-3')}
         aria-expanded={expanded}
         aria-label={campaign.title + '. ' + progress + '% da meta. ' + (expanded ? 'Ocultar detalhes' : 'Mostrar detalhes')}
       >
@@ -253,7 +253,7 @@ const CampaignShowcaseSection: React.FC<CampaignShowcaseSectionProps> = ({
   return (
     <section
       data-cow-campaign-section
-      className='relative mx-auto max-w-[1400px] overflow-hidden rounded-[28px] border border-brand-ink/10 bg-white pb-9 pt-16 shadow-[0_18px_45px_-36px_rgba(13,45,65,0.5)] md:rounded-[34px] md:pt-[4.5rem]'
+      className='relative mx-auto w-[calc(100%-1rem)] max-w-[1320px] overflow-hidden rounded-[28px] border border-brand-ink/10 bg-white pb-9 pt-16 shadow-[0_18px_45px_-36px_rgba(13,45,65,0.5)] md:rounded-[34px] md:pt-[4.5rem]'
       aria-labelledby='campaigns-title'
     >
       <CowSpot className='-left-10 top-8 h-24 w-40 rotate-[-18deg] rounded-[48%_52%_42%_58%]' />
@@ -273,7 +273,7 @@ const CampaignShowcaseSection: React.FC<CampaignShowcaseSectionProps> = ({
         className='pointer-events-none absolute left-1/2 top-1 z-20 w-28 -translate-x-1/2 object-contain drop-shadow-[0_8px_8px_rgba(0,0,0,0.14)] md:w-32'
       />
 
-      <div className='relative z-10 mx-auto max-w-7xl px-4'>
+      <div className='relative z-10 mx-auto max-w-6xl px-5 sm:px-7'>
         <div className='mb-5 flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end'>
           <div className='w-fit rounded-lg bg-white/95 px-3 py-2 shadow-sm backdrop-blur-sm'>
             <h2 id='campaigns-title' className='font-display text-xl font-semibold text-brand-ink md:text-2xl'>Vaquinhas</h2>

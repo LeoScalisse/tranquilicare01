@@ -18,7 +18,7 @@ interface StoryComposerFabProps {
 const PANEL_WIDTH = 440;
 const PANEL_HEIGHT = 560;
 const GAP = 14;
-const STORY_CATEGORIES = [{ id: '', label: 'TranquiliCare', tone: 'brand' as const }, ...ngoCategories];
+const STORY_CATEGORIES = [{ id: '', label: 'TranquiliCare' }, ...ngoCategories];
 
 const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish, onUnavailable, onPublish }) => {
   const reduceMotion = useReducedMotion();
@@ -140,7 +140,6 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
                   <p className='text-xs font-bold uppercase tracking-[0.14em] text-brand-blue'>Nova história</p>
                   <h2 id='story-composer-title' className='mt-1 font-display text-2xl font-semibold text-brand-ink'>O que aconteceu por aí?</h2>
                 </div>
-                <button type='button' onClick={() => setOpen(false)} disabled={publishing} className='grid h-10 w-10 shrink-0 place-items-center rounded-full text-muted-foreground transition hover:bg-secondary hover:text-brand-ink' aria-label='Fechar publicador'><X size={19} /></button>
               </header>
 
               <div className='min-h-0 flex-1 overflow-y-auto px-5 pb-4 sm:px-6'>
@@ -201,7 +200,8 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
       </AnimatePresence>
 
       <motion.div
-        drag
+        layout={!reduceMotion}
+        drag={!open}
         dragConstraints={{
           left: -(window.innerWidth - 88),
           right: 0,
@@ -216,7 +216,11 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
         }}
         onDragEnd={() => window.setTimeout(() => { draggedRef.current = false; }, 80)}
         transition={{ type: 'spring', duration: 0.5, bounce: 0.2 }}
-        className='fixed bottom-24 right-5 z-[182] touch-none sm:bottom-8 sm:right-8'
+        style={open ? {
+          left: panelPosition.left + Math.min(PANEL_WIDTH, window.innerWidth - GAP * 2) - 76,
+          top: panelPosition.top + 12,
+        } : undefined}
+        className={`fixed z-[182] touch-none ${open ? '' : 'bottom-24 right-5 sm:bottom-8 sm:right-8'}`}
       >
         <motion.button
           ref={triggerRef}

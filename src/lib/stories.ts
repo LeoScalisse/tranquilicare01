@@ -425,12 +425,12 @@ export const setStorySaved = async (storyId: string, saved: boolean) => {
 
 export const setStoryLiked = async (storyId: string, liked: boolean) => {
   if (!supabase || !isPersistedStoryId(storyId)) return;
-  await requireIdentity();
-  const { error } = await supabase.rpc('set_story_like', {
-    target_story_id: storyId,
-    should_like: liked,
-  });
-  if (error) throw error;
+  const identity = await requireIdentity();
+  const operation = liked
+    ? supabase.from('story_likes').insert({ profile_id: identity.id, story_id: storyId })
+    : supabase.from('story_likes').delete().eq('profile_id', identity.id).eq('story_id', storyId);
+  const { error } = await operation;
+  if (error && error.code !== '23505') throw error;
 };
 export const reportStory = async (storyId: string, reason: string) => {
   if (!supabase || !isPersistedStoryId(storyId)) return;

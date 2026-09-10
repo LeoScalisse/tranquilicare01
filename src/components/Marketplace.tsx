@@ -13,6 +13,7 @@ import {
 import { SmoothInput } from "@/components/ui/smooth-input";
 import CauseShowcaseCard from "@/components/marketplace/CauseShowcaseCard";
 import FounderOrganizationsSection from "@/components/FounderOrganizationsSection";
+import cowHead from '@/assets/cow-head.png';
 
 import CampaignShowcaseSection from '@/components/campaigns/CampaignShowcaseSection';
 const SEARCH_PLACEHOLDERS = [
@@ -294,7 +295,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({
 
           {/* Search — rotating placeholder while empty */}
           <div
-            className="marketplace-search-shell relative mx-auto h-14 w-[86%] max-w-xl rounded-full border border-transparent bg-[linear-gradient(143deg,rgba(217,240,244,0.76)_15%,rgba(243,253,255,0.9)_88%)] shadow-[0_12px_24px_-1px_rgba(11,57,84,0.16)] transition-[width,max-width,box-shadow,border-color] focus-within:w-full focus-within:max-w-2xl focus-within:border-brand-blue/35 focus-within:shadow-[0_16px_34px_-4px_rgba(11,96,148,0.22)] focus-within:ring-4 focus-within:ring-brand-blue/10 md:w-[72%] lg:mx-0"
+            className="marketplace-search-shell relative mx-auto h-14 w-full max-w-2xl rounded-2xl border border-border bg-card transition-[box-shadow,border-color] focus-within:border-brand-blue focus-within:ring-4 focus-within:ring-brand-blue/10 lg:mx-0"
             style={{
               transitionDuration: "280ms",
               transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)",
@@ -366,20 +367,20 @@ const Marketplace: React.FC<MarketplaceProps> = ({
               aria-label="Vaquinhas"
               title="Vaquinhas"
               aria-pressed={isCampaignFilter}
-              className={`tc-motion-control order-2 relative shrink-0 rounded-full border border-brand-ink/10 px-5 py-2.5 text-sm font-bold transition-[background-color,border-color,box-shadow,transform] ${
+              className={`tc-motion-control order-2 relative grid h-10 w-14 shrink-0 place-items-center rounded-full border border-brand-ink/10 bg-white transition-[background-color,border-color,box-shadow,transform] ${
                 isCampaignFilter
                   ? "bg-white shadow-[inset_3px_3px_7px_rgba(16,42,67,0.18),inset_-3px_-3px_7px_rgba(255,255,255,0.9)]"
                   : "bg-white shadow-[4px_4px_10px_rgba(16,42,67,0.12),-4px_-4px_10px_rgba(255,255,255,0.95)] hover:-translate-y-0.5 active:translate-y-0"
               }`}
             >
-              Vaquinhas
+              <img src={cowHead} alt='' aria-hidden='true' className='h-8 w-8 object-contain' />
             </button>
           </div>
         </div>
       </div>
 
       {mode === "search" && (
-        <div className="mx-auto max-w-7xl px-4 pb-12">
+        <div className="mx-auto max-w-6xl px-6 pb-12 sm:px-8">
           {searchedNgos.length === 0 ? (
             <EmptyState />
           ) : (
@@ -397,7 +398,7 @@ const Marketplace: React.FC<MarketplaceProps> = ({
       )}
 
       {mode === "category" && (
-        <div className="mx-auto max-w-7xl px-4 pb-12">
+        <div className="mx-auto max-w-6xl px-6 pb-12 sm:px-8">
           {categoryNgos.length === 0 ? (
             <EmptyState />
           ) : (

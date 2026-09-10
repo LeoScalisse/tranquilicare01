@@ -7,8 +7,6 @@ interface BrandLikeButtonProps {
   onChange: (liked: boolean) => void;
 }
 
-const BRAND_HEART_SRC = '/tranquilicare-heart.png';
-
 const BrandLikeButton: React.FC<BrandLikeButtonProps> = ({ liked, onChange }) => {
   const reduceMotion = useReducedMotion();
   const iconTransition = reduceMotion
@@ -34,11 +32,8 @@ const BrandLikeButton: React.FC<BrandLikeButtonProps> = ({ liked, onChange }) =>
         >
           <Heart size={20} />
         </motion.span>
-        <motion.img
-          src={BRAND_HEART_SRC}
-          alt=''
-          draggable={false}
-          className='absolute inset-0 size-7 select-none object-contain'
+        <motion.span
+          className='absolute inset-0 grid place-items-center text-brand-blue'
           animate={{
             opacity: liked ? 1 : 0,
             scale: liked ? 1 : 0.58,
@@ -49,7 +44,7 @@ const BrandLikeButton: React.FC<BrandLikeButtonProps> = ({ liked, onChange }) =>
             scale: { type: 'spring', stiffness: 430, damping: 19, mass: 0.72 },
             rotate: { duration: 0.36, ease: [0.22, 1, 0.36, 1] },
           }}
-        />
+        ><Heart size={23} className='fill-current' strokeWidth={2.4} /></motion.span>
         <AnimatePresence initial={false}>
           {liked && !reduceMotion && (
             <motion.span

@@ -459,17 +459,17 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
               <X size={21} />
             </button>
             <motion.div
-              initial={{ opacity: 0, scale: 0.94 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              className={`relative w-full overflow-hidden rounded-lg bg-black shadow-2xl ${zoomedPost.type === "video" ? "max-w-sm" : "max-w-lg"}`}
-              style={zoomedPost.type === "video" ? { aspectRatio: "9/16" } : undefined}
+              initial={reduceMotion ? { opacity: 0 } : { opacity: 0, transform: 'scale(0.94)' }}
+              animate={{ opacity: 1, transform: 'scale(1)' }}
+              exit={reduceMotion ? { opacity: 0 } : { opacity: 0, transform: 'scale(0.96)' }}
+              transition={{ duration: reduceMotion ? 0.01 : 0.2, ease: [0.22, 1, 0.36, 1] }}
+              className='relative max-h-[88vh] w-fit max-w-[90vw] overflow-y-auto rounded-2xl bg-background shadow-2xl'
               onClick={(event) => event.stopPropagation()}
             >
-              {zoomedPost.type === "video" ? (
+              {!zoomedPost.url ? null : zoomedPost.type === "video" ? (
                 <video
                   src={zoomedPost.url}
-                  className="block h-auto max-h-[88vh] w-full object-contain"
+                  className="block h-auto max-h-[76vh] w-auto max-w-[90vw] rounded-t-2xl"
                   controls
                   autoPlay
                   playsInline
@@ -477,11 +477,11 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
               ) : (
                 <img
                   src={zoomedPost.url}
-                  className="h-full w-full object-contain"
+                  className="block h-auto max-h-[76vh] w-auto max-w-[90vw] rounded-t-2xl"
                   alt="História ampliada"
                 />
               )}
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent p-5 pt-16 text-white">
+              <div className="relative bg-background p-5 text-brand-ink">
                 <div className="flex items-center gap-3">
                   <img
                     src={ngo.image}
@@ -491,7 +491,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                   <span className="font-bold">{ngo.name}</span>
                 </div>
                 {zoomedPost.caption && (
-                  <p className="mt-2 text-sm leading-relaxed text-white/85">
+                  <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-muted-foreground">
                     {zoomedPost.caption}
                   </p>
                 )}

@@ -50,7 +50,7 @@ const FounderOrganizationsSection = memo(function FounderOrganizationsSection({
     <section
       ref={sectionRef}
       aria-labelledby='founder-organizations-title'
-      className='mx-auto w-full max-w-[1400px]'
+      className='mx-auto w-[calc(100%-1rem)] max-w-[1320px]'
     >
       <div className='relative overflow-hidden rounded-[30px] border border-white/80 bg-gradient-to-br from-white/80 to-secondary/50 px-3 py-7 shadow-[0_24px_64px_-52px_#176fa655] sm:px-6 md:rounded-[38px] md:py-9'>
         <div data-reveal className='relative z-10 px-2 sm:px-4'>

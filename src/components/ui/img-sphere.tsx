@@ -52,6 +52,15 @@ const SphereImageGrid: React.FC<SphereImageGridProps> = ({
   const wakeRef = useRef<() => void>(() => {});
 
   const positions = useMemo(() => images.map((_, index) => {
+    if (images.length === 1) return { x: 0, y: 0, z: 1 };
+    if (images.length < 6) {
+      const angle = (-Math.PI / 2) + ((Math.PI * 2 * index) / images.length);
+      const x = Math.cos(angle);
+      const y = Math.sin(angle) * 0.62;
+      const z = Math.sin(angle + Math.PI / 3) * 0.34;
+      const magnitude = Math.hypot(x, y, z) || 1;
+      return { x: x / magnitude, y: y / magnitude, z: z / magnitude };
+    }
     const offset = 2 / Math.max(images.length, 1);
     const y = ((index * offset) - 1) + (offset / 2);
     const radius = Math.sqrt(Math.max(0, 1 - y * y));
@@ -153,8 +162,12 @@ const SphereImageGrid: React.FC<SphereImageGridProps> = ({
     window.setTimeout(() => { movedRef.current = false; }, 0);
   };
 
-  const radius = size * 0.36;
-  const imageSize = Math.max(52, Math.min(86, size * 0.18));
+  const radius = size * (images.length <= 1 ? 0 : images.length === 2 ? 0.2 : images.length < 6 ? 0.29 : 0.36);
+  const imageSize = images.length <= 1
+    ? Math.max(76, Math.min(116, size * 0.29))
+    : images.length < 6
+      ? Math.max(62, Math.min(94, size * 0.22))
+      : Math.max(52, Math.min(86, size * 0.18));
   const isTransparent = appearance === 'transparent';
 
   return (

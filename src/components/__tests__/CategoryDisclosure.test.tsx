@@ -17,9 +17,9 @@ describe('Shared category disclosure', () => {
     const user = userEvent.setup();
     render(<Harness />);
     const trigger = screen.getByRole('button', { name: 'Categoria da história' });
-    expect(trigger.className).toContain('linear-gradient');
+    expect(trigger.className).not.toContain('linear-gradient');
     await user.click(trigger);
-    expect(screen.getByRole('option', { name: 'TranquiliCare' }).className).toContain('linear-gradient');
+    expect(screen.getByRole('option', { name: 'TranquiliCare' }).className).not.toContain('linear-gradient');
     await user.keyboard('{End}{Enter}');
     await waitFor(() => expect(screen.queryByRole('listbox')).toBeNull());
     expect(trigger.textContent).toContain('Educação');

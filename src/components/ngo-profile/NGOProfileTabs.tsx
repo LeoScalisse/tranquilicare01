@@ -102,8 +102,8 @@ export const NGOStoriesTab: React.FC<StoriesTabProps> = ({ ngo, ownerMode, onOpe
         <div className='mt-7 grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5'>
           {ngo.posts.map((post) => (
             <button key={post.id} type='button' onClick={() => onOpenStory(post)} className='group self-start overflow-hidden rounded-lg border border-border bg-secondary text-left shadow-[0_16px_34px_-28px_rgba(17,54,79,0.55)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-3 focus-visible:outline-brand-blue' aria-label={`Abrir história: ${post.caption || 'publicação da organização'}`}>
-              <PostMedia post={post} />
-              <span className='block border-t border-border bg-background p-3 text-xs font-semibold leading-5 text-brand-ink'>{post.caption || 'Uma nova história foi compartilhada pela organização.'}</span>
+              {post.url && <PostMedia post={post} />}
+              <span className='block border-border bg-background p-3 text-xs font-semibold leading-5 text-brand-ink'><span className='line-clamp-5 whitespace-pre-wrap break-words'>{post.caption || 'Uma nova história foi compartilhada pela organização.'}</span><span className='mt-2 block text-brand-blue'>Ler história</span></span>
             </button>
           ))}
         </div>

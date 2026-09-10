@@ -2,7 +2,7 @@ import StoryBody from '@/components/ui/story-body';
 import { ngoCategories } from '@/data/ngoCategories';
 import './stories-feed.css';
 import React, { useEffect, useMemo, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { Bookmark, ChevronLeft, ChevronRight, LoaderCircle, Play, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -206,6 +206,7 @@ export const StoryFeed: React.FC<StoryFeedProps> = ({
 };
 
 const Stories: React.FC<StoriesProps> = ({ onOpenNGO, onOpenProfile, canTellStory = false, onTellStory, onPreviewActiveChange }) => {
+  const reduceMotion = useReducedMotion();
   const [discoveryLane, setDiscoveryLane] = useState<DiscoveryLane>('for-you');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeStoryId, setActiveStoryId] = useState<string | null>(null);
@@ -282,9 +283,14 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, onOpenProfile, canTellStor
   useEffect(() => {
     if (!activeStory) return undefined;
     const previousOverflow = document.body.style.overflow;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setActiveStoryId(null);
+    };
     document.body.style.overflow = 'hidden';
+    document.addEventListener('keydown', closeOnEscape);
     return () => {
       document.body.style.overflow = previousOverflow;
+      document.removeEventListener('keydown', closeOnEscape);
     };
   }, [activeStory]);
   const openStory = (story: StoryItem) => setActiveStoryId(story.id);
@@ -441,12 +447,11 @@ const Stories: React.FC<StoriesProps> = ({ onOpenNGO, onOpenProfile, canTellStor
 
       <AnimatePresence>
         {activeStory && (
-          <motion.div className='fixed inset-0 z-[130] grid place-items-center bg-brand-ink/95 p-3 backdrop-blur-md' initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setActiveStoryId(null)}>
-            <div className='absolute left-4 right-4 top-4 flex gap-1'>{availableStories.map((story, index) => <span key={story.id} className={`h-1 flex-1 rounded-full ${index <= activeIndex ? 'bg-background' : 'bg-background/25'}`} />)}</div>
-            <button type='button' onClick={() => setActiveStoryId(null)} className='absolute right-4 top-8 grid h-10 w-10 place-items-center rounded-full bg-background text-brand-blue' aria-label='Fechar história'><X size={19} /></button>
+          <motion.div className='fixed inset-0 z-[130] grid place-items-center bg-brand-ink/75 p-3 backdrop-blur-md' initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setActiveStoryId(null)}>
+            <button type='button' onClick={() => setActiveStoryId(null)} className='absolute right-4 top-4 z-20 grid h-10 w-10 place-items-center rounded-full bg-background text-brand-blue shadow-lg' aria-label='Fechar história'><X size={19} /></button>
             {availableStories.length > 1 && <><button type='button' onClick={(event) => { event.stopPropagation(); move(-1); }} className='absolute left-3 z-10 grid h-10 w-10 place-items-center rounded-full bg-background/15 text-white backdrop-blur md:left-8' aria-label='História anterior'><ChevronLeft /></button><button type='button' onClick={(event) => { event.stopPropagation(); move(1); }} className='absolute right-3 z-10 grid h-10 w-10 place-items-center rounded-full bg-background/15 text-white backdrop-blur md:right-8' aria-label='Próxima história'><ChevronRight /></button></>}
-            <motion.div key={activeStory.id} initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} className='relative h-[78vh] w-full max-w-md overflow-hidden rounded-[26px] bg-black shadow-2xl' onClick={(event) => event.stopPropagation()}>
-              {!activeStory.url ? <div className='h-full overflow-y-auto bg-background p-6'><h2 className='mb-4 font-semibold'>{activeStory.ngoName}</h2><p className='whitespace-pre-wrap break-words leading-7'>{activeStory.caption}</p></div> : activeStory.type === 'image' ? <img src={activeStory.url} alt='' className='h-full w-full object-contain' /> : activeStory.type === 'video' ? <video src={activeStory.url} className='h-full w-full object-contain' controls autoPlay playsInline /> : <SocialStoryEmbed src={activeStory.url} provider={activeStory.type} title={`Publicação de ${activeStory.ngoName} no ${activeStory.type}`} className='bg-white' />}
+            <motion.div key={activeStory.id} initial={reduceMotion ? { opacity: 0 } : { opacity: 0, transform: 'scale(0.96)' }} animate={{ opacity: 1, transform: 'scale(1)' }} transition={{ duration: reduceMotion ? 0.01 : 0.2, ease: [0.22, 1, 0.36, 1] }} className={`relative max-h-[86dvh] max-w-[90vw] overflow-hidden rounded-2xl shadow-2xl ${!activeStory.url ? 'h-[70vh] w-[min(90vw,28rem)] bg-background' : ['instagram', 'tiktok', 'threads', 'substack'].includes(activeStory.type) ? 'h-[78vh] w-[min(90vw,28rem)] bg-white' : 'w-fit'}`} onClick={(event) => event.stopPropagation()}>
+              {!activeStory.url ? <div className='h-full overflow-y-auto bg-background p-6'><h2 className='mb-4 font-semibold'>{activeStory.ngoName}</h2><p className='whitespace-pre-wrap break-words leading-7'>{activeStory.caption}</p></div> : activeStory.type === 'image' ? <img src={activeStory.url} alt='' className='block h-auto max-h-[86dvh] w-auto max-w-[90vw] rounded-2xl' /> : activeStory.type === 'video' ? <video src={activeStory.url} className='block h-auto max-h-[86dvh] w-auto max-w-[90vw] rounded-2xl' controls autoPlay playsInline /> : <SocialStoryEmbed src={activeStory.url} provider={activeStory.type} title={`Publicação de ${activeStory.ngoName} no ${activeStory.type}`} className='h-full bg-white' />}
               <div hidden={!activeStory.url} className={`absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-5 pt-20 text-white ${['instagram', 'tiktok', 'threads', 'substack'].includes(activeStory.type) ? 'pointer-events-none' : ''}`}>
                 <button type='button' disabled={!activeStory.ngoId && !activeStory.authorProfileId} onClick={() => activeStory.ngoId ? onOpenNGO(activeStory.ngoId) : activeStory.authorProfileId && onOpenProfile?.(activeStory.authorProfileId)} className='flex items-center gap-3 text-left disabled:cursor-default'><img src={activeStory.ngoImage} alt='' className='h-11 w-11 rounded-full border-2 border-white object-cover' /><span><span className='flex flex-wrap items-center gap-2 font-bold'>{activeStory.ngoName}{activeStory.isFounder && <img src={founderSeal} alt='ONG fundadora' className='h-5 w-5 object-contain' />}</span><span className='mt-1 block text-sm text-white/75'>{activeStory.caption}</span></span></button>
               </div>

@@ -141,6 +141,10 @@ describe('Marketplace editorial sections', () => {
     });
 
     expect(screen.getByText('Não encontramos nenhuma causa por aqui.')).not.toBeNull();
-    expect(screen.getByText('Tente outro termo ou explore uma categoria.')).not.toBeNull();
+    expect(screen.getByText('Tente outro nome ou volte a descobrir todas as causas.')).not.toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Ver todas as causas' }));
+    expect((screen.getByLabelText('Buscar causas ou organizações') as HTMLInputElement).value).toBe('');
+    expect(screen.queryByText('Não encontramos nenhuma causa por aqui.')).toBeNull();
+    expect(screen.getAllByRole('button', { name: /Conhecer a causa/i }).length).toBeGreaterThan(0);
   });
 });

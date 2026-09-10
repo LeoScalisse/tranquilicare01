@@ -70,8 +70,9 @@ describe('DonorProfile personalization', () => {
     fireEvent.change(screen.getByLabelText(/Localização/i), { target: { value: 'São Paulo, SP' } });
     fireEvent.change(screen.getByLabelText(/Instagram/i), { target: { value: '@anasouza' } });
     fireEvent.change(screen.getByLabelText(/Telefone/i), { target: { value: '11987654321' } });
-    fireEvent.change(screen.getByLabelText(/Imagem de capa/i), { target: { value: 'https://example.com/ana-cover.jpg' } });
     await user.click(screen.getByRole('button', { name: 'Educação' }));
+    await user.click(screen.getByRole('button', { name: 'O que me inspira a ajudar' }));
+    fireEvent.change(screen.getByLabelText('O que me inspira a ajudar'), { target: { value: 'Cuidar da minha comunidade.' } });
     await user.click(screen.getByRole('button', { name: 'Salvar' }));
 
     await waitFor(() => {
@@ -83,8 +84,9 @@ describe('DonorProfile personalization', () => {
           location: 'São Paulo, SP',
           instagram: '@anasouza',
           phone: '11987654321',
-          coverImage: 'https://example.com/ana-cover.jpg',
+          coverImage: '',
           interests: ['Educação'],
+          answers: { motivation: 'Cuidar da minha comunidade.' },
         },
       });
     });

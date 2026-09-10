@@ -38,7 +38,6 @@ export const CategoryDisclosure: FC<CategoryDisclosureProps> = ({
   const [open, setOpen] = useState(false);
   const reducedMotion = useReducedMotion();
   const activeItem = items.find((item) => item.id === value);
-  const activeIsBrand = activeItem?.tone === 'brand';
 
   const selectItem = (item: CategoryDisclosureItem) => {
     if (disabled) return;
@@ -59,7 +58,6 @@ export const CategoryDisclosure: FC<CategoryDisclosureProps> = ({
             aria-invalid={invalid}
             className={cn(
               'mt-2 flex min-h-12 w-full items-center gap-3 rounded-lg border-2 border-border bg-background px-3.5 py-2 text-left outline-none transition-[border-color,box-shadow,transform] motion-safe:active:scale-[0.985] disabled:cursor-not-allowed disabled:opacity-60 focus-visible:border-brand-blue focus-visible:ring-4 focus-visible:ring-brand-blue/15',
-              activeIsBrand && 'border-brand-blue/25 bg-[linear-gradient(135deg,hsl(var(--brand-blue-deep)),hsl(var(--brand-blue))_62%,#79d9ff)] text-white shadow-[0_10px_24px_hsl(var(--brand-blue)/0.2)]',
               invalid && 'border-red-400 focus-visible:border-red-500 focus-visible:ring-red-100',
               className,
             )}
@@ -70,7 +68,6 @@ export const CategoryDisclosure: FC<CategoryDisclosureProps> = ({
               animate={{ opacity: 1, transform: 'scale(1)' }}
               className={cn(
                 'grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-md bg-brand-blue/10 text-brand-blue',
-                activeIsBrand && 'bg-white/20 text-white ring-1 ring-white/25',
               )}
             >
               {activeItem?.sealSrc ? (
@@ -85,7 +82,7 @@ export const CategoryDisclosure: FC<CategoryDisclosureProps> = ({
             <motion.span
               animate={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
               transition={{ duration: reducedMotion ? 0.01 : 0.18, ease: [0.23, 1, 0.32, 1] }}
-              className={cn('text-muted-foreground', activeIsBrand && 'text-white/90')}
+              className='text-muted-foreground'
             >
               <ChevronDown size={19} />
             </motion.span>
@@ -152,7 +149,6 @@ export const CategoryDisclosure: FC<CategoryDisclosureProps> = ({
                         className={cn(
                           'flex min-h-11 w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left outline-none transition-colors hover:bg-secondary focus-visible:bg-secondary focus-visible:ring-2 focus-visible:ring-brand-blue',
                           selected && 'bg-brand-blue/[0.07]',
-                          item.tone === 'brand' && 'bg-[linear-gradient(135deg,hsl(var(--brand-blue-deep)),hsl(var(--brand-blue))_62%,#79d9ff)] text-white hover:brightness-[1.04] focus-visible:ring-brand-yellow',
                         )}
                       >
                         <span className='min-w-0 flex-1 text-sm font-bold'>{item.label}</span>
@@ -164,7 +160,6 @@ export const CategoryDisclosure: FC<CategoryDisclosureProps> = ({
                           className={cn(
                             'grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full transition-shadow',
                             selected && 'ring-2 ring-brand-blue ring-offset-1 ring-offset-popover',
-                            item.tone === 'brand' && 'bg-white/20 text-white ring-white/50 ring-offset-brand-blue',
                           )}
                         >
                           {item.sealSrc ? (

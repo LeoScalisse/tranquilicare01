@@ -1,3 +1,4 @@
+import { normalizeProfileAnswers } from './profilePrompts';
 /**
  * Supabase-backed auth.
  *
@@ -33,7 +34,7 @@ const PENDING_ROLE_KEY = 'tc-pending-account-type';
 
 const PROFILE_SELECT = 'id,email,name,avatar_url,credits,account_type,ngo_profile';
 const NGO_PROFILE_SELECT = 'description,category,goal,objectives,youtube_url,cover_image_url,instagram,phone,cnpj,address,latitude,longitude,geocoded_address,status,is_founder,profile_status,verification_status,payout_status,payment_status';
-const DONOR_PROFILE_SELECT = 'credits,bio,location,instagram,phone,cover_image_url,interests';
+const DONOR_PROFILE_SELECT = 'credits,bio,location,instagram,phone,cover_image_url,interests,profile_answers';
 const OPTIONAL_SCHEMA_CODES = new Set(['42P01', '42703', 'PGRST202', 'PGRST205']);
 const warnedOptionalSchema = new Set<string>();
 
@@ -174,8 +175,10 @@ const safeDonorProfile = (value: unknown): DonorProfileDetails | null => {
     phone: safeText(profile.phone).trim(),
     coverImage: safeText(profile.coverImage ?? profile.cover_image_url).trim(),
     interests: safeStringArray(profile.interests),
+    answers: normalizeProfileAnswers(profile.answers ?? profile.profile_answers),
   };
-  return [...Object.values(details).flat()].some(Boolean) ? details : null;
+  const { answers, ...presentation } = details;
+  return [...Object.values(presentation).flat(), ...Object.values(answers ?? {})].some(Boolean) ? details : null;
 };
 
 const logOptionalSchemaIssue = (where: string, error: { code?: string; message?: string }) => {
@@ -534,6 +537,7 @@ export const updateUser = async (patch: EditableUserProfile): Promise<AppUser | 
       phone: normalizePhone(patch.donorProfile.phone),
       coverImage: patch.donorProfile.coverImage.trim(),
       interests: safeStringArray(patch.donorProfile.interests),
+      answers: normalizeProfileAnswers(patch.donorProfile.answers),
     } : null;
     metadata.donor_profile = donorProfile;
   }
@@ -614,8 +618,9 @@ export const updateUser = async (patch: EditableUserProfile): Promise<AppUser | 
       profile_phone: normalizePhone(patch.donorProfile.phone),
       profile_cover_image_url: patch.donorProfile.coverImage.trim(),
       profile_interests: safeStringArray(patch.donorProfile.interests),
+      ...(patch.donorProfile.answers !== undefined ? { profile_answers: normalizeProfileAnswers(patch.donorProfile.answers) } : {}),
     });
-    if (saveError && isOptionalSchemaIssue(saveError)) {
+    if (saveError && isOptionalSchemaIssue(saveError) && patch.donorProfile.answers === undefined) {
       // Short-lived compatibility path while the isolated RPC migration is
       // being applied. It never reports success when UPDATE matched zero rows.
       const { data: legacyProfile, error: legacyProfileError } = await client()

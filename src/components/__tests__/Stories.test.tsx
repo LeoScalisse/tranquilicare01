@@ -235,7 +235,7 @@ describe('Stories', () => {
 
     fireEvent.click(within(firstStory).getByRole('button', { name: 'Curtir história', hidden: true }));
     expect(within(firstStory).getByRole('button', { name: 'Remover curtida', hidden: true })).not.toBeNull();
-    expect(within(firstStory).getByRole('button', { name: 'Remover curtida', hidden: true }).querySelector('img')?.getAttribute('src')).toBe('/tranquilicare-heart.png');
+    expect(within(firstStory).getByRole('button', { name: 'Remover curtida', hidden: true }).querySelector('.fill-current')).not.toBeNull();
     expect(storyMocks.setStoryLiked).toHaveBeenCalledOnce();
 
     fireEvent.click(within(firstStory).getByRole('button', { name: 'Remover curtida', hidden: true }));

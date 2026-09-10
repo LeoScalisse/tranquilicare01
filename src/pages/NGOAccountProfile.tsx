@@ -787,9 +787,9 @@ const NGOAccountProfile: React.FC = () => {
     navigate('/');
   };
 
-  const publishFromProfile = async (body: string, image: File | null, socialUrl: string | null) => {
+  const publishFromProfile = async (body: string, image: File | null, socialUrl: string | null, category: string | null = null) => {
     try {
-      await publishStory(body, image, socialUrl);
+      await publishStory(body, image, socialUrl, category);
       setStoryRefreshKey((current) => current + 1);
       toast.success('História publicada.');
     } catch (error) {

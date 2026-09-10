@@ -44,7 +44,7 @@ const CosmosNav: React.FC<CosmosNavProps> = ({ items, global = false }) => {
   return createPortal(
     <nav
       aria-label="Navegação principal"
-      className="fixed bottom-[calc(0.85rem+env(safe-area-inset-bottom))] left-1/2 z-50 -translate-x-1/2 md:hidden"
+      className="fixed bottom-[calc(0.85rem+env(safe-area-inset-bottom))] left-1/2 z-[120] -translate-x-1/2 md:hidden"
     >
       <LayoutGroup id="mobile-nav-tabs">
         <div className="flex max-w-[calc(100vw-1.5rem)] items-center gap-2">

@@ -209,7 +209,7 @@ describe('Supabase organization profile persistence', () => {
     supabaseMocks.authGetUser.mockResolvedValueOnce({ data: { user: donorAuthUser }, error: null });
     supabaseMocks.authUpdateUser.mockResolvedValueOnce({ data: { user: donorAuthUser }, error: null });
 
-    await expect(updateUser({ name: 'Ana', avatar: null, donorProfile })).resolves.toMatchObject({
+    await expect(updateUser({ name: 'Ana', avatar: null, donorProfile: { ...donorProfile, answers: { joy: 'Caminhar.' } } })).resolves.toMatchObject({
       id: 'donor-1',
       accountType: 'donor',
     });
@@ -218,6 +218,7 @@ describe('Supabase organization profile persistence', () => {
       profile_name: 'Ana',
       profile_bio: donorProfile.bio,
       profile_interests: ['Educação'],
+      profile_answers: { joy: 'Caminhar.' },
     }));
     expect(supabaseMocks.rpc.mock.invocationCallOrder[0]).toBeLessThan(
       supabaseMocks.authUpdateUser.mock.invocationCallOrder[0],
