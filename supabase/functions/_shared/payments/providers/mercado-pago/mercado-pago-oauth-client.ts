@@ -1,4 +1,4 @@
-const AUTHORIZATION_URL = "https://auth.mercadopago.com.br/authorization";
+const AUTHORIZATION_URL = "https://auth.mercadopago.com/authorization";
 const TOKEN_URL = "https://api.mercadopago.com/oauth/token";
 
 type FetchLike = (

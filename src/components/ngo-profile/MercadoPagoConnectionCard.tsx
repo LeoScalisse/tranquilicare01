@@ -89,7 +89,7 @@ export const MercadoPagoConnectionCard = ({
     try {
       const result = await api.connect(organizationId);
       const url = new URL(result.authorizationUrl);
-      if (url.protocol !== "https:" || url.hostname !== "auth.mercadopago.com.br") {
+      if (url.protocol !== "https:" || url.hostname !== "auth.mercadopago.com") {
         throw new Error("mercado-pago-authorization-url-invalid");
       }
       onNavigate(url.toString());

@@ -104,7 +104,11 @@ describe('DonorProfile personalization', () => {
     expect(screen.queryByTitle(/completo/i)).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Conquistas' })).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: /Editar perfil/i }));
+    const editButtons = screen.getAllByRole('button', { name: /Editar perfil/i });
+    expect(editButtons).toHaveLength(2);
+    expect(editButtons.some((button) => button.closest('header')?.className.includes('md:hidden'))).toBe(true);
+    expect(editButtons.some((button) => button.className.includes('md:inline-flex'))).toBe(true);
+    await user.click(editButtons[0]);
     expect(screen.getByRole('button', { name: 'Trocar foto' })).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Salvo' }).hasAttribute('disabled')).toBe(true);
   });

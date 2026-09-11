@@ -65,6 +65,11 @@ export interface PaymentAction {
   clientSecret?: string;
 }
 
+export interface PayerIdentification {
+  type: 'CPF';
+  number: string;
+}
+
 export interface CreatePaymentInput {
   provider?: PaymentProviderName;
   donationId: string;
@@ -75,6 +80,7 @@ export interface CreatePaymentInput {
   successUrl: string;
   cancelUrl: string;
   payerEmail?: string;
+  payerIdentification?: PayerIdentification;
   metadata?: Record<string, string>;
 }
 

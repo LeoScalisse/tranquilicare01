@@ -14,7 +14,7 @@ describe("MercadoPagoConnectionCard", () => {
     const api: MercadoPagoConnectionApi = {
       status: vi.fn().mockResolvedValue({ connected: false, liveMode: true }),
       connect: vi.fn().mockResolvedValue({
-        authorizationUrl: "https://auth.mercadopago.com.br/authorization?state=opaque",
+        authorizationUrl: "https://auth.mercadopago.com/authorization?state=opaque",
       }),
       disconnect: vi.fn(),
     };
@@ -35,7 +35,7 @@ describe("MercadoPagoConnectionCard", () => {
       "11111111-1111-4111-8111-111111111111",
     );
     expect(navigate).toHaveBeenCalledWith(
-      "https://auth.mercadopago.com.br/authorization?state=opaque",
+      "https://auth.mercadopago.com/authorization?state=opaque",
     );
   });
 

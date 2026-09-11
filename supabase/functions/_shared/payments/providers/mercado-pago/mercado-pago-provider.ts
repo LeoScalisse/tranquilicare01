@@ -146,6 +146,13 @@ export class MercadoPagoProvider implements PaymentProvider {
         422,
       );
     }
+    if (!input.payerIdentification) {
+      throw new PaymentError(
+        "mercado-pago-payer-identification-required",
+        "A payer CPF is required for Mercado Pago PIX",
+        422,
+      );
+    }
     if (!this.options.resolveAccessToken || !this.options.webhookUrl) {
       throw new PaymentError(
         "mercado-pago-marketplace-not-configured",
@@ -172,7 +179,10 @@ export class MercadoPagoProvider implements PaymentProvider {
           description: "Doacao TranquiliCare",
           payment_method_id: "pix",
           external_reference: input.donationId,
-          payer: { email: input.payerEmail },
+          payer: {
+            email: input.payerEmail,
+            identification: input.payerIdentification,
+          },
           notification_url: this.options.webhookUrl,
           metadata: input.metadata ?? {},
         }),

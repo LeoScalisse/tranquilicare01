@@ -5,6 +5,7 @@ import { SmoothTextarea } from '@/components/ui/smooth-textarea';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
+  ArrowLeft,
   Camera,
   Check,
   ChevronRight,
@@ -236,6 +237,18 @@ const DonorProfile: React.FC = () => {
   return (
     <>
     <div className='min-h-screen bg-background pb-24 text-brand-ink md:pb-12'>
+      <header className='sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur md:hidden'>
+        <div className='mx-auto flex h-16 items-center justify-between px-4'>
+          <button onClick={() => navigate('/')} className='inline-flex min-h-11 items-center gap-2 rounded-xl px-1 font-semibold text-brand-ink focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20' aria-label='Voltar para o início'>
+            <ArrowLeft className='h-5 w-5 text-muted-foreground' aria-hidden='true' />
+            <img src={logo} alt='' className='h-9 w-9 rounded-lg shadow-sm' />
+          </button>
+          <button onClick={() => setEditingProfile((current) => !current)} aria-expanded={editingProfile} className='tc-button-3d inline-flex min-h-11 items-center gap-2 rounded-xl px-4 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-yellow/70'>
+            <Pencil size={16} aria-hidden='true' />
+            {editingProfile ? 'Fechar edição' : 'Editar perfil'}
+          </button>
+        </div>
+      </header>
       <main className='mx-auto max-w-6xl px-4 py-7 md:py-10'>
         {isSetup && (
           <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} className='mb-7 rounded-lg border border-brand-blue/25 bg-brand-blue/5 p-4'>
@@ -261,7 +274,7 @@ const DonorProfile: React.FC = () => {
                   <p className='text-xs font-bold uppercase tracking-[0.16em] text-brand-blue'>Perfil do doador</p>
                   <h1 className='mt-1 truncate font-display text-4xl font-semibold leading-tight md:text-5xl'>{name || 'Bem-vindo(a)'}</h1>
                 </div>
-                <button onClick={() => setEditingProfile((current) => !current)} className='inline-flex shrink-0 items-center gap-2 rounded-xl border border-brand-blue/20 bg-white px-3 py-2.5 text-sm font-bold text-brand-blue shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20 sm:px-4'>
+                <button onClick={() => setEditingProfile((current) => !current)} aria-expanded={editingProfile} className='hidden shrink-0 items-center gap-2 rounded-xl border border-brand-blue/20 bg-white px-4 py-2.5 text-sm font-bold text-brand-blue shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20 md:inline-flex'>
                   <Pencil size={16} />Editar perfil
                 </button>
               </div>

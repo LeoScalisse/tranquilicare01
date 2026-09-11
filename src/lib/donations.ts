@@ -6,6 +6,7 @@ export interface DonationPaymentInput {
   campaignId?: string;
   amountCents: number;
   payerEmail?: string;
+  payerIdentification?: { type: "CPF"; number: string };
   method?: "card" | "pix" | "boleto";
   provider?: "stripe" | "mercado_pago";
 }

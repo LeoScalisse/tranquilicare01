@@ -116,13 +116,13 @@ describe("NGOProfile cause-led architecture", () => {
     const dialog = screen.getByRole("dialog", { name: "Apoiar Abraço Sereno" });
     expect(
       screen.getByRole("heading", {
-        name: "Quanto você quer fazer chegar à Abraço Sereno?",
+        name: "Quanto você quer destinar à Abraço Sereno?",
       }),
     ).not.toBeNull();
-    expect(dialog.textContent).toContain("Sua doação para Abraço Sereno");
-    expect(dialog.textContent).toContain("TranquiliCare · 5%");
+    expect(dialog.textContent).toContain("Valor destinado a Abraço Sereno");
+    expect(dialog.textContent).toContain("Apoio ao TranquiliCare · 5%");
     expect(dialog.textContent).toContain(
-      "Escolha um valor para ver como sua doação chega à organização.",
+      "Escolha um valor para ver a composição do pagamento.",
     );
     expect(dialog.querySelector(".donation-checkout-glow")).toBeNull();
     expect(
@@ -130,7 +130,7 @@ describe("NGOProfile cause-led architecture", () => {
     ).toBe(true);
     expect(document.querySelector(".apple-edge-glow")).not.toBeNull();
     expect(dialog.querySelector(".bg-brand-ink")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: /Entender como 100% da doação/i }));
+    fireEvent.click(screen.getByRole("button", { name: /Entender o caminho e as taxas da doação/i }));
     expect(screen.getByTestId("location").textContent).toBe("/descobertas/doacao-integral");
   });
 

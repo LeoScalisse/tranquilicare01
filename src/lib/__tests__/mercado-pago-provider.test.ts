@@ -209,6 +209,7 @@ describe("MercadoPagoProvider PIX marketplace", () => {
     const result = await provider.createPayment({
       ...input,
       payerEmail: "donor@example.com",
+      payerIdentification: { type: "CPF", number: "52998224725" },
       recipient: { ...input.recipient, livemode: true },
     });
 
@@ -224,7 +225,10 @@ describe("MercadoPagoProvider PIX marketplace", () => {
       application_fee: 2.5,
       payment_method_id: "pix",
       external_reference: input.donationId,
-      payer: { email: "donor@example.com" },
+      payer: {
+        email: "donor@example.com",
+        identification: { type: "CPF", number: "52998224725" },
+      },
       notification_url: "https://project.supabase.co/functions/v1/payment-webhook?provider=mercado_pago",
     });
     expect(result).toMatchObject({

@@ -74,7 +74,10 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
   useEffect(() => {
     if (!open) return undefined;
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && !event.defaultPrevented && !publishing) setOpen(false);
+      if (event.key === 'Escape' && !event.defaultPrevented && !publishing) {
+        setOpen(false);
+        window.setTimeout(() => triggerRef.current?.focus(), 0);
+      }
     };
     document.addEventListener('keydown', closeOnEscape);
     return () => document.removeEventListener('keydown', closeOnEscape);
@@ -100,6 +103,12 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
       setOpen(true);
     }
     setError('');
+  };
+
+  const closeComposer = () => {
+    if (publishing) return;
+    setOpen(false);
+    window.setTimeout(() => triggerRef.current?.focus(), 0);
   };
 
   const submit = async (event: React.FormEvent) => {
@@ -154,6 +163,15 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
                   <p className='text-xs font-bold uppercase tracking-[0.14em] text-brand-blue'>Nova história</p>
                   <h2 id='story-composer-title' className='mt-1 font-display text-2xl font-semibold text-brand-ink'>O que aconteceu por aí?</h2>
                 </div>
+                <button
+                  type='button'
+                  onClick={closeComposer}
+                  disabled={publishing}
+                  aria-label='Fechar nova história'
+                  className='grid h-11 w-11 shrink-0 place-items-center rounded-full border border-brand-blue/25 bg-background text-brand-blue transition-colors hover:bg-brand-blue/10 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-yellow/70 disabled:cursor-not-allowed disabled:opacity-50'
+                >
+                  <X size={21} aria-hidden='true' />
+                </button>
               </header>
 
               <div className='min-h-0 flex-1 overflow-y-auto px-5 pb-4 sm:px-6'>
@@ -213,44 +231,44 @@ const StoryComposerFab: React.FC<StoryComposerFabProps> = ({ visible, canPublish
         )}
       </AnimatePresence>
 
-      <motion.div
-        layout={!reduceMotion}
-        drag={!open}
-        dragConstraints={{
-          left: -(window.innerWidth - 88),
-          right: 0,
-          top: -(window.innerHeight - 150),
-          bottom: 0,
-        }}
-        dragMomentum={false}
-        dragElastic={0.08}
-        onDragStart={() => {
-          draggedRef.current = true;
-          setOpen(false);
-        }}
-        onDragEnd={() => window.setTimeout(() => { draggedRef.current = false; }, 80)}
-        transition={{ type: 'spring', duration: 0.5, bounce: 0.2 }}
-        style={open ? {
-          left: panelPosition.left + Math.min(PANEL_WIDTH, window.innerWidth - GAP * 2) - 76,
-          top: panelPosition.top + 12,
-        } : undefined}
-        className={`fixed z-[182] touch-none ${open ? '' : 'bottom-24 right-5 sm:bottom-8 sm:right-8'}`}
-      >
-        <motion.button
-          ref={triggerRef}
-          type='button'
-          onClick={openComposer}
-          aria-label={open ? 'Fechar nova história' : 'Criar nova história'}
-          aria-expanded={open}
-          className='relative grid h-16 w-16 place-items-center rounded-full border-4 border-white bg-brand-blue text-white shadow-[0_18px_42px_-13px_rgba(55,181,247,0.9)] outline-none focus-visible:ring-4 focus-visible:ring-brand-yellow/70'
-          whileHover={reduceMotion ? undefined : { scale: 1.04 }}
-          whileTap={reduceMotion ? undefined : { scale: 0.94 }}
-        >
-          <AnimatePresence mode='wait' initial={false}>
-            <motion.span key={open ? 'close' : 'write'} initial={reduceMotion ? { opacity: 0 } : { opacity: 0, rotate: -18, scale: 0.82 }} animate={{ opacity: 1, rotate: 0, scale: 1 }} exit={{ opacity: 0, rotate: 18, scale: 0.82 }} transition={{ duration: reduceMotion ? 0.01 : 0.2 }}>{open ? <X size={24} /> : <PenLine size={23} />}</motion.span>
-          </AnimatePresence>
-        </motion.button>
-      </motion.div>
+      <AnimatePresence initial={false}>
+        {!open && (
+          <motion.div
+            key='story-composer-trigger'
+            drag
+            dragConstraints={{
+              left: -(window.innerWidth - 88),
+              right: 0,
+              top: -(window.innerHeight - 150),
+              bottom: 0,
+            }}
+            dragMomentum={false}
+            dragElastic={0.08}
+            onDragStart={() => {
+              draggedRef.current = true;
+            }}
+            onDragEnd={() => window.setTimeout(() => { draggedRef.current = false; }, 80)}
+            initial={reduceMotion ? { opacity: 1 } : { opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.9 }}
+            transition={{ duration: reduceMotion ? 0.01 : 0.18, ease: [0.22, 1, 0.36, 1] }}
+            className='fixed bottom-24 right-5 z-[182] touch-none sm:bottom-8 sm:right-8'
+          >
+            <motion.button
+              ref={triggerRef}
+              type='button'
+              onClick={openComposer}
+              aria-label='Criar nova história'
+              aria-expanded='false'
+              className='relative grid h-16 w-16 place-items-center rounded-full border-4 border-white bg-brand-blue text-white shadow-[0_18px_42px_-13px_rgba(55,181,247,0.9)] outline-none focus-visible:ring-4 focus-visible:ring-brand-yellow/70'
+              whileHover={reduceMotion ? undefined : { scale: 1.04 }}
+              whileTap={reduceMotion ? undefined : { scale: 0.94 }}
+            >
+              <PenLine size={23} aria-hidden='true' />
+            </motion.button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>,
     document.body,
   );

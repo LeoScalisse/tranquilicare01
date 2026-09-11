@@ -6,6 +6,7 @@ import {
 import type {
   CreatePaymentResult,
   PaymentMethod,
+  PayerIdentification,
   PaymentProviderName,
   PaymentRecipient,
 } from '../domain/payment.types.ts';
@@ -53,6 +54,7 @@ export interface StartDonationPaymentInput {
   campaignId?: string | null;
   amountCents: number;
   payerEmail?: string;
+  payerIdentification?: PayerIdentification;
   donor?: { id: string; email?: string } | null;
   successUrl: string;
   cancelUrl: string;
@@ -126,6 +128,7 @@ export class DonationPaymentService {
         successUrl: `${input.successUrl}${input.successUrl.includes('?') ? '&' : '?'}payment_confirmation_token=${encodeURIComponent(confirmation.token)}`,
         cancelUrl: input.cancelUrl,
         payerEmail: input.donor?.email ?? input.payerEmail,
+        payerIdentification: input.payerIdentification,
         metadata: {
           payment_id: paymentId,
           organization_id: input.organizationId,

@@ -11,12 +11,18 @@ Arquitetura escolhida: **Marketplace Split 1:1**. Cada ONG autoriza sua própria
 conta Mercado Pago via OAuth PKCE; o PIX é criado usando o token da ONG e a taxa
 do TranquiliCare é enviada como `application_fee`.
 
+O valor escolhido pelo doador é destinado à ONG, mas não representa promessa
+de valor líquido: a tarifa de processamento do Mercado Pago é descontada do
+saldo do vendedor conforme as condições comerciais da conta. A taxa de 5% do
+TranquiliCare é adicionada ao total cobrado e separada pelo split.
+
 Referências oficiais:
 
 - [Pré-requisitos do Split 1:1](https://www.mercadopago.com.br/developers/pt/docs/split-payments/split-1-1/prerequisites)
 - [Configuração OAuth do Marketplace](https://www.mercadopago.com.br/developers/pt/docs/split-payments/split-1-1/integration-configuration/create-configuration)
 - [Integração do Marketplace e application_fee](https://www.mercadopago.com.br/developers/pt/docs/split-payments/split-1-1/integration-configuration/integrate-marketplace)
 - [PIX no Checkout Transparente](https://www.mercadopago.com.br/developers/pt/docs/checkout-bricks/payment-brick/payment-submission/pix)
+- [Webhooks e validação de assinatura](https://www.mercadopago.com.br/developers/pt/docs/your-integrations/notifications/webhooks)
 
 ## Bloqueadores externos
 
@@ -82,7 +88,8 @@ procedimento de recriptografia; isso tornaria os tokens armazenados ilegíveis.
 7. Confirme que a allowlist contém somente o UUID da ONG piloto.
 8. Troque `MERCADO_PAGO_LIVEMODE=true`.
 9. Faça uma doação real de baixo valor com contas distintas de pagador e
-   recebedor. Valide QR, webhook, confirmação, valor líquido da ONG e taxa do
+   recebedor. Use dados reais e válidos de e-mail/CPF do pagador. Valide QR,
+   webhook, confirmação, valor líquido da ONG, tarifa do Mercado Pago e taxa do
    TranquiliCare.
 10. Mantenha o piloto restrito por pelo menos 24 horas antes de adicionar outra
     ONG à allowlist.

@@ -1,6 +1,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.53.0';
 import { PaymentError } from '../domain/payment.errors.ts';
 import { normalizePayerEmail } from '../domain/payer-email.ts';
+import { normalizePayerIdentification } from '../domain/payer-identification.ts';
 import { PAYMENT_PROVIDER_NAMES, type PaymentMethod, type PaymentProviderName } from '../domain/payment.types.ts';
 import { SupabaseDonationPaymentRepository } from '../infrastructure/supabase-payment-repository.ts';
 import { SupabasePaymentRateLimitRepository } from '../infrastructure/supabase-payment-rate-limit-repository.ts';
@@ -53,6 +54,9 @@ export const createPaymentHandler = (options: CreatePaymentHandlerOptions = {}) 
   const provider = parseProvider(body.provider);
   const method = (body.method ?? 'card') as PaymentMethod;
   const suppliedPayerEmail = body.payerEmail === undefined ? null : normalizePayerEmail(body.payerEmail);
+  const payerIdentification = body.payerIdentification === undefined
+    ? null
+    : normalizePayerIdentification(body.payerIdentification);
   if (!organizationId || organizationId.length > 100 || amountCents === null) {
     return jsonResponse({ error: 'Invalid payment input' }, 400, headers);
   }
@@ -60,6 +64,9 @@ export const createPaymentHandler = (options: CreatePaymentHandlerOptions = {}) 
   if (!['card', 'pix', 'boleto'].includes(method)) return jsonResponse({ error: 'Invalid payment method' }, 400, headers);
   if (body.payerEmail !== undefined && !suppliedPayerEmail) {
     return jsonResponse({ error: 'Invalid payer email', code: 'payer-email-invalid' }, 400, headers);
+  }
+  if (body.payerIdentification !== undefined && !payerIdentification) {
+    return jsonResponse({ error: 'Invalid payer identification', code: 'payer-identification-invalid' }, 400, headers);
   }
 
   const userClient = createClient(supabaseUrl, anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -72,12 +79,16 @@ export const createPaymentHandler = (options: CreatePaymentHandlerOptions = {}) 
   }
 
   const payerEmail = normalizePayerEmail(donor?.email) ?? suppliedPayerEmail;
+  const mercadoPagoLive = Deno.env.get('MERCADO_PAGO_LIVEMODE') === 'true';
   if (provider === 'mercado_pago' && method === 'pix' && !payerEmail) {
     return jsonResponse({ error: 'Payer email is required for PIX', code: 'payer-email-required' }, 400, headers);
   }
+  if (provider === 'mercado_pago' && method === 'pix' && mercadoPagoLive && !payerIdentification) {
+    return jsonResponse({ error: 'Payer CPF is required for PIX', code: 'payer-identification-required' }, 400, headers);
+  }
   if (provider === 'mercado_pago' && !isLiveOrganizationAllowed(
     organizationId,
-    Deno.env.get('MERCADO_PAGO_LIVEMODE') === 'true',
+    mercadoPagoLive,
     Deno.env.get('MERCADO_PAGO_LIVE_ORGANIZATION_ALLOWLIST') ?? null,
   )) {
     return jsonResponse({
@@ -111,6 +122,7 @@ export const createPaymentHandler = (options: CreatePaymentHandlerOptions = {}) 
       campaignId,
       amountCents,
       payerEmail: payerEmail ?? undefined,
+      payerIdentification: payerIdentification ?? undefined,
       donor,
       successUrl: `${appUrl}/?payment=success&payment_action_id={PAYMENT_ACTION_ID}`,
       cancelUrl: `${appUrl}/?payment=cancelled`,

@@ -16,9 +16,15 @@ const mercadoEvent = async (
   admin: ReturnType<typeof createClient>,
 ) => {
   const secret = Deno.env.get("MERCADO_PAGO_WEBHOOK_SECRET");
-  const body = JSON.parse(payload) as { id?: string; data?: { id?: string } };
+  const body = JSON.parse(payload) as {
+    id?: string | number;
+    data?: { id?: string | number };
+  };
   const url = new URL(request.url);
-  const orderId = url.searchParams.get("data.id") ?? body.data?.id;
+  const rawOrderId = url.searchParams.get("data.id") ?? body.data?.id;
+  const orderId = rawOrderId === undefined || rawOrderId === null
+    ? null
+    : String(rawOrderId).toLowerCase();
   const requestId = request.headers.get("x-request-id");
   const signature = request.headers.get("x-signature");
   if (!secret || !orderId || !signature)
@@ -45,10 +51,13 @@ const mercadoEvent = async (
       false,
       ["sign"],
     ),
+    manifest = requestId
+      ? `id:${orderId};request-id:${requestId};ts:${ts};`
+      : `id:${orderId};ts:${ts};`,
     data = await crypto.subtle.sign(
       "HMAC",
       key,
-      new TextEncoder().encode(`id:${orderId};ts:${ts};`),
+      new TextEncoder().encode(manifest),
     ),
     expected = Array.from(new Uint8Array(data), (x) =>
       x.toString(16).padStart(2, "0"),
@@ -61,28 +70,6 @@ const mercadoEvent = async (
   )
     diff |=
       (expected.charCodeAt(index) || 0) ^ (received.charCodeAt(index) || 0);
-  if (diff !== 0 && requestId) {
-    const withRequestIdData = await crypto.subtle.sign(
-        "HMAC",
-        key,
-        new TextEncoder().encode(
-          `id:${orderId};request-id:${requestId};ts:${ts};`,
-        ),
-      ),
-      withRequestIdExpected = Array.from(
-        new Uint8Array(withRequestIdData),
-        (value) => value.toString(16).padStart(2, "0"),
-      ).join("");
-    diff = withRequestIdExpected.length ^ received.length;
-    for (
-      let index = 0;
-      index < Math.max(withRequestIdExpected.length, received.length);
-      index += 1
-    )
-      diff |=
-        (withRequestIdExpected.charCodeAt(index) || 0) ^
-        (received.charCodeAt(index) || 0);
-  }
   if (diff !== 0)
     throw new PaymentError(
       "mercado-pago-webhook-signature-mismatch",
@@ -116,7 +103,9 @@ const mercadoEvent = async (
   });
   return {
     provider: "mercado_pago" as const,
-    providerEventId: body.id ?? `${orderId}:${ts}`,
+    providerEventId: body.id === undefined || body.id === null
+      ? `${orderId}:${ts}`
+      : String(body.id),
     providerActionId: orderId,
     providerPaymentId: status.providerPaymentId ?? null,
     donationId: status.donationId ?? null,

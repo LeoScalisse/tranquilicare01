@@ -35,8 +35,11 @@ The canonical types live in
 
 `donationAmountCents`, `platformFeeCents`, `processingFeeCents`,
 `totalAmountCents`, and recipient amounts are intentionally separate. The
-current rule remains: the amount chosen as the donation is the expected amount
-for the organization; the 5% platform support is added to the charged total.
+current rule is: the amount chosen by the donor is destined to the organization
+and the 5% platform support is added to the charged total. Mercado Pago deducts
+its own processing tariff from the seller balance according to the commercial
+conditions of that account, so the interface must not promise that the chosen
+amount is the organization's net settlement amount.
 
 ## Services
 
@@ -96,6 +99,10 @@ Frontend: startDonationPayment
 
 The frontend only consumes a `PaymentAction` (`redirect`, `qr_code`,
 `client_secret`, or `completed`). It cannot mark a payment as paid.
+
+For live Mercado Pago PIX, the frontend collects the payer e-mail and CPF. The
+backend validates both, forwards them to Mercado Pago and does not persist the
+CPF in the TranquiliCare payment tables.
 
 The old `create-checkout-session`, `confirm-checkout-session`, and
 `stripe-webhook` functions remain thin compatibility wrappers during rollout.

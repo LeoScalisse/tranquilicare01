@@ -43,6 +43,7 @@ import {
   VERIFICATION_DISCOVERY_PATH,
 } from "@/lib/discoveryNavigation";
 import DonationAmountWheel from "@/components/ui/donation-amount-wheel";
+import { SmoothInput } from "@/components/ui/smooth-input";
 import DonationThankYouDialog from "@/components/DonationThankYouDialog";
 import ImpactTranslation from "@/components/ImpactTranslation";
 import AppleEdgeGlow from "@/components/ui/apple-edge-glow";
@@ -67,6 +68,7 @@ import {
   isTranquiliCarePrototypeAccount,
   isTranquiliCarePrototypeOrganization,
 } from "@/data/tranquilicarePrototype";
+import { cpfDigits, formatCpf, isValidCpf } from "@/lib/payerIdentification";
 
 type ProfileTab = "causa" | "historias" | "impacto" | "after_donation" | "admin";
 
@@ -143,7 +145,9 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   const [showGoalModal, setShowGoalModal] = useState(false);
   const [showDonationModal, setShowDonationModal] = useState(false);
   const [donationAmount, setDonationAmount] = useState<number | null>(null);
-  const payerEmail = getUser()?.email ?? "";
+  const accountPayerEmail = currentDonor?.email ?? "";
+  const [payerEmailInput, setPayerEmailInput] = useState(accountPayerEmail);
+  const [payerCpf, setPayerCpf] = useState("");
   const [isStartingCheckout, setIsStartingCheckout] = useState(false);
   const [zoomedPost, setZoomedPost] = useState<NGOPost | null>(null);
   const [pixPayment, setPixPayment] = useState<
@@ -208,8 +212,13 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
         : 0,
     [donationAmount],
   );
-  const isDonationAmountValid = amountCents >= 51 && amountCents <= 10_000_000;
-  const normalizedPayerEmail = payerEmail.trim().toLowerCase();
+  const isDonationAmountValid = amountCents >= 50 && amountCents <= 10_000_000;
+  const normalizedPayerEmail = (accountPayerEmail || payerEmailInput).trim().toLowerCase();
+  const normalizedPayerCpf = cpfDigits(payerCpf);
+  const requiresRealPayerDetails = !isPrototypeDonationTarget && !donationSimulationEnabled;
+  const payerEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedPayerEmail);
+  const payerDetailsValid = !requiresRealPayerDetails
+    || (payerEmailValid && isValidCpf(normalizedPayerCpf));
   const platformFeeCents = Math.round(amountCents * 0.05);
   const totalCents = amountCents + platformFeeCents;
   const donationGlowStage: 0 | 1 | 2 | 3 | 4 = !showDonationModal
@@ -272,8 +281,12 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
   };
 
   const startPixDonation = async () => {
-    if (amountCents < 51 || amountCents > 10_000_000) {
-      toast("Escolha um valor entre R$ 0,51 e R$ 100.000,00.");
+    if (amountCents < 50 || amountCents > 10_000_000) {
+      toast("Escolha um valor entre R$ 0,50 e R$ 100.000,00.");
+      return;
+    }
+    if (!payerDetailsValid) {
+      toast("Confira o e-mail e informe um CPF válido para gerar o PIX.");
       return;
     }
 
@@ -291,11 +304,15 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
               organizationId: ngo.id,
               amountCents,
             })
-          : await startMercadoPagoPixDonation({
-              organizationId: ngo.id,
-              amountCents,
-              payerEmail: normalizedPayerEmail || undefined,
-            });
+           : await startMercadoPagoPixDonation({
+               organizationId: ngo.id,
+               amountCents,
+               payerEmail: normalizedPayerEmail || undefined,
+               payerIdentification: {
+                 type: "CPF",
+                 number: normalizedPayerCpf,
+               },
+             });
       setPixPayment(payment);
       setIsPixExpanded(false);
       setDonationCheckoutStage("pix");
@@ -728,27 +745,64 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                   }}
                 >
                   <h2 className="mb-4 max-w-sm pr-10 font-display text-xl font-semibold leading-snug text-brand-ink">
-                    Quanto você quer fazer chegar à {ngo.name}?
+                    Quanto você quer destinar à {ngo.name}?
                   </h2>
                   <DonationAmountWheel
                     id="donation-amount"
                     value={donationAmount}
                     onValueChange={setDonationAmount}
-                    min={0.51}
+                    min={0.5}
                     max={100_000}
                     step={5}
-                    label={`Quanto você quer fazer chegar à ${ngo.name}?`}
+                    label={`Quanto você quer destinar à ${ngo.name}?`}
                   />
+                  {requiresRealPayerDetails && (
+                    <fieldset className="mt-5 rounded-lg border border-brand-ink/10 bg-background p-4">
+                      <legend className="px-1 text-sm font-bold text-brand-ink">Dados para o PIX</legend>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                          <label htmlFor="donation-payer-email" className="mb-1.5 block text-sm font-semibold text-brand-ink">E-mail do pagador</label>
+                          <SmoothInput
+                            id="donation-payer-email"
+                            type="text"
+                            inputMode="email"
+                            autoComplete="email"
+                            value={accountPayerEmail || payerEmailInput}
+                            readOnly={Boolean(accountPayerEmail)}
+                            onChange={(event) => setPayerEmailInput(event.target.value)}
+                            aria-invalid={payerEmailInput.length > 0 && !payerEmailValid}
+                            className="min-h-11 w-full rounded-xl border border-brand-ink/15 bg-secondary/45 px-3 text-sm outline-none transition focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10 read-only:cursor-default read-only:opacity-75"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="donation-payer-cpf" className="mb-1.5 block text-sm font-semibold text-brand-ink">CPF do pagador</label>
+                          <SmoothInput
+                            id="donation-payer-cpf"
+                            type="tel"
+                            inputMode="numeric"
+                            autoComplete="off"
+                            value={payerCpf}
+                            onChange={(event) => setPayerCpf(formatCpf(event.target.value))}
+                            placeholder="000.000.000-00"
+                            maxLength={14}
+                            aria-invalid={normalizedPayerCpf.length === 11 && !isValidCpf(normalizedPayerCpf)}
+                            className="min-h-11 w-full rounded-xl border border-brand-ink/15 bg-secondary/45 px-3 text-sm outline-none transition focus:border-brand-blue focus:ring-4 focus:ring-brand-blue/10"
+                          />
+                        </div>
+                      </div>
+                      <p className="mt-3 text-xs leading-5 text-muted-foreground">Esses dados são enviados ao Mercado Pago para processar o PIX e não são salvos pelo TranquiliCare.</p>
+                    </fieldset>
+                  )}
                   <div className="mt-5 rounded-lg border border-brand-ink/8 bg-secondary/45 p-4 text-sm">
                     <button
                       id={donationIntegrityTriggerId}
                       type="button"
                       onClick={openDonationIntegrityDiscovery}
                       className="block w-full rounded-md text-left outline-none transition-colors hover:text-brand-blue focus-visible:ring-2 focus-visible:ring-brand-blue/40"
-                      aria-label="Entender como 100% da doação chega à organização"
+                      aria-label="Entender o caminho e as taxas da doação"
                     >
                       <span className="block font-semibold text-muted-foreground">
-                        Sua doação para {ngo.name}
+                        Valor destinado a {ngo.name}
                       </span>
                       <strong className="mt-0.5 block text-base text-brand-ink">
                         {donationAmount === null
@@ -758,7 +812,7 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                     </button>
                     <div className="mt-3">
                       <span className="block font-semibold text-muted-foreground">
-                        TranquiliCare · 5%
+                        Apoio ao TranquiliCare · 5%
                       </span>
                       <strong className="mt-0.5 block text-base text-brand-ink">
                         {donationAmount === null
@@ -777,16 +831,17 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                   </div>
                   <p className="mt-4 text-sm font-medium leading-6 text-muted-foreground">
                     {donationAmount === null ? (
-                      "Escolha um valor para ver como sua doação chega à organização."
+                      "Escolha um valor para ver a composição do pagamento."
                     ) : (
-                      <>Os <strong className="font-bold text-brand-ink">{formatBRL(amountCents)}</strong> que você escolheu chegam à organização. O valor do TranquiliCare é adicionado separadamente.</>
+                      <>Os <strong className="font-bold text-brand-ink">{formatBRL(amountCents)}</strong> são destinados à organização. O Mercado Pago desconta sua tarifa de processamento desse valor; os 5% do TranquiliCare são adicionados ao total e separados pelo split.</>
                     )}
                   </p>
                   {donationAmount !== null && isDonationAmountValid && <ImpactTranslation organizationId={ngo.id} category={ngo.category} amountCents={amountCents} />}
                   <button
                     disabled={
                       isStartingCheckout ||
-                      !isDonationAmountValid
+                      !isDonationAmountValid ||
+                      !payerDetailsValid
                     }
                     onClick={() => void startPixDonation()}
                     className="tc-button-3d mt-5 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 font-bold text-white disabled:opacity-60"
@@ -800,7 +855,9 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
                       ? "Preparando seu PIX..."
                       : donationAmount === null
                         ? "Escolha um valor"
-                        : "Continuar"}
+                        : !payerDetailsValid
+                          ? "Preencha os dados do PIX"
+                          : "Continuar"}
                   </button>
                 </motion.section>
               )}

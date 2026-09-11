@@ -144,8 +144,10 @@ describe("NGOProfile PIX checkout", () => {
     const amountInput = screen.getByLabelText(/em reais$/i);
     fireEvent.change(amountInput, { target: { value: "50" } });
     fireEvent.blur(amountInput);
-    expect(screen.getByText("TranquiliCare · 5%")).not.toBeNull();
-    expect(screen.getByText((_, element) => element?.textContent?.includes("que você escolheu chegam à organização. O valor do TranquiliCare é adicionado separadamente.") ?? false, { selector: "p" })).not.toBeNull();
+    fireEvent.change(screen.getByLabelText("E-mail do pagador"), { target: { value: "doador@exemplo.com" } });
+    fireEvent.change(screen.getByLabelText("CPF do pagador"), { target: { value: "52998224725" } });
+    expect(screen.getByText("Apoio ao TranquiliCare · 5%")).not.toBeNull();
+    expect(screen.getByText((_, element) => element?.textContent?.includes("são destinados à organização") ?? false, { selector: "p" })).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Continuar" }));
 
     expect(await screen.findByText("PIX PRONTO")).not.toBeNull();
@@ -180,7 +182,8 @@ describe("NGOProfile PIX checkout", () => {
     expect(startPix).toHaveBeenCalledWith({
       organizationId: demoNgos[0].id,
       amountCents: 5000,
-      payerEmail: undefined,
+      payerEmail: "doador@exemplo.com",
+      payerIdentification: { type: "CPF", number: "52998224725" },
     });
     expect(
       document.querySelector(".apple-edge-glow")?.getAttribute("data-stage"),
@@ -193,7 +196,7 @@ describe("NGOProfile PIX checkout", () => {
     expect(screen.queryByText("Assim que o PIX for identificado, sua doação será confirmada automaticamente.")).toBeNull();
     expect(waitForConfirmation).toHaveBeenCalledWith(
       "ORD-1",
-      null,
+      "doador@exemplo.com",
       "confirmation-token",
     );
 
