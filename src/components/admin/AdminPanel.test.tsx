@@ -2,7 +2,12 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import AdminPanel from './AdminPanel';
 import { listAdminUsers, listAdminDonations, type AdminUser } from '@/lib/platformAdmin';
-vi.mock('@/lib/platformAdmin', () => ({ listAdminUsers: vi.fn(), listAdminDonations: vi.fn() }));
+vi.mock('@/lib/platformAdmin', () => ({
+  listAdminUsers: vi.fn(),
+  listAdminDonations: vi.fn(),
+  listAdminOrganizationVerifications: vi.fn().mockResolvedValue({ total: 0, verifications: [] }),
+  reviewAdminOrganizationVerification: vi.fn(),
+}));
 const person: AdminUser = { id: 'test-user', name: 'Pessoa de teste', email: 'teste@example.com', account_type: 'donor', created_at: '2026-09-10T12:00:00Z', donation_count: 2, donated_cents: 5000, received_cents: 0, story_count: 3, conversation_count: 4, sent_message_count: 8, received_message_count: 7 };
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 describe('Admin reports', () => {

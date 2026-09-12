@@ -29,6 +29,7 @@ const DonationIntegrityDiscovery = lazy(() => import('./pages/DonationIntegrityD
 const CreateCampaign = lazy(() => import('./pages/CreateCampaign'));
 const Chats = lazy(() => import('./pages/Chats'));
 const PublicUserProfile = lazy(() => import('./pages/PublicUserProfile'));
+const AdminPage = lazy(() => import('./pages/AdminPage'));
 
 interface DiscoveryRouteState {
   backgroundLocation?: Location;
@@ -78,6 +79,7 @@ const AppRoutes = () => {
           <Route path='/chats' element={<Chats />} />
           <Route path='/ong/:ngoId' element={<NGOPublicProfile />} />
           <Route path='/perfil/:profileId' element={<PublicUserProfile />} />
+          <Route path='/admin' element={<AdminPage />} />
           <Route path='/auth/callback' element={<AuthCallback />} />
           <Route path='/descobertas/verificacao' element={<VerificationDiscovery />} />
           <Route path='/descobertas/doacao-integral' element={<DonationIntegrityDiscovery />} />

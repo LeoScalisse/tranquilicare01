@@ -152,6 +152,25 @@ describe('data architecture boundaries', () => {
     expect(onboarding).toContain('MercadoPagoConnectionCard');
     expect(publicProfile).not.toContain('MercadoPagoConnectionCard');
   });
+  it('restricts organization review to platform admins and synchronizes donation eligibility', () => {
+    const migration = read('supabase/migrations/20260912163417_secure_organization_verification_reviews.sql');
+    const grants = read('supabase/migrations/20260912165405_grant_admin_verification_view_dependencies.sql');
+    const stateSync = read('supabase/migrations/20260912170020_allow_internal_verification_state_sync.sql');
+    expect(migration).toContain('organization_verifications_platform_admin_update');
+    expect(migration).toContain('private.platform_administrators');
+    expect(migration).toContain('platform_admin_access_required');
+    expect(migration).toContain('with (security_invoker = true)');
+    expect(migration).toContain('organization_has_active_payment_connection');
+    expect(migration).toContain("verification_status = 'verified'");
+    expect(migration).toContain("payment_status = case when payment_connection_ready then 'enabled'");
+    expect(migration).toContain('after insert or update of');
+    expect(grants).toContain('admin_list_organization_verifications');
+    expect(grants).toContain('if not public.get_platform_admin_access()');
+    expect(grants).toContain('set search_path =');
+    expect(grants).not.toContain('grant select on table public.organizations');
+    expect(stateSync).toContain('pg_trigger_depth() <= 1');
+    expect(stateSync).toContain('is_direct_client_write');
+  });
   it('awards category badges only from confirmed donations and limits client writes', () => {
     const migration = read('supabase/migrations/20260824000100_donor_category_badges.sql');
     expect(migration).toContain('create table if not exists public.badge_catalog');

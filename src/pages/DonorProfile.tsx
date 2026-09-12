@@ -18,6 +18,7 @@ import {
   Mail,
   Pencil,
   Save,
+  ShieldCheck,
   Phone,
   User as UserIcon,
   WalletCards,
@@ -36,6 +37,7 @@ import { formatPhone, isValidInstagram, isValidPhone, normalizePhone } from '@/l
 import { profileImageErrorMessage, uploadProfileAvatar } from '@/lib/profileMedia';
 import StoryComposerFab from '@/components/ui/story-composer-fab';
 import { publishStory, storyErrorMessage } from '@/lib/stories';
+import { getPlatformAdminAccess } from '@/lib/platformAdmin';
 
 const DAY_MS = 86_400_000;
 const EMPTY_DONOR_DETAILS: DonorProfileDetails = {
@@ -63,6 +65,7 @@ const DonorProfile: React.FC = () => {
   const [dirty, setDirty] = useState(false);
   const [editingProfile, setEditingProfile] = useState(isSetup);
   const [knownNgos, setKnownNgos] = useState<NGO[]>([]);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { rows } = useDonationImpact(user?.id ?? null, email || null);
@@ -136,6 +139,15 @@ const DonorProfile: React.FC = () => {
     }).catch(() => {
       if (active) setKnownNgos([]);
     });
+    return () => { active = false; };
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return undefined;
+    let active = true;
+    void getPlatformAdminAccess()
+      .then((allowed) => { if (active) setIsPlatformAdmin(allowed); })
+      .catch(() => { if (active) setIsPlatformAdmin(false); });
     return () => { active = false; };
   }, [user]);
 
@@ -279,6 +291,11 @@ const DonorProfile: React.FC = () => {
                 </button>
               </div>
               <p className='mt-1 text-sm text-muted-foreground'>{email}</p>
+              {isPlatformAdmin && (
+                <button onClick={() => navigate('/admin')} className='mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-brand-blue/20 bg-brand-blue/10 px-4 py-2.5 text-sm font-bold text-brand-blue shadow-sm transition hover:-translate-y-0.5 hover:bg-brand-blue hover:text-white focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-blue/20'>
+                  <ShieldCheck size={17} aria-hidden='true' />Abrir administração
+                </button>
+              )}
               {details.bio && <p className='font-narrative mt-3 max-w-2xl text-sm leading-6 text-muted-foreground'>{details.bio}</p>}
               {(details.location || details.instagram || details.phone) && (
                 <div className='mt-3 flex flex-wrap justify-center gap-x-4 gap-y-2 text-sm font-semibold text-brand-ink/75 sm:justify-start'>

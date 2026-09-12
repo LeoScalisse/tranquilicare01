@@ -3,6 +3,7 @@ import { RefreshCw, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SmoothInput } from '@/components/ui/smooth-input';
 import { listAdminUsers, listAdminDonations, type AdminUser, type AdminDonation } from '@/lib/platformAdmin';
+import AdminVerificationPanel from './AdminVerificationPanel';
 
 const money = (cents: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(cents) / 100);
 const date = (value: string) => new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short' }).format(new Date(value));
@@ -44,12 +45,17 @@ export default function AdminPanel() {
 
   useEffect(() => { if (selected) detailRef.current?.focus(); }, [selected]);
 
-  return <section aria-labelledby='admin-heading' className='space-y-6'>
+  return <section aria-labelledby='admin-heading' className='space-y-8'>
     <div className='flex flex-wrap items-start justify-between gap-4'>
       <div><h2 id='admin-heading' className='font-display text-2xl font-semibold'>Admin</h2>
         <p className='mt-2 text-sm text-muted-foreground'>Acompanhe os cadastros e a participação da comunidade, do mais recente ao mais antigo.</p>
         <p className='mt-1 text-xs text-muted-foreground'>Valores de doações confirmadas, sem testes. Mensagens são contabilizadas; o conteúdo das conversas permanece privado.</p></div>
       <Button variant='secondary' onClick={() => setRevision(value => value + 1)} disabled={loading}><RefreshCw size={16} />Atualizar</Button>
+    </div>
+    <AdminVerificationPanel />
+    <div className='border-t border-border pt-8'>
+      <h3 className='font-display text-xl font-semibold'>Relatórios da comunidade</h3>
+      <p className='mt-1 text-sm text-muted-foreground'>Consulte cadastros e doações sem acessar o conteúdo privado das conversas.</p>
     </div>
     <form className='flex flex-wrap items-end gap-3' onSubmit={event => { event.preventDefault(); setFilters(current => ({...current, search: search.trim(), page: 0})); }}>
       <div className='min-w-0 flex-1 basis-60'><label htmlFor='admin-search' className='mb-2 block text-sm font-semibold'>Nome ou e-mail</label><SmoothInput id='admin-search' value={search} onChange={event => setSearch(event.target.value)} maxLength={120} placeholder='Buscar na comunidade' className='w-full rounded-xl border border-border bg-white px-3 py-2.5' /></div>

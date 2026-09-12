@@ -12,6 +12,28 @@ export interface AdminDonation {
   id: string; amount_cents: number; status: string; created_at: string;
   organization_name: string | null; direction: 'sent' | 'received';
 }
+export type OrganizationVerificationStatus = 'pending' | 'in_review' | 'approved' | 'rejected';
+export interface AdminOrganizationVerification {
+  organization_id: string;
+  name: string;
+  public_email: string | null;
+  cnpj: string | null;
+  address: string;
+  city: string | null;
+  state: string | null;
+  organization_status: string;
+  verification_status: OrganizationVerificationStatus;
+  submitted_at: string | null;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  internal_notes: string | null;
+  updated_at: string;
+  document_count: number;
+  accepted_document_count: number;
+  mercado_pago_connected: boolean;
+  payout_status: string | null;
+  payment_status: string | null;
+}
 export async function getPlatformAdminAccess(): Promise<boolean> {
   if (!supabase) return false;
   const { data, error } = await supabase.rpc('get_platform_admin_access');
@@ -29,4 +51,36 @@ export async function listAdminDonations(profileId: string, page: number): Promi
   const { data, error } = await supabase.rpc('admin_user_donations', {target_profile_id: profileId, page_number: page});
   if (error) throw error;
   return data;
+}
+
+export async function listAdminOrganizationVerifications(
+  status: 'queue' | OrganizationVerificationStatus | 'all',
+  page: number,
+): Promise<{ total: number; verifications: AdminOrganizationVerification[] }> {
+  if (!supabase) throw new Error('admin_unavailable');
+  const { data, error } = await supabase.rpc('admin_list_organization_verifications', {
+    status_filter: status,
+    page_number: page,
+  });
+  if (error) throw error;
+  return data as { total: number; verifications: AdminOrganizationVerification[] };
+}
+
+export async function reviewAdminOrganizationVerification(
+  organizationId: string,
+  decision: 'approved' | 'rejected',
+  notes: string,
+): Promise<void> {
+  if (!supabase) throw new Error('admin_unavailable');
+  const { data, error } = await supabase
+    .from('organization_verifications')
+    .update({
+      status: decision,
+      internal_notes: notes.trim() || null,
+    })
+    .eq('organization_id', organizationId)
+    .select('organization_id,status')
+    .single();
+  if (error) throw error;
+  if (!data || data.status !== decision) throw new Error('verification_not_persisted');
 }
