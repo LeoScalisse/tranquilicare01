@@ -8,6 +8,7 @@ import { BRAZILIAN_STATES } from '@/lib/organizationProfile';
 import { gsap, useGSAP } from '@/lib/gsap';
 import type { NgoProfileDetails } from '@/lib/authTypes';
 import NGOVisualOnboardingStep, { type NGOVisualSetupInput } from '@/components/ngo-profile/NGOVisualOnboardingStep';
+import MercadoPagoConnectionCard from '@/components/ngo-profile/MercadoPagoConnectionCard';
 import type { NGO } from '@/types';
 import founderSeal from '@/assets/founder-ngo-seal.png';
 
@@ -15,6 +16,7 @@ export type SetupStage = 3 | 'visual' | 4;
 
 type Props = {
   stage: SetupStage;
+  organizationId: string;
   organizationName: string;
   avatar: string | null;
   details: NgoProfileDetails;
@@ -35,6 +37,7 @@ const labelClass = 'block text-sm font-bold text-brand-ink';
 
 export const NGOOnboardingFlow = ({
   stage,
+  organizationId,
   organizationName,
   avatar,
   details,
@@ -179,14 +182,6 @@ export const NGOOnboardingFlow = ({
     );
   }
 
-  const payoutCopy = details.payoutStatus === 'configured'
-    ? 'Recebimentos configurados'
-    : details.payoutStatus === 'in_review'
-      ? 'Recebimentos em análise'
-      : details.payoutStatus === 'needs_review'
-        ? 'Precisamos revisar algumas informações'
-        : 'Recebimentos ainda não configurados';
-
   return (
     <main ref={scope} className='mx-auto w-full max-w-xl px-5 pb-20 pt-10 sm:pt-16'>
       <p data-onboarding-entry className='text-sm font-bold text-brand-blue'>4 de 4</p>
@@ -208,11 +203,10 @@ export const NGOOnboardingFlow = ({
           <div className='flex gap-3'><ShieldCheck className='mt-0.5 text-brand-blue' size={19} /><div><h2 className='font-display text-xl font-semibold'>Responsável</h2><p className='mt-1 text-sm leading-6 text-muted-foreground'>A organização será revisada a partir do acesso autenticado e dos dados institucionais informados.</p></div></div>
         </section>
 
-        <section className='border-t border-brand-ink/10 pt-7'>
-          <div className='flex gap-3'><CircleDollarSign className='mt-0.5 text-brand-blue' size={19} /><div><h2 className='font-display text-xl font-semibold'>Recebimentos</h2><p className='mt-1 text-sm leading-6 text-muted-foreground'>Configure onde os valores destinados à sua causa serão recebidos.</p></div></div>
-          <div className='mt-4 flex items-center justify-between gap-3 rounded-xl bg-secondary/70 px-4 py-3'>
-            <span className='text-sm font-semibold text-brand-ink'>{payoutCopy}</span>
-            {details.payoutStatus !== 'configured' && <span className='text-xs font-bold text-brand-blue'>{details.payoutStatus === 'needs_review' ? 'Revisar recebimentos' : 'Configurar recebimentos'}</span>}
+        <section className='border-t border-brand-ink/10 pt-7' aria-labelledby='setup-receivables-title'>
+          <div className='flex gap-3'><CircleDollarSign className='mt-0.5 text-brand-blue' size={19} /><div><h2 id='setup-receivables-title' className='font-display text-xl font-semibold'>Recebimentos</h2><p className='mt-1 text-sm leading-6 text-muted-foreground'>Configure onde os valores destinados à sua causa serão recebidos.</p></div></div>
+          <div className='mt-5'>
+            <MercadoPagoConnectionCard organizationId={organizationId} embedded />
           </div>
         </section>
 

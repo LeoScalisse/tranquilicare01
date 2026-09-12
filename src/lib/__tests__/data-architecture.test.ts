@@ -130,10 +130,10 @@ describe('data architecture boundaries', () => {
     expect(reconciliation).toContain('recipientId: payment.recipient_id');
     expect(config).toContain('[functions.reconcile-payments]');
   });
-  it('keeps the Mercado Pago connection prompt out of public and account profiles', () => {
-    const page = read('src/pages/NGOAccountProfile.tsx');
+  it('keeps the Mercado Pago connection private and available only in the organization setup', () => {
+    const onboarding = read('src/components/ngo-profile/NGOOnboardingFlow.tsx');
     const publicProfile = read('src/pages/NGOPublicProfile.tsx');
-    expect(page).not.toContain('MercadoPagoConnectionCard');
+    expect(onboarding).toContain('MercadoPagoConnectionCard');
     expect(publicProfile).not.toContain('MercadoPagoConnectionCard');
   });
   it('awards category badges only from confirmed donations and limits client writes', () => {

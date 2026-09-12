@@ -369,6 +369,7 @@ const NGOAccountProfile: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const setupValue = searchParams.get('setup');
   const isPreparationManagement = searchParams.get('preparation') === '1';
+  const mercadoPagoResult = searchParams.get('mercado_pago');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -444,6 +445,22 @@ const NGOAccountProfile: React.FC = () => {
   useEffect(() => onAuthChange((next) => {
     if (!next) navigate('/ngo/auth', { replace: true });
   }), [navigate]);
+
+  useEffect(() => {
+    if (!mercadoPagoResult) return;
+
+    if (mercadoPagoResult === 'connected') {
+      toast.success('Mercado Pago conectado. Os recebimentos já podem ser revisados.');
+    } else if (mercadoPagoResult === 'denied') {
+      toast.info('A conexão foi cancelada. Você pode tentar novamente quando quiser.');
+    } else if (mercadoPagoResult === 'configuration_error') {
+      toast.error('A configuração do Mercado Pago está incompleta. Confira as credenciais da integração.');
+    } else {
+      toast.error('Não foi possível conectar o Mercado Pago. Tente novamente.');
+    }
+
+    setSearchParams({ preparation: '1' }, { replace: true });
+  }, [mercadoPagoResult, setSearchParams]);
 
   useEffect(() => {
     if (!user || user.accountType !== 'ngo') return undefined;
@@ -822,6 +839,7 @@ const NGOAccountProfile: React.FC = () => {
       {(isOnboarding || isPreparationManagement || !profileSaved) ? (
         <NGOOnboardingFlow
           stage={setupStage}
+          organizationId={user?.id ?? ''}
           organizationName={name}
           avatar={avatar}
           details={details}
