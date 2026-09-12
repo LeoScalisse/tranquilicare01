@@ -61,12 +61,54 @@ export class SupabaseDonationPaymentRepository implements DonationPaymentReposit
       .maybeSingle();
     if (error) throw new PaymentError('recipient-load-failed', 'Could not load payment recipient', 500, { cause: error });
     if (!data) return null;
+    if (!data.livemode) {
+      return {
+        id: data.id,
+        organizationId: data.organization_id,
+        provider: data.provider as PaymentProviderName,
+        providerRecipientId: data.provider_recipient_id,
+        status: data.status,
+        livemode: data.livemode,
+      };
+    }
+    const organizationUuid = domainId(organizationId);
+    if (!organizationUuid) {
+      return {
+        id: data.id,
+        organizationId: data.organization_id,
+        provider: data.provider as PaymentProviderName,
+        providerRecipientId: data.provider_recipient_id,
+        status: 'restricted',
+        livemode: data.livemode,
+      };
+    }
+    const [{ data: organization, error: organizationError }, { data: ngo, error: ngoError }] =
+      await Promise.all([
+        this.client
+          .from('organizations')
+          .select('status')
+          .eq('id', organizationUuid)
+          .maybeSingle(),
+        this.client
+          .from('ngo_profiles')
+          .select('verification_status')
+          .eq('user_id', organizationUuid)
+          .maybeSingle(),
+      ]);
+    if (organizationError || ngoError) {
+      throw new PaymentError('recipient-eligibility-load-failed', 'Could not verify payment recipient eligibility', 500, {
+        cause: organizationError ?? ngoError,
+      });
+    }
+    const eligible = data.status === 'active'
+      && organization?.status === 'active'
+      && ngo?.verification_status === 'verified';
     return {
       id: data.id,
       organizationId: data.organization_id,
       provider: data.provider as PaymentProviderName,
       providerRecipientId: data.provider_recipient_id,
-      status: data.status,
+      status: eligible ? data.status : 'restricted',
       livemode: data.livemode,
     };
   }

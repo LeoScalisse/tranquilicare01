@@ -120,6 +120,20 @@ describe('data architecture boundaries', () => {
     expect(confirmHandler).toContain('recipientId: payment.recipient_id');
     expect(webhookHandler).toContain('recipientId: localPayment?.recipient_id');
   });
+  it('derives donation readiness from a usable live recipient and enforces institutional eligibility server-side', () => {
+    const migration = read('supabase/migrations/20260912115207_align_payment_readiness_with_live_recipient.sql');
+    const paymentRepository = read('supabase/functions/_shared/payments/infrastructure/supabase-payment-repository.ts');
+    const oauthRepository = read('supabase/functions/_shared/payments/infrastructure/supabase-mercado-pago-oauth-repository.ts');
+    expect(migration).toContain('organization_has_active_payment_connection');
+    expect(migration).toContain('recipient.livemode = true');
+    expect(migration).toContain('credential.disconnected_at is null');
+    expect(migration).toContain('credential.expires_at > now()');
+    expect(migration).toContain("ngo.verification_status = 'verified'");
+    expect(paymentRepository).toContain("organization?.status === 'active'");
+    expect(paymentRepository).toContain("ngo?.verification_status === 'verified'");
+    expect(paymentRepository).toContain('if (!data.livemode)');
+    expect(oauthRepository).toContain('organization_uuid: connection.organizationId');
+  });
   it('keeps production opt-in and reconciliation private', () => {
     const connect = read('supabase/functions/_shared/payments/http/mercado-pago-connect-handler.ts');
     const status = read('supabase/functions/_shared/payments/http/mercado-pago-connection-handler.ts');

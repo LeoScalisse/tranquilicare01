@@ -17,6 +17,7 @@ type AdminClient = SupabaseClient;
 
 export interface MercadoPagoConnectionStatus {
   connected: boolean;
+  readyToReceive?: boolean;
   recipientId?: string;
   providerUserId?: string;
   status?: string;
@@ -112,6 +113,7 @@ export class SupabaseMercadoPagoOAuthRepository
       .from("payment_recipients")
       .upsert({
         organization_id: connection.organizationId,
+        organization_uuid: connection.organizationId,
         provider: "mercado_pago",
         provider_recipient_id: connection.providerUserId,
         status: "active",
@@ -231,12 +233,39 @@ export class SupabaseMercadoPagoOAuthRepository
     if (!recipient) return { connected: false };
     const { data: credential, error: credentialError } = await this.client
       .from("payment_recipient_credentials")
-      .select("expires_at, disconnected_at")
+      .select("live_mode, expires_at, disconnected_at")
       .eq("recipient_id", recipient.id)
       .maybeSingle();
     if (credentialError) throw credentialError;
+    const credentialUsable = Boolean(
+      credential
+        && !credential.disconnected_at
+        && new Date(credential.expires_at).getTime() > Date.now()
+        && credential.live_mode === recipient.livemode
+        && recipient.status === "active",
+    );
+    let readyToReceive = false;
+    if (credentialUsable && recipient.livemode) {
+      const [{ data: organization, error: organizationError }, { data: ngo, error: ngoError }] =
+        await Promise.all([
+          this.client
+            .from("organizations")
+            .select("status")
+            .eq("id", organizationId)
+            .maybeSingle(),
+          this.client
+            .from("ngo_profiles")
+            .select("verification_status")
+            .eq("user_id", organizationId)
+            .maybeSingle(),
+        ]);
+      if (organizationError || ngoError) throw organizationError ?? ngoError;
+      readyToReceive = organization?.status === "active"
+        && ngo?.verification_status === "verified";
+    }
     return {
-      connected: Boolean(credential && !credential.disconnected_at),
+      connected: credentialUsable,
+      readyToReceive,
       recipientId: recipient.id,
       providerUserId: recipient.provider_recipient_id,
       status: recipient.status,

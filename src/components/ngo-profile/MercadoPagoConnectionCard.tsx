@@ -14,6 +14,7 @@ const MERCADO_PAGO_AUTH_HOSTNAME = "auth.mercadopago.com.br";
 
 export interface MercadoPagoConnectionStatus {
   connected: boolean;
+  readyToReceive?: boolean;
   status?: string | null;
   liveMode?: boolean;
   expiresAt?: string | null;
@@ -97,7 +98,7 @@ export const MercadoPagoConnectionCard = ({
   api?: MercadoPagoConnectionApi;
   onNavigate?: (url: string) => void;
   embedded?: boolean;
-  onConnectionChange?: (connected: boolean) => void;
+  onConnectionChange?: (connected: boolean, readyToReceive: boolean) => void;
 }) => {
   const [status, setStatus] = useState<MercadoPagoConnectionStatus | null>(null);
   const [busy, setBusy] = useState(false);
@@ -110,13 +111,13 @@ export const MercadoPagoConnectionCard = ({
       (next) => {
         if (!active) return;
         setStatus(next);
-        onConnectionChange?.(next.connected);
+        onConnectionChange?.(next.connected, next.readyToReceive === true);
       },
       () => {
         if (active) {
           setStatus({ connected: false });
           setError("Não foi possível consultar os recebimentos agora. Tente novamente.");
-          onConnectionChange?.(false);
+          onConnectionChange?.(false, false);
         }
       },
     );
@@ -147,7 +148,7 @@ export const MercadoPagoConnectionCard = ({
     try {
       await api.disconnect(organizationId);
       setStatus({ connected: false, liveMode: status?.liveMode });
-      onConnectionChange?.(false);
+      onConnectionChange?.(false, false);
     } catch (cause) {
       setError(connectionErrorMessage(cause));
     } finally {
@@ -193,8 +194,14 @@ export const MercadoPagoConnectionCard = ({
                     : "Mercado Pago ainda não conectado"}
                 </h2>
                 {status.connected && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-700">
-                    <CheckCircle2 size={13} /> Ativo
+                  <span className={cn(
+                    "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold",
+                    status.readyToReceive
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-brand-blue/10 text-brand-blue",
+                  )}>
+                    <CheckCircle2 size={13} />
+                    {status.readyToReceive ? "Recebimentos ativos" : "Conta conectada"}
                   </span>
                 )}
                 <span className="rounded-full bg-brand-ink/5 px-2.5 py-1 text-xs font-bold text-brand-ink/65">
@@ -203,7 +210,9 @@ export const MercadoPagoConnectionCard = ({
               </div>
               <p className="mt-1 max-w-2xl text-sm leading-6 text-muted-foreground">
                 {status.connected
-                  ? "Sua conta está pronta para receber doações via PIX com a taxa do TranquiliCare separada automaticamente."
+                  ? status.readyToReceive
+                    ? "As doações via PIX estão liberadas e o Split 1:1 separará a taxa do TranquiliCare automaticamente."
+                    : "A conta de produção foi conectada. As doações serão liberadas depois da verificação institucional."
                   : "Conecte a conta verificada da organização para receber doações reais diretamente pelo Split 1:1."}
               </p>
               {error && (

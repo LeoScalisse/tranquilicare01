@@ -67,6 +67,7 @@ export const mercadoPagoConnectionHandler = () => async (request: Request) => {
     const connection = await repository.getConnection(organizationId, liveMode);
     return jsonResponse({
       connected: connection.connected,
+      readyToReceive: connection.readyToReceive ?? false,
       status: connection.status ?? null,
       liveMode: connection.liveMode ?? liveMode,
       expiresAt: connection.expiresAt ?? null,

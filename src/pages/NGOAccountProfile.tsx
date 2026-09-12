@@ -680,7 +680,9 @@ const NGOAccountProfile: React.FC = () => {
       });
       applyOnboardingStage(await advanceOwnOrganizationOnboarding('complete'));
       setSearchParams({}, { replace: true });
-      toast.success('Preparação salva. Você poderá configurar os recebimentos quando estiver pronto.');
+      toast.success(details.payoutStatus === 'configured'
+        ? 'Preparação concluída. Avisaremos quando a verificação liberar as doações.'
+        : 'Preparação salva. Você poderá configurar os recebimentos quando estiver pronto.');
     } catch (error) {
       toast.error(organizationProfileSaveError(error));
     } finally {

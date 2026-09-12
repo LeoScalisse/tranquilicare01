@@ -54,8 +54,14 @@ export const NGOOnboardingFlow = ({
 }: Props) => {
   const scope = useRef<HTMLDivElement>(null);
   const [payoutConnected, setPayoutConnected] = useState(details.payoutStatus === 'configured');
-  const handleConnectionChange = useCallback((connected: boolean) => {
+  const [receivablesReady, setReceivablesReady] = useState(
+    details.paymentStatus === 'enabled'
+      && details.verificationStatus === 'verified'
+      && details.payoutStatus === 'configured',
+  );
+  const handleConnectionChange = useCallback((connected: boolean, readyToReceive: boolean) => {
     setPayoutConnected(connected);
+    setReceivablesReady(readyToReceive);
   }, []);
 
   // Rare, first-time onboarding: GSAP only clarifies the new step; reduced-motion
@@ -207,16 +213,18 @@ export const NGOOnboardingFlow = ({
           <div className='flex gap-3'><ShieldCheck className='mt-0.5 text-brand-blue' size={19} /><div><h2 className='font-display text-xl font-semibold'>Responsável</h2><p className='mt-1 text-sm leading-6 text-muted-foreground'>A organização será revisada a partir do acesso autenticado e dos dados institucionais informados.</p></div></div>
         </section>
 
-        <section className='border-t border-brand-ink/10 pt-7' aria-labelledby='setup-receivables-title'>
-          <div className='flex gap-3'><CircleDollarSign className='mt-0.5 text-brand-blue' size={19} /><div><h2 id='setup-receivables-title' className='font-display text-xl font-semibold'>Recebimentos</h2><p className='mt-1 text-sm leading-6 text-muted-foreground'>Configure onde os valores destinados à sua causa serão recebidos.</p></div></div>
-          <div className='mt-5'>
-            <MercadoPagoConnectionCard
-              organizationId={organizationId}
-              embedded
-              onConnectionChange={handleConnectionChange}
-            />
-          </div>
-        </section>
+        {!receivablesReady && (
+          <section className='border-t border-brand-ink/10 pt-7' aria-labelledby='setup-receivables-title'>
+            <div className='flex gap-3'><CircleDollarSign className='mt-0.5 text-brand-blue' size={19} /><div><h2 id='setup-receivables-title' className='font-display text-xl font-semibold'>Recebimentos</h2><p className='mt-1 text-sm leading-6 text-muted-foreground'>Configure onde os valores destinados à sua causa serão recebidos.</p></div></div>
+            <div className='mt-5'>
+              <MercadoPagoConnectionCard
+                organizationId={organizationId}
+                embedded
+                onConnectionChange={handleConnectionChange}
+              />
+            </div>
+          </section>
+        )}
 
         {payoutConnected && (
           <button type='submit' disabled={saving} className='tc-button-3d flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-5 font-bold text-white disabled:opacity-60'>

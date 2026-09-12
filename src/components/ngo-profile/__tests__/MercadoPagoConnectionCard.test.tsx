@@ -69,6 +69,7 @@ describe("MercadoPagoConnectionCard", () => {
     const api: MercadoPagoConnectionApi = {
       status: vi.fn().mockResolvedValue({
         connected: true,
+        readyToReceive: true,
         status: "active",
         liveMode: true,
         expiresAt: "2027-02-24T20:00:00.000Z",
@@ -85,6 +86,7 @@ describe("MercadoPagoConnectionCard", () => {
     );
 
     expect(await screen.findByText("Mercado Pago conectado")).toBeTruthy();
+    expect(screen.getByText("Recebimentos ativos")).toBeTruthy();
     expect(screen.getByText("Produção")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Desconectar" }));
 
