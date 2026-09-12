@@ -10,6 +10,8 @@ import {
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 
+const MERCADO_PAGO_AUTH_HOSTNAME = "auth.mercadopago.com.br";
+
 export interface MercadoPagoConnectionStatus {
   connected: boolean;
   status?: string | null;
@@ -129,7 +131,7 @@ export const MercadoPagoConnectionCard = ({
     try {
       const result = await api.connect(organizationId);
       const url = new URL(result.authorizationUrl);
-      if (url.protocol !== "https:" || url.hostname !== "auth.mercadopago.com") {
+      if (url.protocol !== "https:" || url.hostname !== MERCADO_PAGO_AUTH_HOSTNAME) {
         throw new Error("mercado-pago-authorization-url-invalid");
       }
       onNavigate(url.toString());

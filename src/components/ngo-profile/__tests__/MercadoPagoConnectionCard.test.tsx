@@ -14,7 +14,7 @@ describe("MercadoPagoConnectionCard", () => {
     const api: MercadoPagoConnectionApi = {
       status: vi.fn().mockResolvedValue({ connected: false, liveMode: true }),
       connect: vi.fn().mockResolvedValue({
-        authorizationUrl: "https://auth.mercadopago.com/authorization?state=opaque",
+        authorizationUrl: "https://auth.mercadopago.com.br/authorization?state=opaque",
       }),
       disconnect: vi.fn(),
     };
@@ -35,7 +35,33 @@ describe("MercadoPagoConnectionCard", () => {
       "11111111-1111-4111-8111-111111111111",
     );
     expect(navigate).toHaveBeenCalledWith(
-      "https://auth.mercadopago.com/authorization?state=opaque",
+      "https://auth.mercadopago.com.br/authorization?state=opaque",
+    );
+  });
+
+  it("blocks an authorization URL outside the Brazilian Mercado Pago host", async () => {
+    const api: MercadoPagoConnectionApi = {
+      status: vi.fn().mockResolvedValue({ connected: false, liveMode: true }),
+      connect: vi.fn().mockResolvedValue({
+        authorizationUrl: "https://example.com/authorization?state=opaque",
+      }),
+      disconnect: vi.fn(),
+    };
+    const navigate = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <MercadoPagoConnectionCard
+        organizationId="11111111-1111-4111-8111-111111111111"
+        api={api}
+        onNavigate={navigate}
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Conectar Mercado Pago" }));
+
+    expect(navigate).not.toHaveBeenCalled();
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Não foi possível iniciar a conexão",
     );
   });
 
