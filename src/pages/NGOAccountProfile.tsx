@@ -366,6 +366,7 @@ const NGOAccountProfile: React.FC = () => {
   const setupValue = searchParams.get('setup');
   const isPreparationManagement = searchParams.get('preparation') === '1';
   const mercadoPagoResult = searchParams.get('mercado_pago');
+  const mercadoPagoReason = searchParams.get('reason');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -451,12 +452,19 @@ const NGOAccountProfile: React.FC = () => {
       toast.info('A conexão foi cancelada. Você pode tentar novamente quando quiser.');
     } else if (mercadoPagoResult === 'configuration_error') {
       toast.error('A configuração do Mercado Pago está incompleta. Confira as credenciais da integração.');
+    } else if (
+      mercadoPagoReason === 'mercado-pago-oauth-input-invalid'
+      || mercadoPagoReason === 'mercado-pago-oauth-state-invalid'
+    ) {
+      toast.error('A autorização não pôde ser validada. Inicie a conexão novamente pelo perfil da ONG.');
+    } else if (mercadoPagoReason === 'mercado-pago-oauth-mode-mismatch') {
+      toast.error('A conta escolhida não corresponde ao ambiente de produção. Use uma conta real da organização.');
     } else {
       toast.error('Não foi possível conectar o Mercado Pago. Tente novamente.');
     }
 
     setSearchParams({ preparation: '1' }, { replace: true });
-  }, [mercadoPagoResult, setSearchParams]);
+  }, [mercadoPagoReason, mercadoPagoResult, setSearchParams]);
 
   useEffect(() => {
     if (!user || user.accountType !== 'ngo') return undefined;

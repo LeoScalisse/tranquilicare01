@@ -1,4 +1,6 @@
-const AUTHORIZATION_URL = "https://auth.mercadopago.com/authorization";
+// The Brazilian marketplace endpoint avoids the country-selection hop used by
+// the generic host. That hop can discard OAuth state before returning to us.
+const AUTHORIZATION_URL = "https://auth.mercadopago.com.br/authorization";
 const TOKEN_URL = "https://api.mercadopago.com/oauth/token";
 
 type FetchLike = (

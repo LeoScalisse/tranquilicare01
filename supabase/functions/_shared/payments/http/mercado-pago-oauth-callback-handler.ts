@@ -4,9 +4,24 @@ import { SupabaseMercadoPagoOAuthRepository } from "../infrastructure/supabase-m
 import { createMercadoPagoOAuthClient } from "../providers/mercado-pago/mercado-pago-oauth-client.ts";
 import { MercadoPagoOAuthService } from "../services/mercado-pago-oauth-service.ts";
 
-const profileRedirect = (appUrl: string, status: string): Response => {
+const SAFE_FAILURE_CODE = /^(?:mercado-pago|payment-credential)-[a-z0-9-]+$/;
+
+const failureCode = (error: unknown): string => {
+  if (error instanceof PaymentError) return error.code;
+  if (error instanceof Error && SAFE_FAILURE_CODE.test(error.message)) {
+    return error.message;
+  }
+  return "mercado-pago-oauth-callback-failed";
+};
+
+const profileRedirect = (
+  appUrl: string,
+  status: string,
+  reason?: string,
+): Response => {
   const url = new URL("/ngo/profile", appUrl);
   url.searchParams.set("mercado_pago", status);
+  if (reason) url.searchParams.set("reason", reason);
   return new Response(null, {
     status: 302,
     headers: { Location: url.toString(), "Cache-Control": "no-store" },
@@ -52,10 +67,8 @@ export const mercadoPagoOAuthCallbackHandler = () =>
       await service.complete({ code, state });
       return profileRedirect(appUrl, "connected");
     } catch (error) {
-      const code = error instanceof PaymentError
-        ? error.code
-        : "mercado-pago-oauth-callback-failed";
+      const code = failureCode(error);
       console.error("Mercado Pago OAuth callback failed", { code });
-      return profileRedirect(appUrl, "connection_error");
+      return profileRedirect(appUrl, "connection_error", code);
     }
   };

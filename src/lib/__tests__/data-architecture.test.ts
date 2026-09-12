@@ -103,6 +103,7 @@ describe('data architecture boundaries', () => {
     expect(connect.indexOf('auth.getUser')).toBeLessThan(connect.indexOf('service.begin'));
     expect(callback).not.toContain('accessToken');
     expect(callback).not.toContain('refreshToken');
+    expect(callback).toContain('url.searchParams.set("reason", reason)');
     expect(config).toContain('[functions.mercado-pago-connect]');
     expect(config).toContain('[functions.mercado-pago-oauth-callback]');
     expect(config).toContain('[functions.mercado-pago-connection]');

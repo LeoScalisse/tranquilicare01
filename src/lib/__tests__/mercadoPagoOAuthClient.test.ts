@@ -33,7 +33,7 @@ describe("Mercado Pago OAuth client", () => {
     }));
 
     expect(url.origin + url.pathname).toBe(
-      "https://auth.mercadopago.com/authorization",
+      "https://auth.mercadopago.com.br/authorization",
     );
     expect(Object.fromEntries(url.searchParams)).toMatchObject({
       response_type: "code",
