@@ -81,7 +81,7 @@ export class SupabaseMercadoPagoOAuthRepository
       .update({ consumed_at: consumedAt })
       .eq("provider", "mercado_pago")
       .eq("state_hash", stateHash)
-      .eq("consumed_at", null)
+      .is("consumed_at", null)
       .gt("expires_at", consumedAt)
       .select(
         "organization_id, initiated_by, state_hash, encrypted_code_verifier, redirect_uri, requested_live_mode, expires_at",

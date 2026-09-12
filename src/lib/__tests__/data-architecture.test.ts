@@ -93,7 +93,8 @@ describe('data architecture boundaries', () => {
     const connect = read('supabase/functions/_shared/payments/http/mercado-pago-connect-handler.ts');
     const callback = read('supabase/functions/_shared/payments/http/mercado-pago-oauth-callback-handler.ts');
     const config = read('supabase/config.toml');
-    expect(repository).toContain('.eq("consumed_at", null)');
+    expect(repository).toContain('.is("consumed_at", null)');
+    expect(repository).not.toContain('.eq("consumed_at", null)');
     expect(repository).toContain('.gt("expires_at", consumedAt)');
     expect(repository).toContain('.in("role", MANAGER_ROLES)');
     expect(repository).toContain('encrypted_access_token');
