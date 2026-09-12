@@ -43,7 +43,7 @@ const NGOPublicProfile: React.FC = () => {
   return (
     <div className='min-h-screen overflow-x-hidden bg-background'>
       <AppBottomNav activeKey={null} user={user} />
-      <header className='sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur'>
+      <header className='sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur md:hidden'>
         <div className='mx-auto flex h-16 max-w-6xl items-center justify-between px-4'>
           <button onClick={() => navigate('/#causas')} className='flex items-center gap-2.5' aria-label='Voltar para o início'><ArrowLeft size={20} className='text-muted-foreground' /><img src={logo} alt='' className='h-9 w-9 rounded-lg' /><span className='hidden font-display text-lg font-semibold sm:inline'>Tranquili<span className='text-brand-blue'>Care</span></span></button>
           <button onClick={() => navigate(user ? defaultDestForAccount(user.accountType) : '/donor/auth')} className='grid h-10 w-10 place-items-center rounded-full bg-secondary text-brand-blue' aria-label={user ? 'Abrir meu perfil' : 'Entrar'}><UserCircle size={21} /></button>

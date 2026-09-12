@@ -92,6 +92,10 @@ describe("NGOProfile cause-led architecture", () => {
     ).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Conhecer a verificação/i }));
     expect(screen.getByTestId("location").textContent).toBe("/descobertas/verificacao");
+
+    const donationStatus = screen.getByRole("button", { name: "Verificação em andamento" });
+    expect(donationStatus.getAttribute("aria-disabled")).toBe("true");
+    expect((donationStatus as HTMLButtonElement).disabled).toBe(false);
   });
 
   it("uses geocoded coordinates when opening the organization map", () => {

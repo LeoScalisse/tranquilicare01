@@ -261,7 +261,11 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
 
   const openDonation = () => {
     if (!donationsEnabled) {
-      toast('Esta organização ainda está preparando os recebimentos.');
+      toast(
+        ngo.verified
+          ? 'Esta organização ainda está preparando os recebimentos. O checkout será liberado assim que a conta estiver pronta.'
+          : 'A verificação institucional desta organização ainda está em análise. O checkout será liberado depois da aprovação.',
+      );
       return;
     }
     setPixPayment(null);
@@ -937,11 +941,15 @@ const NGOProfile: React.FC<NGOProfileProps> = ({
               ) : (
                 <button
                   onClick={openDonation}
-                  disabled={!donationsEnabled}
-                  className="tc-button-3d inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-55 sm:w-auto"
+                  aria-disabled={!donationsEnabled}
+                  className={`tc-button-3d inline-flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-bold text-white sm:w-auto ${donationsEnabled ? '' : 'cursor-help opacity-65'}`}
                 >
                   <Heart size={17} className="fill-current" />
-                  {donationsEnabled ? 'Apoiar esta causa' : 'Recebimentos em preparação'}
+                  {donationsEnabled
+                    ? 'Apoiar esta causa'
+                    : ngo.verified
+                      ? 'Recebimentos em preparação'
+                      : 'Verificação em andamento'}
                 </button>
               )}
               {!ownerMode && (
