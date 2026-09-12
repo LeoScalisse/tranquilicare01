@@ -78,14 +78,25 @@ export const mercadoPagoConnectHandler = () => async (request: Request) => {
     });
     return jsonResponse({ authorizationUrl: result.authorizationUrl }, 200, headers);
   } catch (error) {
+    const configurationCode = error instanceof Error &&
+        error.message === "payment-credential-key-invalid"
+      ? error.message
+      : null;
     const paymentError = error instanceof PaymentError
       ? error
-      : new PaymentError(
+      : configurationCode
+        ? new PaymentError(
+          configurationCode,
+          "Payment credential encryption key is invalid",
+          503,
+          { cause: error },
+        )
+        : new PaymentError(
         "mercado-pago-oauth-start-failed",
         "Could not start Mercado Pago connection",
         500,
         { cause: error },
-      );
+        );
     console.error("Mercado Pago OAuth start failed", {
       code: paymentError.code,
       organizationId,

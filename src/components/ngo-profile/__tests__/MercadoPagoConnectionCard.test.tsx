@@ -65,4 +65,27 @@ describe("MercadoPagoConnectionCard", () => {
     await waitFor(() => expect(api.disconnect).toHaveBeenCalledOnce());
     expect(await screen.findByText("Mercado Pago ainda não conectado")).toBeTruthy();
   });
+
+  it("explains an invalid credential encryption key without hiding the retry action", async () => {
+    const api: MercadoPagoConnectionApi = {
+      status: vi.fn().mockResolvedValue({ connected: false, liveMode: true }),
+      connect: vi.fn().mockRejectedValue(new Error("payment-credential-key-invalid")),
+      disconnect: vi.fn(),
+    };
+    const user = userEvent.setup();
+    render(
+      <MercadoPagoConnectionCard
+        organizationId="11111111-1111-4111-8111-111111111111"
+        api={api}
+        embedded
+      />,
+    );
+
+    await user.click(await screen.findByRole("button", { name: "Conectar Mercado Pago" }));
+
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "A chave de segurança dos recebimentos é inválida",
+    );
+    expect((screen.getByRole("button", { name: "Conectar Mercado Pago" }) as HTMLButtonElement).disabled).toBe(false);
+  });
 });
