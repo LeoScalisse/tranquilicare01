@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Building2, CheckCircle2, CircleDollarSign, Loader2, ShieldCheck } from 'lucide-react';
 
 import { CategoryDisclosure, type CategoryDisclosureItem } from '@/components/ui/category-disclosure';
@@ -53,6 +53,10 @@ export const NGOOnboardingFlow = ({
   onDoLater,
 }: Props) => {
   const scope = useRef<HTMLDivElement>(null);
+  const [payoutConnected, setPayoutConnected] = useState(details.payoutStatus === 'configured');
+  const handleConnectionChange = useCallback((connected: boolean) => {
+    setPayoutConnected(connected);
+  }, []);
 
   // Rare, first-time onboarding: GSAP only clarifies the new step; reduced-motion
   // users retain the opacity state without spatial movement.
@@ -206,13 +210,19 @@ export const NGOOnboardingFlow = ({
         <section className='border-t border-brand-ink/10 pt-7' aria-labelledby='setup-receivables-title'>
           <div className='flex gap-3'><CircleDollarSign className='mt-0.5 text-brand-blue' size={19} /><div><h2 id='setup-receivables-title' className='font-display text-xl font-semibold'>Recebimentos</h2><p className='mt-1 text-sm leading-6 text-muted-foreground'>Configure onde os valores destinados à sua causa serão recebidos.</p></div></div>
           <div className='mt-5'>
-            <MercadoPagoConnectionCard organizationId={organizationId} embedded />
+            <MercadoPagoConnectionCard
+              organizationId={organizationId}
+              embedded
+              onConnectionChange={handleConnectionChange}
+            />
           </div>
         </section>
 
-        <button type='submit' disabled={saving} className='tc-button-3d flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-5 font-bold text-white disabled:opacity-60'>
-          {saving ? <Loader2 size={18} className='animate-spin' /> : <CheckCircle2 size={18} />}Concluir preparação
-        </button>
+        {payoutConnected && (
+          <button type='submit' disabled={saving} className='tc-button-3d flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-5 font-bold text-white disabled:opacity-60'>
+            {saving ? <Loader2 size={18} className='animate-spin' /> : <CheckCircle2 size={18} />}Concluir preparação
+          </button>
+        )}
         <button type='button' onClick={onDoLater} disabled={saving} className='mx-auto block px-4 py-2 text-sm font-bold text-brand-blue disabled:opacity-60'>Fazer depois</button>
       </form>
     </main>

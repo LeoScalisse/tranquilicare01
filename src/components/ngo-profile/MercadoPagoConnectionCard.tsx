@@ -89,11 +89,13 @@ export const MercadoPagoConnectionCard = ({
   api = defaultApi,
   onNavigate = (url: string) => window.location.assign(url),
   embedded = false,
+  onConnectionChange,
 }: {
   organizationId: string;
   api?: MercadoPagoConnectionApi;
   onNavigate?: (url: string) => void;
   embedded?: boolean;
+  onConnectionChange?: (connected: boolean) => void;
 }) => {
   const [status, setStatus] = useState<MercadoPagoConnectionStatus | null>(null);
   const [busy, setBusy] = useState(false);
@@ -103,18 +105,23 @@ export const MercadoPagoConnectionCard = ({
     let active = true;
     setError(null);
     api.status(organizationId).then(
-      (next) => active && setStatus(next),
+      (next) => {
+        if (!active) return;
+        setStatus(next);
+        onConnectionChange?.(next.connected);
+      },
       () => {
         if (active) {
           setStatus({ connected: false });
           setError("Não foi possível consultar os recebimentos agora. Tente novamente.");
+          onConnectionChange?.(false);
         }
       },
     );
     return () => {
       active = false;
     };
-  }, [api, organizationId]);
+  }, [api, onConnectionChange, organizationId]);
 
   const connect = async () => {
     setBusy(true);
@@ -138,6 +145,7 @@ export const MercadoPagoConnectionCard = ({
     try {
       await api.disconnect(organizationId);
       setStatus({ connected: false, liveMode: status?.liveMode });
+      onConnectionChange?.(false);
     } catch (cause) {
       setError(connectionErrorMessage(cause));
     } finally {

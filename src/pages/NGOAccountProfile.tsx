@@ -1,11 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ArrowLeft,
   Building2,
   Camera,
   Loader2,
-  LogOut,
   Plus,
   Save,
   Trash2,
@@ -27,11 +25,9 @@ import {
   getUser,
   getNgoOnboardingStage,
   onAuthChange,
-  signOut,
   updateUser,
 } from '@/lib/auth';
 import logo from '@/assets/logo.png';
-import AppBottomNav from '@/components/AppBottomNav';
 import { SmoothInput } from '@/components/ui/smooth-input';
 import {
   CategoryDisclosure,
@@ -799,11 +795,6 @@ const NGOAccountProfile: React.FC = () => {
     }
   };
 
-  const logout = async () => {
-    await signOut();
-    navigate('/');
-  };
-
   const publishFromProfile = async (body: string, image: File | null, socialUrl: string | null, category: string | null = null) => {
     try {
       await publishStory(body, image, socialUrl, category);
@@ -821,21 +812,6 @@ const NGOAccountProfile: React.FC = () => {
   return (
     <>
     <div className='min-h-screen bg-background text-brand-ink'>
-      <AppBottomNav activeKey='perfil' user={user} />
-      <header className='sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur'>
-        <div className='mx-auto flex h-16 max-w-6xl items-center justify-between px-4'>
-          <button onClick={() => navigate('/')} className='flex items-center gap-2.5' aria-label='Voltar para o início'>
-            <ArrowLeft className='h-5 w-5 text-muted-foreground md:hidden' />
-            <img src={logo} alt='' className='h-9 w-9 rounded-lg' />
-            <span className='hidden font-display text-lg font-semibold sm:inline'>Tranquili<span className='text-brand-blue'>Care</span></span>
-          </button>
-          <div className='flex items-center gap-2'>
-            <span className='hidden text-xs font-bold uppercase tracking-[0.14em] text-muted-foreground md:inline'>Área da organização</span>
-            <button onClick={logout} className='grid h-10 w-10 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-500' aria-label='Sair'><LogOut size={18} /></button>
-          </div>
-        </div>
-      </header>
-
       {(isOnboarding || isPreparationManagement || !profileSaved) ? (
         <NGOOnboardingFlow
           stage={setupStage}

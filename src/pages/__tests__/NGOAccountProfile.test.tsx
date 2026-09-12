@@ -25,6 +25,11 @@ vi.mock('@/lib/auth', () => ({
   getNgoOnboardingStage: (user: AppUser | null) => user?.ngoProfile?.onboardingStage ?? 'cause',
 }));
 vi.mock('@/components/AppBottomNav', () => ({ default: () => null }));
+vi.mock('@/components/ngo-profile/MercadoPagoConnectionCard', () => ({
+  default: ({ onConnectionChange }: { onConnectionChange?: (connected: boolean) => void }) => (
+    <button type='button' onClick={() => onConnectionChange?.(true)}>Conectar Mercado Pago</button>
+  ),
+}));
 vi.mock('@/lib/geocoding', () => ({ geocodeAddress: authMocks.geocodeAddress }));
 vi.mock('@/lib/organizationVisualMedia', () => ({
   analyzeMarketplacePhotoFiles: vi.fn().mockResolvedValue(0),
@@ -218,5 +223,34 @@ describe('NGOAccountProfile', () => {
     await user.click(screen.getByRole('button', { name: 'Fazer depois' }));
     await waitFor(() => expect(screen.getByTestId('location').textContent).toBe('/ngo/profile'));
     expect(screen.getByText('Prepare sua organização para receber apoio')).toBeTruthy();
+  });
+
+  it('shows only the payment connection action until Mercado Pago is connected', async () => {
+    authMocks.currentUser = {
+      ...ngoUser,
+      ngoProfile: {
+        publicEmail: ngoUser.email,
+        description: 'Uma causa real.',
+        category: 'Educação',
+        goal: 'Abrir novas turmas.',
+        objectives: [], youtubeUrl: '', coverImage: '', instagram: '', phone: '', cnpj: '12.345.678/0001-95', address: 'Rua da Esperança, 100', city: 'São Paulo', state: 'SP',
+        profileStatus: 'ready', visualProfileStatus: 'ready', onboardingStage: 'preparation', payoutStatus: 'not_configured',
+      },
+    };
+    const user = userEvent.setup();
+    render(<MemoryRouter initialEntries={['/ngo/profile?setup=4']}><NGOAccountProfile /></MemoryRouter>);
+
+    expect(await screen.findByRole('button', { name: 'Conectar Mercado Pago' })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Concluir preparação' })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: 'Conectar Mercado Pago' }));
+
+    expect(await screen.findByRole('button', { name: 'Concluir preparação' })).toBeTruthy();
+  });
+
+  it('does not render a second page header inside the global navigation shell', async () => {
+    render(<MemoryRouter initialEntries={['/ngo/profile?setup=1']}><NGOAccountProfile /></MemoryRouter>);
+    await screen.findByRole('heading', { name: 'Apresente sua causa.' });
+    expect(screen.queryByRole('banner')).toBeNull();
   });
 });
